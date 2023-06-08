@@ -1,0 +1,281 @@
+import pandas as pd
+import os
+import numpy as np
+# This file contains the Reader class, which is used to read model parameters, damage parameters and input data from files.
+
+
+class Reader():
+    '''Read model parameters, damage parameters and input data from files.'''
+
+    def _read_model_parameters(self, country: str = '', state: str = '', district: str = '', filepath: str = '') -> dict:
+        # !: Adjust the function, in its current version it won't work
+        '''Reads model parameters from excel file and returns a dictionary
+
+        Parameters
+        ----------
+        country : str
+            Country name
+        state : str
+            State name
+        district : str
+            District name
+        filepath : str
+            Path to excel file
+
+        Returns
+        -------
+        dict
+            Dictionary with model parameters
+
+        Raises
+        ------
+        ValueError
+            If country is not supported
+
+        '''
+        if country not in ['India', 'Saint Lucia']:
+            raise ValueError('Country not supported')
+        else:
+            if state == '':
+                sheet_name = district
+            else:
+                sheet_name = state
+
+            if filepath == '':
+                model_parameters = pd.read_excel(
+                    f'../data/internal/{country}/model_parameters.xlsx', sheet_name=sheet_name)
+            else:
+                model_parameters = pd.read_excel(
+                    filepath, sheet_name=sheet_name)
+
+            return model_parameters.set_index('Name').to_dict()['Value']
+
+    def _get_file_name(self, country: str = '', state: str = '', district: str = '', scale: str = '') -> str:
+        '''Get the appropriate file name based on the chosen scale.'''
+        if scale == 'country':
+            f = country
+        elif scale == 'state':
+            f = state
+        elif scale == 'district':
+            f = district
+        return f
+
+    def _read_asset_damage(self, column: str = 'exposed_value',  filepath: str = '') -> dict:
+        '''Reads damage parameters from csv file and returns a dictionary'''
+        if filepath == '':
+            all_damage = pd.read_excel(
+                f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+        else:
+            all_damage = pd.read_csv(filepath)
+
+        # If we do not differentiate between states or districts work with the data on the country level
+        # * RP - return period
+        # * PML - probable maximum loss
+        if self.scale == 'country':
+            event_damage = all_damage.loc[all_damage['RP']
+                                          == self.return_period, 'PML'].values[0]
+            total_asset_stock = all_damage.loc[(
+                all_damage['RP'] == self.return_period), column].values[0]
+
+        # We have multiple states or districts, then subset it
+        elif self.scale == 'state':
+            event_damage = all_damage.loc[(all_damage[self.scale] == self.state) & (
+                all_damage['RP'] == self.return_period), 'PML'].values[0]
+            total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.state) & (
+                all_damage['RP'] == self.return_period), column].values[0]
+        else:
+            event_damage = all_damage.loc[(all_damage[self.scale] == self.district) & (
+                all_damage['RP'] == self.return_period), 'PML'].values[0]
+            total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.district) & (
+                all_damage['RP'] == self.return_period), column].values[0]
+
+        return {'event_damage': event_damage, 'total_asset_stock': float(total_asset_stock)}
+
+    def _read_household_data(self) -> pd.DataFrame:
+        '''Reads input data from csv files and returns a dictionary'''
+        household_data = pd.read_csv(self.household_data_filename)
+        return household_data
+
+    def _duplicate_households(self) -> pd.DataFrame:
+
+        # We want to have enough heterogenity in the household data
+        #
+        if len(self.household_data) < self.min_households:
+            print(
+                f'Number of households is less than the threshold {self.min_households}: {len(self.household_data)}')
+            self.household_data['hhid_save'] = self.household_data[self.household_column_id]
+
+
+#         if len(household_data) > threshold:
+
+
+#         if len(sn_df_) > 2000:
+#                     duplicate_hh_df = 0
+#                 elif len(sn_df_) > 1000:
+#                     duplicate_hh_df = 1
+#                 elif len(sn_df_) > 500:
+#                     duplicate_hh_df = 4
+#                 elif len(sn_df_) > 250:
+#                     duplicate_hh_df = 7
+#                 elif len(sn_df_) > 100:
+#                     duplicate_hh_df = 10
+#                 else:
+#                     duplicate_hh_df = 10
+#                 del sn_df_
+
+            # !: Rewrite this part
+            if self.n_duplicates_households_dataframe > 0:
+                print(f'Initial number of households = {len(household_data)}')
+                household_data = self._duplicate_dataframe(
+                    household_data, self.household_column_id, self.n_duplicates_hh_df)
+                print(
+                    f'Number of households after duplication = {len(household_data)}')
+
+            household_data = household_data.reset_index(
+                drop=True).set_index(self.household_column_id)
+            hh_df2 = hh_df.copy()
+            for i in range(duplicate_hh_df):
+                hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(str)
+                hh_df2[hh_df_id] = str(i+1)+hh_df2[hh_df_id]
+                try:
+                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(int)
+                except:
+                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(float)
+
+                hh_df = hh_df.append(hh_df2)
+                hh_df.reset_index(inplace=True, drop=True)
+            hh_df['popwgt'] /= duplicate_hh_df+1
+
+        else:
+            return self.household_data
+
+    def _calculate_average_productivity(self, print_statistics: bool = False) -> float:
+        '''Calculate average productivity as aeinc \ k_house_ae'''
+        average_productivity = self.household_data['aeinc'] / \
+            self.household_data['k_house_ae']
+
+        # ?: What's happening here?
+        # self.average_productivity = self.average_productivity.iloc[0]
+        average_productivity = np.nanmedian(average_productivity)
+        if print_statistics:
+            print('Average productivity of capital = ' +
+                  str(np.round(average_productivity, 3)))
+        return average_productivity
+
+    def _get_optimization_results(self) -> dict:
+        '''Read or create a data frame for optimization results'''
+        try:
+            # If we already run optimization then pick up the saves values
+            # It supposed to speed the process up
+            optimization_results = pd.read_csv(self.optimization_results_filename, index_col=[
+                'aeexp', 'aeexp_house', 'keff', 'v', 'aesav']).sort_index()
+        except:
+            # Otherwise create a new data frame to store the results
+            optimization_results = pd.DataFrame({'aeexp': -1, 'aeexp_house': -1, 'keff': -1,
+                                                 'v': -1, 'aesav': -1, 'solution': None, 'bankrupt': None}, index=[0])
+            optimization_results = optimization_results.reset_index(drop=True).set_index(
+                ['aeexp', 'aeexp_house', 'keff', 'v', 'aesav'])
+
+        return optimization_results
+
+    def _collect_parameters(self):
+        '''Collect all model parameters into `self.parameters`.'''
+        self.parameters = {'poverty_line': self.poverty_line,
+                           'indigence_line': self.indigence_line,
+                           'saving_rate': self.saving_rate,
+                           'income_and_expenditure_growth': self.income_and_expenditure_growth,
+                           'poverty_bias': self.poverty_bias,
+                           'discount_rate': self.discount_rate,
+                           'consumption_utility': self.consumption_utility,
+                           'adjust_assets_and_expenditure': self.adjust_assets_and_expenditure,
+                           'n_replications': self.n_replications,
+                           'optimization_timestep': self.optimization_timestep,
+                           'return_period': self.return_period,
+                           'policy': self.policy,
+                           'event_damage': self.event_damage,
+                           'total_asset_stock': self.total_asset_stock,
+                           'expected_loss_fraction': self.expected_loss_fraction,
+                           'average_productivity': self.average_productivity,
+                           'min_households': self.min_households}
+
+    def _prepare_data_frames(self) -> None:
+        '''Prepare data frames to store simulation results'''
+        self.simulation_parameters = pd.DataFrame({'poverty_bias': None}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.quintile_recovery_rate = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.quintile_weeks_pov = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.quintile_asset_loss_totval = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.quintile_asset_loss_percap = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.quintile_DRM_cost = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
+            'replication_{}'.format(_) for _ in range(self.n_replications)])
+        self.hh_vulnerability = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_transfers = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_savings = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_is_affected = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_asset_loss = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_is_impoverished = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_weeks_pov = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_reco_rate = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_consumption_loss = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_consumption_loss_NPV = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_welfare_loss = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_welfare_loss_updated1 = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_net_consumption_loss = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_net_consumption_loss_NPV = pd.DataFrame(
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+        self.hh_DRM_cost = pd.DataFrame(
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+
+    def _adjust_assets_and_expenditure(self) -> None:
+        '''Adjust assets and expenditure of household to match data of asset damage file.
+
+        There can be a mistmatch between the data in the household survey and the of the asset damage.
+        The latest was created independently.'''
+
+        # ?: Do we always have to do that?
+        # If yes, remove the corresponding variable. Or else add a condition?
+
+        # k_house_ae - effective capital stock of the household
+        # aeexp - adult equivalent expenditure of a household (total)
+        # aeexp_house - data['hhexp_house'] (annual rent) / data['hhsize_ae']
+        included_variables = ['k_house_ae', 'aeexp', 'aeexp_house']
+        total_asset_in_survey = self.household_data[[
+            'popwgt', 'k_house_ae']].prod(axis=1).sum()
+        scaling_factor = self.total_asset_stock / total_asset_in_survey
+        self.household_data[included_variables] *= scaling_factor
+        self.poverty_line *= scaling_factor
+        self.indigence_line *= scaling_factor
+
+    def _calculate_pml(self) -> None:
+        '''Calculate probable maxmium loss of each household'''
+        # keff - effective capital stock
+        self.household_data['keff'] = self.household_data['k_house_ae'].copy()
+        # !: That's quite an assumption
+        # pml - probable maximum loss
+        # popwgt - population weight of each household
+        self.pml = self.household_data[['popwgt', 'keff']].prod(
+            axis=1).sum() * self.expected_loss_fraction
+        print('Probable maximum loss (total) : ', '{:,}'.format(self.pml))
+
+    def _print_parameters(self):
+        '''Print all model parameters.'''
+        print('Model parameters:')
+        for key, value in self.parameters.items():
+            print(f'{key}: {value}')
