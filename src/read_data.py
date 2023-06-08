@@ -96,58 +96,49 @@ class Reader():
         household_data = pd.read_csv(self.household_data_filename)
         return household_data
 
-    def _duplicate_households(self) -> pd.DataFrame:
+    def _duplicate_households(self) -> None:
+        '''Duplicates households if the number of households is less than the threshold'''
+        # !: @Bramka, check out this implementation
+        # Note that the previous implementation was not wrong,
+        # specifically where you adjusted the weights
 
-        # We want to have enough heterogenity in the household data
-        #
         if len(self.household_data) < self.min_households:
             print(
-                f'Number of households is less than the threshold {self.min_households}: {len(self.household_data)}')
-            self.household_data['hhid_save'] = self.household_data[self.household_column_id]
+                f'Number of households = {len(self.household_data)} is less than the threshold = {self.min_households}')
 
+            initial_total_weights = self.household_data['popwgt'].sum()
 
-#         if len(household_data) > threshold:
+            # Save the original household id
+            self.household_data['hhid_original'] = self.household_data[self.household_column_id]
 
+            # Get random ids from the household data to be duplicated
+            ids = np.random.choice(
+                self.household_data.index, self.min_households - len(self.household_data), replace=False)
+            n_duplicates = pd.Series(ids).value_counts() + 1
+            duplicates = self.household_data.loc[ids]
 
-#         if len(sn_df_) > 2000:
-#                     duplicate_hh_df = 0
-#                 elif len(sn_df_) > 1000:
-#                     duplicate_hh_df = 1
-#                 elif len(sn_df_) > 500:
-#                     duplicate_hh_df = 4
-#                 elif len(sn_df_) > 250:
-#                     duplicate_hh_df = 7
-#                 elif len(sn_df_) > 100:
-#                     duplicate_hh_df = 10
-#                 else:
-#                     duplicate_hh_df = 10
-#                 del sn_df_
+            # Adjust the weights of the duplicated households
+            duplicates['popwgt'] = duplicates['popwgt'] / n_duplicates
 
-            # !: Rewrite this part
-            if self.n_duplicates_households_dataframe > 0:
-                print(f'Initial number of households = {len(household_data)}')
-                household_data = self._duplicate_dataframe(
-                    household_data, self.household_column_id, self.n_duplicates_hh_df)
-                print(
-                    f'Number of households after duplication = {len(household_data)}')
+            # Adjust the weights of the original households
+            self.household_data.loc[ids, 'popwgt'] = self.household_data.loc[ids, 'popwgt'] / \
+                n_duplicates
 
-            household_data = household_data.reset_index(
-                drop=True).set_index(self.household_column_id)
-            hh_df2 = hh_df.copy()
-            for i in range(duplicate_hh_df):
-                hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(str)
-                hh_df2[hh_df_id] = str(i+1)+hh_df2[hh_df_id]
-                try:
-                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(int)
-                except:
-                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(float)
+            # Combine the original and duplicated households
+            self.household_data = pd.concat(
+                [self.household_data, duplicates], ignore_index=True)
 
-                hh_df = hh_df.append(hh_df2)
-                hh_df.reset_index(inplace=True, drop=True)
-            hh_df['popwgt'] /= duplicate_hh_df+1
+            # Check if the total weights after duplication is equal to the initial total weights
+            weights_after_duplication = self.household_data['popwgt'].sum()
+            if weights_after_duplication != initial_total_weights:
+                raise ValueError(
+                    'Total weights after duplication is not equal to the initial total weights')
 
+            self.household_data.reset_index(drop=True, inplace=True)
+            print(
+                f'Number of households after duplication: {len(self.household_data)}')
         else:
-            return self.household_data
+            pass
 
     def _calculate_average_productivity(self, print_statistics: bool = False) -> float:
         '''Calculate average productivity as aeinc \ k_house_ae'''
@@ -178,7 +169,7 @@ class Reader():
 
         return optimization_results
 
-    def _collect_parameters(self):
+    def _collect_parameters(self) -> None:
         '''Collect all model parameters into `self.parameters`.'''
         self.parameters = {'poverty_line': self.poverty_line,
                            'indigence_line': self.indigence_line,
@@ -267,14 +258,13 @@ class Reader():
         '''Calculate probable maxmium loss of each household'''
         # keff - effective capital stock
         self.household_data['keff'] = self.household_data['k_house_ae'].copy()
-        # !: That's quite an assumption
         # pml - probable maximum loss
         # popwgt - population weight of each household
         self.pml = self.household_data[['popwgt', 'keff']].prod(
             axis=1).sum() * self.expected_loss_fraction
         print('Probable maximum loss (total) : ', '{:,}'.format(self.pml))
 
-    def _print_parameters(self):
+    def _print_parameters(self) -> None:
         '''Print all model parameters.'''
         print('Model parameters:')
         for key, value in self.parameters.items():

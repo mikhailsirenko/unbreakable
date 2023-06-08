@@ -6,10 +6,10 @@ from model import Model
 # * asset damage data;
 # * household survey data.
     # * must have columns
-        # 
+        # * 
 
 # Outputs:
-
+# * results;
     # * Must have columns
 
 country = 'Saint Lucia'
@@ -28,7 +28,7 @@ uncertainties = {'income_and_expenditure_growth': 0.02,
                  'consumption_utility': 1.5,
                  'is_vulnerability_random': False,
                  'adjust_assets_and_expenditure': True,
-                 'min_households' : 1493}
+                 'min_households' : 1500}
 
 simulation = {'n_replications': 5,
               'optimization_timestep': 0.01}

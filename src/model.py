@@ -23,7 +23,9 @@ class Model(Reader, Optimizer, Writer, Tester):
                  read_parameters_from_file: bool = False,
                  print_parameters: bool = False,
                  **kwargs):
+        '''Initialize the model class.'''
 
+        # ------------------------------- Basic checks ------------------------------- #
         self.country = country
         self.state = state
         self.district = district
@@ -46,6 +48,7 @@ class Model(Reader, Optimizer, Writer, Tester):
         self._test_availability_of_geographical_unit(
             country=country, state=state, district=district, scale=scale)
 
+        # ------------------------------ Read parameters ----------------------------- #
         if read_parameters_from_file:
             # Read model parameters from excel file
             self.model_parameters = self._read_model_parameters(
@@ -77,24 +80,21 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.return_period = scenario
             self.policy = policy
 
-        # Get appropriate data file names
-        f = self._get_file_name(
-            country=self.country, state=self.state, district=self.district, scale=self.scale)
-        self.household_data_filename = f"../data/processed/household_survey/{self.country}/{self.country}.csv"
-        self.household_column_id = 'hhid'
-
-        # Read asset damage parameters
+        # ----------------------------- Read asset damage ---------------------------- #
         asset_damage = self._read_asset_damage()
         self.event_damage = asset_damage['event_damage']
         self.total_asset_stock = asset_damage['total_asset_stock']
         self.expected_loss_fraction = self.event_damage / self.total_asset_stock
-        # Print event damage formating it with comas
         print('Event damage: ', '{:,}'.format(self.event_damage))
         print('Total asset stock: ', '{:,}'.format(self.total_asset_stock))
         print('Expected loss fraction: ', round(
             self.expected_loss_fraction, 2))
 
-        # Set up results directory
+        # Get appropriate data file names
+        f = self._get_file_name(
+            country=self.country, state=self.state, district=self.district, scale=self.scale)
+
+        # Set up results directory        
         self.results_directory = f'../experiments/{self.country}/{f}/{self.policy}/{self.return_period}/'
 
         # Create results directory if it does not exist
@@ -105,21 +105,26 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.optimization_results_filename = self.results_directory + \
             f"optimization_results={int(self.income_and_expenditure_growth*1E2)}.csv"
 
-        # Read input data
+        # ------------------------ Read household survey data ------------------------ #
+        self.household_data_filename = f"../data/processed/household_survey/{self.country}/{self.country}.csv"
+        self.household_column_id = 'hhid'
         self.household_data = self._read_household_data()
-        self.household_data = self._duplicate_households()
-        #  Just a placeholder for now, later it is going to be filled by _set_policy_response()
+
+        # Fix random seed for reproducibility in duplicating households
+        np.random.seed(0)
+        self._duplicate_households()
+        # Just a placeholder for now, later it is going to be filled by _set_policy_response()
         self.affected_households = None
         self.average_productivity = self._calculate_average_productivity()
         self.optimization_results = self._get_optimization_results()
-
-        # Adjust assets and expenditure of household file to match data of asset damage file 
+        # Adjust assets and expenditure of household file to match data of asset damage file
         if self.adjust_assets_and_expenditure:
             self._adjust_assets_and_expenditure()
 
-        # Calculate probable maximum loss 
+        # Calculate probable maximum loss
         self._calculate_pml()
 
+        # Save household data for future analysis
         self.household_data.to_csv(
             self.results_directory + '/household_data.csv')
 
@@ -171,9 +176,9 @@ class Model(Reader, Optimizer, Writer, Tester):
                         'mean_noise_distribution': 'uniform',
                         'noise_scale': 2.5,
                         'noise_distribution': 'normal',
-                        'savings_clip_min' : 0.1,
-                        'savings_clip_max' : 1.0},
-    '_set_vulnerability' : {'' : ''}}
+                        'savings_clip_min': 0.1,
+                        'savings_clip_max': 1.0},
+     '_set_vulnerability': {'': ''}}
 
     def _reset_savings(self) -> None:
         # TODO: Add docstring
@@ -271,13 +276,13 @@ class Model(Reader, Optimizer, Writer, Tester):
         # !: This is very random
         self.household_data['affected'] = self.household_data['fa'] >= np.random.uniform(
             lower, upper, self.household_data.shape[0])
-        
-        print('Number of affected households:', self.household_data['affected'].sum())
+
+        print('Number of affected households:',
+              self.household_data['affected'].sum())
 
         # ? What does it mean?
-        # TODO: Create model construction with bifurcate option. 
+        # TODO: Create model construction with bifurcate option.
         # Instead of selecting random number of household just make a fraction of them affected
-
 
     def _apply_policy(self) -> None:
         # TODO: Add docstring
@@ -285,7 +290,7 @@ class Model(Reader, Optimizer, Writer, Tester):
         # TODO: Comment on what policies mean
         self.household_data['DRM_cost'] = 0
         self.household_data['DRM_cash'] = 0
-        
+
         if self.policy != 'None':
             print('Applying policy:', self.policy)
 
@@ -361,5 +366,9 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.household_data['DRM_cash'] = 0
             # no effect
 
-        self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid_save', 'popwgt', 'own_rent', 'quintile',
+        try:
+            self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'hhid_original', 'popwgt', 'own_rent', 'quintile',
+                                                                                             'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
+        except:
+            self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'popwgt', 'own_rent', 'quintile',
                                                                                              'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
