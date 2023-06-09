@@ -66,34 +66,54 @@ class Reader():
             f = district
         return f
 
-    def _read_asset_damage(self, column: str = 'exposed_value',  filepath: str = '') -> dict:
+    def _prepare_asset_damage_data(self):
+        '''Prepares asset damage data for the Saint Lucia case study'''
+        if self.country == 'Saint Lucia':
+            if self.scale == 'district':
+                # Load raw data
+                df = pd.read_excel('../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
+                # Remove redundant columns
+                df.drop(df.columns[0], axis=1, inplace=True)
+                # Even though the data is by parish, let's call the corresponding column district
+                df.rename(columns={'Unnamed: 1': 'District'}, inplace=True)
+                # !: Check whether rp is 100 given the data
+                df['rp'] = 100
+                df.rename(columns={'Combined Total': 'Exposed Value'}, inplace=True)
+                df.to_excel(f'../data/processed/asset_damage/{self.country}.xlsx', index=False)
+            else:
+                pass
+        else:
+            pass
+
+    def _read_asset_damage(self, column: str = 'Exposed Value',  filepath: str = '') -> dict:
         '''Reads damage parameters from csv file and returns a dictionary'''
+        self._prepare_asset_damage_data()
         if filepath == '':
             all_damage = pd.read_excel(
-                f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+                f"../data/processed/asset_damage/{self.country}.xlsx", index_col=None, header=0)
         else:
             all_damage = pd.read_csv(filepath)
 
         # If we do not differentiate between states or districts work with the data on the country level
-        # * RP - return period
-        # * PML - probable maximum loss
+        # * rp - return period
+        # * pml - probable maximum loss
         if self.scale == 'country':
-            event_damage = all_damage.loc[all_damage['RP']
-                                          == self.return_period, 'PML'].values[0]
+            event_damage = all_damage.loc[all_damage['rp']
+                                          == self.return_period, 'pml'].values[0]
             total_asset_stock = all_damage.loc[(
                 all_damage['RP'] == self.return_period), column].values[0]
 
         # We have multiple states or districts, then subset it
         elif self.scale == 'state':
             event_damage = all_damage.loc[(all_damage[self.scale] == self.state) & (
-                all_damage['RP'] == self.return_period), 'PML'].values[0]
+                all_damage['rp'] == self.return_period), 'pml'].values[0]
             total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.state) & (
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
         else:
             event_damage = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['RP'] == self.return_period), 'PML'].values[0]
+                all_damage['rp'] == self.return_period), 'pml'].values[0]
             total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
 
         return {'event_damage': event_damage, 'total_asset_stock': float(total_asset_stock)}
 
