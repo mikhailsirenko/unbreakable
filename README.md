@@ -34,6 +34,8 @@ This repository has the following structure:
 ├── experiments        <- Experiment results.
 ├── notebooks          <- Jupyter notebooks for analysis.
 ├── src                <- Source code for use in this project.
+│   ├── __main__.py    <- Runs the simulation model.
+│   ├── model.py       <- The simulation model.
 │   ├── components     <- Components of the simulation model.
 │   ├── tests          <- Various test for the simulation model.
 │   └── utils          <- Utility functions (e.g. to read and write data).
