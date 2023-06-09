@@ -4,7 +4,7 @@ from model import Model
 country = 'Saint Lucia'
 # * There is a mismatch between the names of the districts in the household survey and the names of the districts in asset damage data.
 districts = ['AnseLaRayeCanaries',  # <- 'Anse-la-Raye'
-             'Canaries',  # V
+             # 'Canaries',  # V # !: This district is missing in the household data
              'Castries',  # V
              'Choiseul',  # V
              'Dennery',  # V
@@ -30,14 +30,14 @@ uncertainties = {'income_and_expenditure_growth': 0.02,
                  'adjust_assets_and_expenditure': True,
                  'min_households': 1493}
 
-simulation = {'n_replications': 5,
+simulation = {'n_replications': 2,
               'optimization_timestep': 0.01}
 
 scenarios = [{'return_period': 100}]
 
 available_policies = ['Existing_SP_100', 'Existing_SP_50',
                       'retrofit', 'retrofit_roof1', 'PDS', 'None']
-policies = [{'': 'PDS'}]
+policies = [{'': 'None'}, {'' : 'PDS'}]
 
 parameters = {'country': country,
               'scale': scale,

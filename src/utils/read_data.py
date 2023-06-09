@@ -137,10 +137,6 @@ class Reader():
     def _read_household_data(self) -> pd.DataFrame:
         '''Reads input data from csv files and returns a dictionary'''
         household_data = pd.read_csv(self.household_data_filename)
-        # !: We merged two districts into one
-        household_data['district_original'] = household_data['district']
-        household_data.replace({'district': {'Castries Sub-Urban': 'Castries',
-                                             'Castries City' : 'Castries'}}, inplace=True)
         return household_data
 
     def _duplicate_households(self) -> None:
