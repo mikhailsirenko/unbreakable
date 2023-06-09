@@ -66,31 +66,48 @@ class Reader():
             f = district
         return f
 
-    def _prepare_asset_damage_data(self):
+    def _prepare_asset_damage_data(self) -> None:
         '''Prepares asset damage data for the Saint Lucia case study'''
         if self.country == 'Saint Lucia':
             if self.scale == 'district':
                 # Load raw data
-                df = pd.read_excel('../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
+                df = pd.read_excel(
+                    '../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
                 # Remove redundant columns
                 df.drop(df.columns[0], axis=1, inplace=True)
                 # Even though the data is by parish, let's call the corresponding column district
-                df.rename(columns={'Unnamed: 1': 'District'}, inplace=True)
-                # !: Check whether rp is 100 given the data
+                df.rename(columns={'Unnamed: 1': 'district'}, inplace=True)
+                # !: Check whether rp is = 100 given the data
                 df['rp'] = 100
-                df.rename(columns={'Combined Total': 'Exposed Value'}, inplace=True)
-                df.to_excel(f'../data/processed/asset_damage/{self.country}.xlsx', index=False)
+                df.rename(
+                    columns={'Combined Total': 'exposed_value'}, inplace=True)
+
+                # !: Replace with the real data
+                # Let's assume that pml is equal to aal * by the pml for the whole country
+                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xslx 
+                total_pml = {10: 351733.75, 50: 23523224.51, 100: 59802419.04,
+                             250: 147799213.30, 500: 248310895.20, 1000: 377593847.00}
+                aal = pd.read_excel('../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
+                aal.set_index('Name', inplace=True)
+                aal = aal[['AAL as % of Total AAL']]
+                aal.columns = ['pml']
+                aal = aal[aal.index.notnull()]
+                pml = aal.multiply(total_pml[self.return_period])
+                df = pd.merge(df, pml, left_on='district', right_index=True)
+                df.to_excel(
+                    f'../data/processed/asset_damage/{self.country}/{self.country}.xlsx', index=False)
             else:
                 pass
         else:
             pass
 
-    def _read_asset_damage(self, column: str = 'Exposed Value',  filepath: str = '') -> dict:
+    def _read_asset_damage(self, column: str = 'exposed_value',  filepath: str = '') -> dict:
         '''Reads damage parameters from csv file and returns a dictionary'''
         self._prepare_asset_damage_data()
         if filepath == '':
             all_damage = pd.read_excel(
-                f"../data/processed/asset_damage/{self.country}.xlsx", index_col=None, header=0)
+                f"../data/processed/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+                # f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
         else:
             all_damage = pd.read_csv(filepath)
 
@@ -101,7 +118,7 @@ class Reader():
             event_damage = all_damage.loc[all_damage['rp']
                                           == self.return_period, 'pml'].values[0]
             total_asset_stock = all_damage.loc[(
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
 
         # We have multiple states or districts, then subset it
         elif self.scale == 'state':
@@ -120,6 +137,10 @@ class Reader():
     def _read_household_data(self) -> pd.DataFrame:
         '''Reads input data from csv files and returns a dictionary'''
         household_data = pd.read_csv(self.household_data_filename)
+        # !: We merged two districts into one
+        household_data['district_original'] = household_data['district']
+        household_data.replace({'district': {'Castries Sub-Urban': 'Castries',
+                                             'Castries City' : 'Castries'}}, inplace=True)
         return household_data
 
     def _duplicate_households(self) -> None:

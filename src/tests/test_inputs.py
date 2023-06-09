@@ -15,7 +15,7 @@ class Tester():
 
         if scale != 'country':
             available_geographical_units = pd.read_csv(
-                f'../data/processed/household_survey/{country}/{country}.csv')[scale].tolist()
+                f'../data/processed/household_survey/{country}/{country}.csv')[scale].unique().tolist()
         else:
             available_geographical_units = ''
 

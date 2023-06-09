@@ -1,28 +1,19 @@
 from model import Model
 # Use this file to run the model from the command line.
 
-# Inputs:
-# * parameters;
-# * asset damage data;
-# * household survey data.
-# * must have columns
-# *
-
-# Outputs:
-# * results;
-# * Must have columns
-
 country = 'Saint Lucia'
-districts = ['Anse-la-Raye',
-             'Canaries',
-             'Castries',
-             'Choiseul',
-             'Dennery',
-             'Gros Islet',
-             'Laborie',
-             'Micoud',
-             'Soufriϋre',
-             'Vieux Fort']
+# * There is a mismatch between the names of the districts in the household survey and the names of the districts in asset damage data.
+districts = ['AnseLaRayeCanaries',  # <- 'Anse-la-Raye'
+             'Canaries',  # V
+             'Castries',  # V
+             'Choiseul',  # V
+             'Dennery',  # V
+             'Gros Islet',  # V
+             'Laborie',  # V
+             'Micoud',  # V
+             'Soufriere',  # <- 'Soufriϋre',
+             'Vieuxfort']  # <- 'Vieux Fort'
+
 scale = 'district'
 
 read_parameters_from_file = False
@@ -44,7 +35,9 @@ simulation = {'n_replications': 5,
 
 scenarios = [{'return_period': 100}]
 
-policies = [{'': 'None'}]
+available_policies = ['Existing_SP_100', 'Existing_SP_50',
+                      'retrofit', 'retrofit_roof1', 'PDS', 'None']
+policies = [{'': 'PDS'}]
 
 parameters = {'country': country,
               'scale': scale,

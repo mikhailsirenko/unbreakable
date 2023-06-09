@@ -370,11 +370,13 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.household_data.loc[beneficiaries,
                                     'aesav'] += self.household_data.loc[beneficiaries].eval('keff*v')
 
-        else:
+        elif self.policy == 'None':
             # accounting
             self.household_data['DRM_cost'] = 0
             self.household_data['DRM_cash'] = 0
             # no effect
+        else:
+            raise ValueError('Policy not found. Please use one of the following: Existing_SP_100, Existing_SP_50, retrofit, retrofit_roof1, PDS, None')
 
         try:
             self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'hhid_original', 'popwgt', 'own_rent', 'quintile',
