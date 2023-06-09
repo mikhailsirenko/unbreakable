@@ -1,11 +1,17 @@
 import pandas as pd
 import os
 import numpy as np
+import json
 # This file contains the Reader class, which is used to read model parameters, damage parameters and input data from files.
 
 
 class Reader():
     '''Read model parameters, damage parameters and input data from files.'''
+
+    def _read_function_parameters(self) -> None:
+        '''Read function parameters from json file and store them in a dictionary'''
+        with open(f'../data/internal/{self.country}/function_parameters.json') as json_file:
+            self.function_parameters = json.load(json_file)
 
     def _read_model_parameters(self, country: str = '', state: str = '', district: str = '', filepath: str = '') -> dict:
         # !: Adjust the function, in its current version it won't work
@@ -98,6 +104,7 @@ class Reader():
 
     def _duplicate_households(self) -> None:
         '''Duplicates households if the number of households is less than the threshold'''
+        # TODO: Make sure that the weights redistribution is correct
         # !: @Bramka, check out this implementation
         # Note that the previous implementation was not wrong,
         # specifically where you adjusted the weights

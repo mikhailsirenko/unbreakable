@@ -11,7 +11,7 @@ class Tester():
             f = district
         else:
             raise ValueError(
-                f'Scale {scale} is not supported. Please use country, district or state.')
+                f'Scale {scale} is not supported. Please use country, state or district.')
 
         if scale != 'country':
             available_geographical_units = pd.read_csv(

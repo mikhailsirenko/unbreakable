@@ -28,7 +28,7 @@ uncertainties = {'income_and_expenditure_growth': 0.02,
                  'consumption_utility': 1.5,
                  'is_vulnerability_random': False,
                  'adjust_assets_and_expenditure': True,
-                 'min_households' : 1500}
+                 'min_households' : 1493}
 
 simulation = {'n_replications': 5,
               'optimization_timestep': 0.01}

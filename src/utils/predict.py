@@ -17,14 +17,14 @@ def exponential_regression(data: pd.DataFrame, X_column: str, y_column: str, wei
     y_transformed = transformer.fit_transform(y)
 
     lr = LinearRegression()
-    lr.fit(X, y, sample_weight=weights)
+    lr.fit(X, y_transformed, sample_weight=weights)
     y_pred = lr.predict(X)
     coef = lr.coef_
-    r2 = lr.score(X, y, sample_weight=weights)
+    r2 = lr.score(X, y_transformed, sample_weight=weights)
     if return_model:
         return lr
     else:
-        return y_pred, coef  # , r2
+        return y_pred, coef, r2
 
 
 def polynomial_regression(data: pd.DataFrame,

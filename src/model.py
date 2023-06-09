@@ -4,10 +4,10 @@ import os
 import random
 import unittest
 import json
-from optimize import Optimizer
-from read_data import Reader
-from write_data import Writer
-from test import Tester
+from components.optimize import Optimizer
+from utils.read_data import Reader
+from utils.write_data import Writer
+from tests.test_inputs import Tester
 
 # This file contains the model class, which is the main class of the simulation model.
 
@@ -80,6 +80,9 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.return_period = scenario
             self.policy = policy
 
+        # Read function parameters
+        self._read_function_parameters()
+
         # ----------------------------- Read asset damage ---------------------------- #
         asset_damage = self._read_asset_damage()
         self.event_damage = asset_damage['event_damage']
@@ -94,7 +97,7 @@ class Model(Reader, Optimizer, Writer, Tester):
         f = self._get_file_name(
             country=self.country, state=self.state, district=self.district, scale=self.scale)
 
-        # Set up results directory        
+        # Set up results directory
         self.results_directory = f'../experiments/{self.country}/{f}/{self.policy}/{self.return_period}/'
 
         # Create results directory if it does not exist
@@ -126,7 +129,7 @@ class Model(Reader, Optimizer, Writer, Tester):
 
         # Save household data for future analysis
         self.household_data.to_csv(
-            self.results_directory + '/household_data.csv')
+            self.results_directory + '/household_data.csv', index=False)
 
         # Prepare data frames to store simulation results
         self._prepare_data_frames()
@@ -143,7 +146,6 @@ class Model(Reader, Optimizer, Writer, Tester):
         print()
 
     def run_simulation(self):
-        # TODO: Report back descriptive statistics while the model progresses
         print('Running simulation...')
         for i in range(self.n_replications):
             print(f"Running replication {i} of {self.n_replications}")
@@ -153,7 +155,7 @@ class Model(Reader, Optimizer, Writer, Tester):
             np.random.seed(i)
             current_replication = f'replication_{i}'
 
-            self._reset_savings()
+            self._assign_savings()
             self._set_vulnerability()
             self._calculate_exposure(current_replication)
             self._determine_affected()
@@ -170,41 +172,49 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.optimization_results_filename)
         print('Simulation done!')
 
-    # TODO: Put algorithms parameters into a similar structure
-    {'_reset_savings': {'mean_noise_low': 0,
-                        'mean_noise_high': 5,
-                        'mean_noise_distribution': 'uniform',
-                        'noise_scale': 2.5,
-                        'noise_distribution': 'normal',
-                        'savings_clip_min': 0.1,
-                        'savings_clip_max': 1.0},
-     '_set_vulnerability': {'': ''}}
-
-    def _reset_savings(self) -> None:
+    def _assign_savings(self, print_statistics=True) -> None:
         # TODO: Add docstring
-        # Expenditure & savings information
-        # Source: https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
-        low = 0
-        high = 5
-        # cv - cv
-        cv = np.random.uniform(low, high)
-        # df['aesav'] = (df.eval('aeexp*{}'.format(saving_rate))*np.random.normal(cv,2.5,df.shape[0])).round(-1).clip(lower=0, upper=saving_rate*10)
-
+        ''''''
+        # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
         x = self.household_data.eval(f'aeexp*{self.saving_rate}')
-        loc = cv
-        scale = 2.5
-        size = self.household_data.shape[0]
-        clip_min = 0.1
-        clip_max = 1
+        name = '_assign_savings'
+        params = self.function_parameters[name]
+        mean_noise_low = params['mean_noise_low']
+        mean_noise_high = params['mean_noise_high']
 
-        # ?: aesav - ?
+        if params['mean_noise_distribution'] == 'uniform':
+            loc = np.random.uniform(mean_noise_low, mean_noise_high)
+        else:
+            raise ValueError("Only uniform distribution is supported yet.")
+
+        scale = params['noise_scale']
+        size = self.household_data.shape[0]
+        clip_min = params['savings_clip_min']
+        clip_max = params['savings_clip_max']
+
+        # ?: aesav - adult equivalent household savings?
         self.household_data['aesav'] = x * \
             np.random.normal(loc, scale, size).round(
                 2).clip(min=clip_min, max=clip_max)
+        if print_statistics:
+            print('Minimum expenditure: ', round(
+                self.household_data['aeexp'].min(), 2))
+            print('Maximum expenditure: ', round(
+                self.household_data['aeexp'].max(), 2))
+            print('Average expenditure: ', round(
+                self.household_data['aeexp'].mean(), 2))
+            print('Minimum savings: ', round(
+                self.household_data['aesav'].min(), 2))
+            print('Maximum savings: ', round(
+                self.household_data['aesav'].max(), 2))
+            print('Average savings: ', round(
+                self.household_data['aesav'].mean(), 2))
 
     def _set_vulnerability(self) -> None:
-        '''Set the vulnerability of all households.'''
-        # TODO: Document this function
+        name = '_set_vulnerability'
+        params = self.function_parameters[name]
+
+        # TODO: Add docstring
         # ? Is vulnerability all the same for all households?
         # If vulnerability is random, then draw from the uniform distribution
         if self.is_vulnerability_random:
@@ -368,7 +378,7 @@ class Model(Reader, Optimizer, Writer, Tester):
 
         try:
             self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'hhid_original', 'popwgt', 'own_rent', 'quintile',
-                                                                                             'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
+                                                                                                 'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
         except:
             self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'popwgt', 'own_rent', 'quintile',
-                                                                                             'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
+                                                                                                 'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
