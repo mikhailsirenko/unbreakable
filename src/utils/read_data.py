@@ -84,10 +84,11 @@ class Reader():
 
                 # !: Replace with the real data
                 # Let's assume that pml is equal to aal * by the pml for the whole country
-                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xslx 
+                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xslx
                 total_pml = {10: 351733.75, 50: 23523224.51, 100: 59802419.04,
                              250: 147799213.30, 500: 248310895.20, 1000: 377593847.00}
-                aal = pd.read_excel('../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
+                aal = pd.read_excel(
+                    '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
                 aal.set_index('Name', inplace=True)
                 aal = aal[['AAL as % of Total AAL']]
                 aal.columns = ['pml']
@@ -107,7 +108,7 @@ class Reader():
         if filepath == '':
             all_damage = pd.read_excel(
                 f"../data/processed/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
-                # f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+            # f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
         else:
             all_damage = pd.read_csv(filepath)
 

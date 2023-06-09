@@ -126,7 +126,7 @@ def prepare_data(country: str) -> None:
               )
 
     result.to_csv(
-        f'../../data/processed/household_survey/{country}/{country}.csv ')
+        f'../data/processed/household_survey/{country}/{country}.csv ')
 
 
 def load_data(print_statistics: bool = True) -> pd.DataFrame:
@@ -334,7 +334,8 @@ def add_insurance_attributes(data: pd.DataFrame) -> pd.DataFrame:
 def calculate_housing_attributes(data: pd.DataFrame) -> pd.DataFrame:
     # Predict domicile value for hh that rent
     data['k_house'] = data['domicile_value'].copy().fillna(0)
-    data['hhexp_house'] = 12 * data['imputed_rent_monthly'].copy() # total rent per capita per year
+    # total rent per capita per year
+    data['hhexp_house'] = 12 * data['imputed_rent_monthly'].copy()
     data['hhexp_house'].update(12 * data['actual_rent_monthly'])
     data['hhexp_house'] = data['hhexp_house'].clip(lower=0).fillna(0)
 
@@ -390,7 +391,7 @@ def calculate_poverty_attributes(data: pd.DataFrame) -> pd.DataFrame:
 
     # Domestic lines
     # !: Do not hardcode these values
-    # !: Check with Bramka 
+    # !: Check with Bramka
     data['pov_line'] = 6443
     data['vul_line'] = 8053.75
     data['is_poor'] = data['aeexp'] <= data['pov_line']
@@ -559,8 +560,9 @@ def merge_districts(data: pd.DataFrame) -> pd.DataFrame:
     # !: We merged two districts into one
     data['district_original'] = data['district']
     data.replace({'district': {'Castries Sub-Urban': 'Castries',
-                               'Castries City' : 'Castries'}}, inplace=True)
+                               'Castries City': 'Castries'}}, inplace=True)
     return data
+
 
 # Run the data preparation pipeline
 prepare_data(country='Saint Lucia')
