@@ -1,11 +1,17 @@
 import pandas as pd
 import os
 import numpy as np
+import json
 # This file contains the Reader class, which is used to read model parameters, damage parameters and input data from files.
 
 
 class Reader():
     '''Read model parameters, damage parameters and input data from files.'''
+
+    def _read_function_parameters(self) -> None:
+        '''Read function parameters from json file and store them in a dictionary'''
+        with open(f'../data/internal/{self.country}/function_parameters.json') as json_file:
+            self.function_parameters = json.load(json_file)
 
     def _read_model_parameters(self, country: str = '', state: str = '', district: str = '', filepath: str = '') -> dict:
         # !: Adjust the function, in its current version it won't work
@@ -60,34 +66,72 @@ class Reader():
             f = district
         return f
 
+    def _prepare_asset_damage_data(self) -> None:
+        '''Prepares asset damage data for the Saint Lucia case study'''
+        if self.country == 'Saint Lucia':
+            if self.scale == 'district':
+                # Load raw data
+                df = pd.read_excel(
+                    '../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
+                # Remove redundant columns
+                df.drop(df.columns[0], axis=1, inplace=True)
+                # Even though the data is by parish, let's call the corresponding column district
+                df.rename(columns={'Unnamed: 1': 'district'}, inplace=True)
+                # !: Check whether rp is = 100 given the data
+                df['rp'] = 100
+                df.rename(
+                    columns={'Combined Total': 'exposed_value'}, inplace=True)
+
+                # !: Replace with the real data
+                # Let's assume that pml is equal to aal * by the pml for the whole country
+                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xslx
+                total_pml = {10: 351733.75, 50: 23523224.51, 100: 59802419.04,
+                             250: 147799213.30, 500: 248310895.20, 1000: 377593847.00}
+                aal = pd.read_excel(
+                    '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
+                aal.set_index('Name', inplace=True)
+                aal = aal[['AAL as % of Total AAL']]
+                aal.columns = ['pml']
+                aal = aal[aal.index.notnull()]
+                pml = aal.multiply(total_pml[self.return_period])
+                df = pd.merge(df, pml, left_on='district', right_index=True)
+                df.to_excel(
+                    f'../data/processed/asset_damage/{self.country}/{self.country}.xlsx', index=False)
+            else:
+                pass
+        else:
+            pass
+
     def _read_asset_damage(self, column: str = 'exposed_value',  filepath: str = '') -> dict:
         '''Reads damage parameters from csv file and returns a dictionary'''
+        self._prepare_asset_damage_data()
         if filepath == '':
             all_damage = pd.read_excel(
-                f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+                f"../data/processed/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
+            # f"../data/raw/asset_damage/{self.country}/{self.country}.xlsx", index_col=None, header=0)
         else:
             all_damage = pd.read_csv(filepath)
 
         # If we do not differentiate between states or districts work with the data on the country level
-        # * RP - return period
-        # * PML - probable maximum loss
+        # * rp - return period
+        # * pml - probable maximum loss
         if self.scale == 'country':
-            event_damage = all_damage.loc[all_damage['RP']
-                                          == self.return_period, 'PML'].values[0]
+            event_damage = all_damage.loc[all_damage['rp']
+                                          == self.return_period, 'pml'].values[0]
             total_asset_stock = all_damage.loc[(
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
 
         # We have multiple states or districts, then subset it
         elif self.scale == 'state':
             event_damage = all_damage.loc[(all_damage[self.scale] == self.state) & (
-                all_damage['RP'] == self.return_period), 'PML'].values[0]
+                all_damage['rp'] == self.return_period), 'pml'].values[0]
             total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.state) & (
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
         else:
             event_damage = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['RP'] == self.return_period), 'PML'].values[0]
+                all_damage['rp'] == self.return_period), 'pml'].values[0]
             total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['RP'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0]
 
         return {'event_damage': event_damage, 'total_asset_stock': float(total_asset_stock)}
 
@@ -96,58 +140,50 @@ class Reader():
         household_data = pd.read_csv(self.household_data_filename)
         return household_data
 
-    def _duplicate_households(self) -> pd.DataFrame:
+    def _duplicate_households(self) -> None:
+        '''Duplicates households if the number of households is less than the threshold'''
+        # TODO: Make sure that the weights redistribution is correct
+        # !: @Bramka, check out this implementation
+        # Note that the previous implementation was not wrong,
+        # specifically where you adjusted the weights
 
-        # We want to have enough heterogenity in the household data
-        #
         if len(self.household_data) < self.min_households:
             print(
-                f'Number of households is less than the threshold {self.min_households}: {len(self.household_data)}')
-            self.household_data['hhid_save'] = self.household_data[self.household_column_id]
+                f'Number of households = {len(self.household_data)} is less than the threshold = {self.min_households}')
 
+            initial_total_weights = self.household_data['popwgt'].sum()
 
-#         if len(household_data) > threshold:
+            # Save the original household id
+            self.household_data['hhid_original'] = self.household_data[self.household_column_id]
 
+            # Get random ids from the household data to be duplicated
+            ids = np.random.choice(
+                self.household_data.index, self.min_households - len(self.household_data), replace=False)
+            n_duplicates = pd.Series(ids).value_counts() + 1
+            duplicates = self.household_data.loc[ids]
 
-#         if len(sn_df_) > 2000:
-#                     duplicate_hh_df = 0
-#                 elif len(sn_df_) > 1000:
-#                     duplicate_hh_df = 1
-#                 elif len(sn_df_) > 500:
-#                     duplicate_hh_df = 4
-#                 elif len(sn_df_) > 250:
-#                     duplicate_hh_df = 7
-#                 elif len(sn_df_) > 100:
-#                     duplicate_hh_df = 10
-#                 else:
-#                     duplicate_hh_df = 10
-#                 del sn_df_
+            # Adjust the weights of the duplicated households
+            duplicates['popwgt'] = duplicates['popwgt'] / n_duplicates
 
-            # !: Rewrite this part
-            if self.n_duplicates_households_dataframe > 0:
-                print(f'Initial number of households = {len(household_data)}')
-                household_data = self._duplicate_dataframe(
-                    household_data, self.household_column_id, self.n_duplicates_hh_df)
-                print(
-                    f'Number of households after duplication = {len(household_data)}')
+            # Adjust the weights of the original households
+            self.household_data.loc[ids, 'popwgt'] = self.household_data.loc[ids, 'popwgt'] / \
+                n_duplicates
 
-            household_data = household_data.reset_index(
-                drop=True).set_index(self.household_column_id)
-            hh_df2 = hh_df.copy()
-            for i in range(duplicate_hh_df):
-                hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(str)
-                hh_df2[hh_df_id] = str(i+1)+hh_df2[hh_df_id]
-                try:
-                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(int)
-                except:
-                    hh_df2[hh_df_id] = hh_df2[hh_df_id].astype(float)
+            # Combine the original and duplicated households
+            self.household_data = pd.concat(
+                [self.household_data, duplicates], ignore_index=True)
 
-                hh_df = hh_df.append(hh_df2)
-                hh_df.reset_index(inplace=True, drop=True)
-            hh_df['popwgt'] /= duplicate_hh_df+1
+            # Check if the total weights after duplication is equal to the initial total weights
+            weights_after_duplication = self.household_data['popwgt'].sum()
+            if weights_after_duplication != initial_total_weights:
+                raise ValueError(
+                    'Total weights after duplication is not equal to the initial total weights')
 
+            self.household_data.reset_index(drop=True, inplace=True)
+            print(
+                f'Number of households after duplication: {len(self.household_data)}')
         else:
-            return self.household_data
+            pass
 
     def _calculate_average_productivity(self, print_statistics: bool = False) -> float:
         '''Calculate average productivity as aeinc \ k_house_ae'''
@@ -178,7 +214,7 @@ class Reader():
 
         return optimization_results
 
-    def _collect_parameters(self):
+    def _collect_parameters(self) -> None:
         '''Collect all model parameters into `self.parameters`.'''
         self.parameters = {'poverty_line': self.poverty_line,
                            'indigence_line': self.indigence_line,
@@ -267,14 +303,13 @@ class Reader():
         '''Calculate probable maxmium loss of each household'''
         # keff - effective capital stock
         self.household_data['keff'] = self.household_data['k_house_ae'].copy()
-        # !: That's quite an assumption
         # pml - probable maximum loss
         # popwgt - population weight of each household
         self.pml = self.household_data[['popwgt', 'keff']].prod(
             axis=1).sum() * self.expected_loss_fraction
         print('Probable maximum loss (total) : ', '{:,}'.format(self.pml))
 
-    def _print_parameters(self):
+    def _print_parameters(self) -> None:
         '''Print all model parameters.'''
         print('Model parameters:')
         for key, value in self.parameters.items():

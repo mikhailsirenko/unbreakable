@@ -94,7 +94,8 @@ def prepare_data(country: str) -> None:
     # 15. Subset columns of interest.
     # 16. Check which columns do we have and which do we miss.
     # 17. Add missing columns.
-    # 18. Save data.
+    # 18. Merge districts.
+    # 19. Save data.
 
     if country != 'Saint Lucia':
         raise ValueError('Currently only Saint Lucia is supported.')
@@ -121,6 +122,7 @@ def prepare_data(country: str) -> None:
               .pipe(subset_columns)
               .pipe(check_columns)
               .pipe(add_missing_columns, missing_columns=['delta_tax_safety'])
+              .pipe(merge_districts)
               )
 
     result.to_csv(
@@ -132,7 +134,7 @@ def load_data(print_statistics: bool = True) -> pd.DataFrame:
     # Read the raw data
     # * This dataset is the combined version of the household and persons files on parentid1
     data = pd.read_csv(
-        '../data/raw/household_survey/SLCHBS2016PersonV12_Housing.csv', low_memory=False)
+        '../../data/raw/household_survey/Saint Lucia/SLCHBS2016PersonV12_Housing.csv', low_memory=False)
     data.rename(columns={'parentid1': 'hhid'}, inplace=True)
 
     # Set the index to the household id
@@ -332,7 +334,8 @@ def add_insurance_attributes(data: pd.DataFrame) -> pd.DataFrame:
 def calculate_housing_attributes(data: pd.DataFrame) -> pd.DataFrame:
     # Predict domicile value for hh that rent
     data['k_house'] = data['domicile_value'].copy().fillna(0)
-    data['hhexp_house'] = 12 * data['imputed_rent_monthly'].copy() # total rent per capita per year
+    # total rent per capita per year
+    data['hhexp_house'] = 12 * data['imputed_rent_monthly'].copy()
     data['hhexp_house'].update(12 * data['actual_rent_monthly'])
     data['hhexp_house'] = data['hhexp_house'].clip(lower=0).fillna(0)
 
@@ -388,7 +391,7 @@ def calculate_poverty_attributes(data: pd.DataFrame) -> pd.DataFrame:
 
     # Domestic lines
     # !: Do not hardcode these values
-    # !: Check with Bramka 
+    # !: Check with Bramka
     data['pov_line'] = 6443
     data['vul_line'] = 8053.75
     data['is_poor'] = data['aeexp'] <= data['pov_line']
@@ -500,14 +503,14 @@ def check_columns(data: pd.DataFrame) -> pd.DataFrame:
 
     # These are the columns of the India case
     used_columns = [
-        'hhid',
+        # 'hhid',
         'aeexp',
         'is_poor',
         'aeinc',
         'aesoc',
         'k_house_ae',
         'v_init',
-        'delta_tax_safety',
+        # 'delta_tax_safety',
         'own_rent',
         'aeexp_house',
     ]
@@ -543,11 +546,21 @@ def check_columns(data: pd.DataFrame) -> pd.DataFrame:
     if len(missing_columns) > 0:
         raise ValueError(f'Missing columns: {missing_columns}')
 
+    return data
+
 
 def add_missing_columns(data: pd.DataFrame, missing_columns: list) -> pd.DataFrame:
     '''Manually add missing columns to the data.'''
     for column in missing_columns:
         data[column] = 0
+    return data
+
+
+def merge_districts(data: pd.DataFrame) -> pd.DataFrame:
+    # !: We merged two districts into one
+    data['district_original'] = data['district']
+    data.replace({'district': {'Castries Sub-Urban': 'Castries',
+                               'Castries City': 'Castries'}}, inplace=True)
     return data
 
 

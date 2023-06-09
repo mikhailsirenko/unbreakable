@@ -11,11 +11,11 @@ class Tester():
             f = district
         else:
             raise ValueError(
-                f'Scale {scale} is not supported. Please use country, district or state.')
+                f'Scale {scale} is not supported. Please use country, state or district.')
 
         if scale != 'country':
             available_geographical_units = pd.read_csv(
-                f'../data/processed/household_survey/{country}/{country}.csv')[scale].tolist()
+                f'../data/processed/household_survey/{country}/{country}.csv')[scale].unique().tolist()
         else:
             available_geographical_units = ''
 
