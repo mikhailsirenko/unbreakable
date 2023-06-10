@@ -1,5 +1,5 @@
 # unbreakable
-Building the Resilience of the Poor in the Face of Natural Disasters
+Building the Resilience of the Poor in the Face of Natural Disasters.
 
 
 ## Background
@@ -24,8 +24,6 @@ Additionally, the repository does not contain the data to replicate the results.
 This repository has the following structure:
     
 ``` 
-├── LICENSE
-├── README.md          <- The top-level README for developers using this project.
 ├── data
 │   ├── external       <- Data from third party sources.
 │   ├── processed      <- The final, canonical data sets for modeling.
@@ -41,6 +39,7 @@ This repository has the following structure:
 │   └── utils          <- Utility functions (e.g. to read and write data).
 │
 ├── environment.yml    <- The conda environment file for reproducing the analysis environment.
+├── README.md          <- The top-level README for using this project.
 ├── setup.py           <- Makes project pip installable (pip install -e .) so src can be imported.
 ```
 
