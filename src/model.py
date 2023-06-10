@@ -211,31 +211,39 @@ class Model(Reader, Optimizer, Writer, Tester):
                 self.household_data['aesav'].mean(), 2))
 
     def _set_vulnerability(self) -> None:
+        # TODO: Add docstring
         name = '_set_vulnerability'
         params = self.function_parameters[name]
 
-        # TODO: Add docstring
-        # ? Is vulnerability all the same for all households?
         # If vulnerability is random, then draw from the uniform distribution
         if self.is_vulnerability_random:
-            low = 0.01
             # ?: Why not 0.95? The threshold below is 0.95.
-            high = 0.90
-            self.household_data['v'] = np.random.uniform(
-                low, high, self.household_data.shape[0])
+            # low = 0.01
+            # high = 0.90
+            low = params['vulnerability_random_low']
+            high = params['vulnerability_random_high']
+            if params['vulnerability_random_distribution'] == 'uniform':
+                self.household_data['v'] = np.random.uniform(
+                    low, high, self.household_data.shape[0])
+            else:
+                raise ValueError(
+                    "Only uniform distribution is supported yet.")
 
         # If vulnerability is not random, use v_init as a starting point and add some noise
         else:
             # ?: Why 0.6 and 1.4?
             low = 0.6
             high = 1.4
-            # ?: Why 0.95?
-            vulnerability_threshold = 0.95
+            low = params['vulnerability_initial_low']
+            high = params['vulnerability_initial_high']
             # v - actual vulnerability
             # v_init - initial vulnerability
             self.household_data['v'] = self.household_data['v_init'] * \
                 np.random.uniform(low, high, self.household_data.shape[0])
-
+            
+            # ?: Why 0.95?
+            # vulnerability_threshold = 0.95
+            vulnerability_threshold = params['vulnerability_initial_threshold']
             # If vulnerability turned out to be (drawn) is above the threhold, set it to the threhold
             self.household_data.loc[self.household_data['v']
                                     > vulnerability_threshold, 'v'] = vulnerability_threshold
