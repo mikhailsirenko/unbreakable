@@ -104,3 +104,6 @@ chache/
 /notebooks/*/archive
 /notebooks/archive/*
 /experiments
+.kanbn
+notes.md
+/reports

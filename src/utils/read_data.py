@@ -83,8 +83,8 @@ class Reader():
                     columns={'Combined Total': 'exposed_value'}, inplace=True)
 
                 # !: Replace with the real data
-                # Let's assume that pml is equal to aal * by the pml for the whole country
-                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xslx
+                # Let's assume that pml is equal to AAL % by district * by the PML for the whole country
+                # These values are from PML Results 19022016 SaintLucia FinalSummary2.xlsx
                 total_pml = {10: 351733.75, 50: 23523224.51, 100: 59802419.04,
                              250: 147799213.30, 500: 248310895.20, 1000: 377593847.00}
                 aal = pd.read_excel(
@@ -174,6 +174,7 @@ class Reader():
                 [self.household_data, duplicates], ignore_index=True)
 
             # Check if the total weights after duplication is equal to the initial total weights
+            # TODO: Allow for a small difference
             weights_after_duplication = self.household_data['popwgt'].sum()
             if weights_after_duplication != initial_total_weights:
                 raise ValueError(
