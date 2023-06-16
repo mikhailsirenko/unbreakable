@@ -232,32 +232,43 @@ class Model(Reader, Optimizer, Writer, Tester):
         # If vulnerability is not random, use v_init as a starting point and add some noise
         else:
             # ?: Why 0.6 and 1.4?
-            low = 0.6
-            high = 1.4
+            # low = 0.6
+            # high = 1.4
             low = params['vulnerability_initial_low']
             high = params['vulnerability_initial_high']
             # v - actual vulnerability
             # v_init - initial vulnerability
-            self.household_data['v'] = self.household_data['v_init'] * \
-                np.random.uniform(low, high, self.household_data.shape[0])
+            if params['vulnerability_initial_distribution'] == 'uniform':
+                self.household_data['v'] = self.household_data['v_init'] * \
+                    np.random.uniform(low, high, self.household_data.shape[0])
+            else:
+                raise ValueError(
+                    "Only uniform distribution is supported yet.")
             
             # ?: Why 0.95?
             # vulnerability_threshold = 0.95
             vulnerability_threshold = params['vulnerability_initial_threshold']
-            # If vulnerability turned out to be (drawn) is above the threhold, set it to the threhold
+            # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
             self.household_data.loc[self.household_data['v']
                                     > vulnerability_threshold, 'v'] = vulnerability_threshold
 
     def _calculate_exposure(self, current_replication: str) -> None:
         # TODO: Add docstring
-        # TODO: Do not hard code the poverty parameters here. Move it to a config file.
+        name = '_set_vulnerability'
+        params = self.function_parameters[name]
 
         # Random value for poverty bias
         if self.poverty_bias == 'random':
             # ?: Why 0.5 and 1.5?
-            lower = 0.5
-            upper = 1.5
-            povbias = np.random.uniform(lower, upper)
+            # low = 0.5
+            # high = 1.5
+            low = params['poverty_bias_random_low']
+            high = params['poverty_bias_random_high']
+            if params['poverty_bias_random_distribution'] == 'uniform':
+                povbias = np.random.uniform(low, high)
+            else:
+                raise ValueError(
+                    "Only uniform distribution is supported yet.")
         else:
             povbias = self.poverty_bias
 
@@ -272,10 +283,10 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.household_data.loc[self.household_data['is_poor']
                                 == True, 'poverty_bias'] = povbias
         # ?: What is fa0?
-        delimeter = self.household_data[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
+        delimiter = self.household_data[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
             axis=1).sum()
 
-        fa0 = self.pml / delimeter
+        fa0 = self.pml / delimiter
 
         # !: Double multiplication?
         self.household_data['fa'] = fa0*self.household_data[['poverty_bias']]
@@ -285,15 +296,21 @@ class Model(Reader, Optimizer, Writer, Tester):
 
     def _determine_affected(self) -> None:
         # TODO: Add docstring
-        # TODO: Do not hard code the parameters here. Move it to a config file.
-        lower = 0
-        upper = 1
+        # ?: Wny 0 and 1?
+        # low = 0
+        # high = 1
+        name = '_determine_affected'
+        params = self.function_parameters[name]
+        low = params['low']
+        high = params['high']
 
+        if params['distribution'] == 'uniform':
         # fa - fraction affected
-
         # !: This is very random
-        self.household_data['affected'] = self.household_data['fa'] >= np.random.uniform(
-            lower, upper, self.household_data.shape[0])
+            self.household_data['affected'] = self.household_data['fa'] >= np.random.uniform(
+                low, high, self.household_data.shape[0])
+        else:
+            raise ValueError("Only uniform distribution is supported yet.")
 
         print('Number of affected households:',
               self.household_data['affected'].sum())
