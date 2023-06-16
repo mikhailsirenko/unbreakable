@@ -88,8 +88,8 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.event_damage = asset_damage['event_damage']
         self.total_asset_stock = asset_damage['total_asset_stock']
         self.expected_loss_fraction = self.event_damage / self.total_asset_stock
-        print('Event damage: ', '{:,}'.format(self.event_damage))
-        print('Total asset stock: ', '{:,}'.format(self.total_asset_stock))
+        print('Event damage: ', '{:,}'.format(round(self.event_damage)))
+        print('Total asset stock: ', '{:,}'.format(round(self.total_asset_stock)))
         print('Expected loss fraction: ', round(
             self.expected_loss_fraction, 2))
 
