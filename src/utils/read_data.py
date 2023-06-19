@@ -237,8 +237,6 @@ class Reader():
 
     def _prepare_data_frames(self) -> None:
         '''Prepare data frames to store simulation results'''
-        self.simulation_parameters = pd.DataFrame({'poverty_bias': None}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
         self.quintile_recovery_rate = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
             'replication_{}'.format(_) for _ in range(self.n_replications)])
         self.quintile_weeks_pov = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
@@ -308,10 +306,13 @@ class Reader():
         # popwgt - population weight of each household
         self.pml = self.household_data[['popwgt', 'keff']].prod(
             axis=1).sum() * self.expected_loss_fraction
-        print('Probable maximum loss (total) : ', '{:,}'.format(self.pml))
+        print('Probable maximum loss (total) : ', '{:,}'.format(round(self.pml)))
 
     def _print_parameters(self) -> None:
         '''Print all model parameters.'''
         print('Model parameters:')
         for key, value in self.parameters.items():
-            print(f'{key}: {value}')
+            try:
+                print(f'{key}: {round(value, 2)}')
+            except:
+                print(f'{key}: {value}')

@@ -1,5 +1,8 @@
 
 # This file contains the Writer class, which is used to write the results of the simulation into a set of csv files.
+import os
+import pandas as pd
+
 
 class Writer():
     '''Write the results of the simulation into a set of csv files'''
@@ -21,7 +24,6 @@ class Writer():
             0)
         self.hh_savings[current_replication] = self.affected_households['aesav'].fillna(
             0)
-
         self.hh_is_affected[current_replication] = self.affected_households['popwgt']
         self.hh_asset_loss[current_replication] = self.affected_households[[
             'keff', 'v']].prod(axis=1)
@@ -29,10 +31,13 @@ class Writer():
             self.affected_households['weeks_pov'] > 0, 'popwgt']
         self.hh_weeks_pov[current_replication] = self.affected_households['weeks_pov']
         self.hh_reco_rate[current_replication] = self.affected_households['reco_rate']
+
         self.hh_consumption_loss.loc[self.household_data['affected'],
                                      current_replication] = self.affected_households['consumption_loss']
+
         self.hh_consumption_loss.loc[~self.household_data['affected'], current_replication] = - \
             self.household_data.loc[~self.household_data['affected'], 'DRM_cash']
+
         self.hh_welfare_loss.loc[self.household_data['affected'],
                                  current_replication] = self.affected_households['w_final']
         self.hh_welfare_loss.loc[~self.household_data['affected'],
@@ -65,8 +70,6 @@ class Writer():
 
     def _save_simulation_results(self) -> None:
         '''Save the simulation results into a set of csv files'''
-        self.simulation_parameters.to_csv(
-            '{}/simulation_params.csv'.format(self.results_directory))
         self.quintile_recovery_rate.to_csv(
             '{}/quintile_recovery_rate.csv'.format(self.results_directory))
         self.quintile_weeks_pov.to_csv(
@@ -107,3 +110,14 @@ class Writer():
             '{}/hh_net_consumption_loss_NPV.csv'.format(self.results_directory))
         self.hh_DRM_cost.to_csv(
             '{}/hh_DRM_cost.csv'.format(self.results_directory))
+
+    def _write_results(self) -> None:
+        outcome_directory = self.results_directory + '/consumption_loss'
+        if not os.path.exists(outcome_directory):
+            os.makedirs(outcome_directory)
+        file_name = str(self.replication) + '.csv'
+        index = self.affected_households['hhid']
+        values = self.affected_households['consumption_loss']
+        df = self.households
+        df = pd.DataFrame(values, index=index, columns=['consumption_loss'])
+        df.to_csv(outcome_directory + '/' + file_name)

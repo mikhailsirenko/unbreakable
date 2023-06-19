@@ -32,7 +32,7 @@ uncertainties = {'income_and_expenditure_growth': 0.02,
                  'adjust_assets_and_expenditure': True,
                  'min_households': 1493}
 
-simulation = {'n_replications': 100,
+simulation = {'n_replications': 3,
               'optimization_timestep': 0.01}
 
 scenarios = [{'return_period': 100}]

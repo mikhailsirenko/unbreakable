@@ -80,7 +80,7 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.return_period = scenario
             self.policy = policy
 
-        # Read function parameters
+        # Read function parameters: _assign_savings, _set_vulnerability, etc.
         self._read_function_parameters()
 
         # ----------------------------- Read asset damage ---------------------------- #
@@ -112,6 +112,9 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.household_data_filename = f"../data/processed/household_survey/{self.country}/{self.country}.csv"
         self.household_column_id = 'hhid'
         self.household_data = self._read_household_data()
+        
+        # TODO: Rename household_data into households
+        # self.households = self._read_household_data()
 
         # Fix random seed for reproducibility in duplicating households
         np.random.seed(0)
@@ -127,14 +130,10 @@ class Model(Reader, Optimizer, Writer, Tester):
         # Calculate probable maximum loss
         self._calculate_pml()
 
-        # Save household data for future analysis
-        self.household_data.to_csv(
-            self.results_directory + '/household_data.csv', index=False)
-
-        # Prepare data frames to store simulation results
+        # Prepare dataframes to store simulation results
         self._prepare_data_frames()
 
-        # Collect parametesr parameters into self.parameters
+        # Collect parameters parameters into self.parameters
         self._collect_parameters()
 
         with open(f'{self.results_directory}/parameters.json', 'w') as fp:
@@ -149,6 +148,7 @@ class Model(Reader, Optimizer, Writer, Tester):
         print('Running simulation...')
         for i in range(self.n_replications):
             print(f"Running replication {i} of {self.n_replications}")
+            self.replication = i
 
             # Fix random seeds for reproducibility
             random.seed(i)
@@ -157,12 +157,13 @@ class Model(Reader, Optimizer, Writer, Tester):
 
             self._assign_savings()
             self._set_vulnerability()
-            self._calculate_exposure(current_replication)
+            self._calculate_exposure()
             self._determine_affected()
             self._apply_policy()
             self._write_event_results(current_replication)
             self._run_optimization()
             self._integrate_wellbeing()
+            self._write_results()
             self._write_household_results(current_replication)
             self._save_affected_household_data(current_replication)
 
@@ -170,6 +171,10 @@ class Model(Reader, Optimizer, Writer, Tester):
 
         self.optimization_results.dropna().sort_index().to_csv(
             self.optimization_results_filename)
+        
+        self.household_data.to_csv(
+            self.results_directory + '/households.csv', index=False)
+
         print('Simulation done!')
 
     def _assign_savings(self, print_statistics=True) -> None:
@@ -252,7 +257,7 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.household_data.loc[self.household_data['v']
                                     > vulnerability_threshold, 'v'] = vulnerability_threshold
 
-    def _calculate_exposure(self, current_replication: str) -> None:
+    def _calculate_exposure(self) -> None:
         # TODO: Add docstring
         name = '_set_vulnerability'
         params = self.function_parameters[name]
@@ -273,9 +278,8 @@ class Model(Reader, Optimizer, Writer, Tester):
             povbias = self.poverty_bias
 
         # Store the poverty bias in the simulation parameters
-        # TODO: Change the name of the file to something more meaningful
-        self.simulation_parameters.loc[current_replication,
-                                       'poverty_bias'] = povbias
+        # self.simulation_parameters.loc[current_replication,
+        #                                'poverty_bias'] = povbias
 
         # ?: What is fa?
         # !: Why 1?
