@@ -325,8 +325,10 @@ class Model(Reader, Optimizer, Writer, Tester):
         else:
             raise ValueError("Only uniform distribution is supported yet.")
 
-        print(
-            f'Number of affected households {self.households["is_affected"].sum()} and it is {round(self.households["is_affected"].sum()/self.households.shape[0]*100, 2)}% of all households.')
+        n_affected = self.households['is_affected'].multiply(self.households['popwgt']).sum()
+        fraction_affected = n_affected / self.households['popwgt'].sum()
+        print('Number of affected households: ', '{:,}'.format(round(n_affected)))
+        print(f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
 
         # ? What does it mean?
         # TODO: Create model construction with bifurcate option.
