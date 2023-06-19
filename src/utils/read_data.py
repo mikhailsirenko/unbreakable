@@ -135,11 +135,6 @@ class Reader():
 
         return {'event_damage': event_damage, 'total_asset_stock': float(total_asset_stock)}
 
-    def _read_household_data(self) -> pd.DataFrame:
-        '''Reads input data from csv files and returns a dictionary'''
-        household_data = pd.read_csv(self.household_data_filename)
-        return household_data
-
     def _duplicate_households(self) -> None:
         '''Duplicates households if the number of households is less than the threshold'''
         # TODO: Make sure that the weights redistribution is correct
@@ -147,49 +142,49 @@ class Reader():
         # Note that the previous implementation was not wrong,
         # specifically where you adjusted the weights
 
-        if len(self.household_data) < self.min_households:
+        if len(self.households) < self.min_households:
             print(
-                f'Number of households = {len(self.household_data)} is less than the threshold = {self.min_households}')
+                f'Number of households = {len(self.households)} is less than the threshold = {self.min_households}')
 
-            initial_total_weights = self.household_data['popwgt'].sum()
+            initial_total_weights = self.households['popwgt'].sum()
 
             # Save the original household id
-            self.household_data['hhid_original'] = self.household_data[self.household_column_id]
+            self.households['hhid_original'] = self.households[self.household_column_id]
 
             # Get random ids from the household data to be duplicated
             ids = np.random.choice(
-                self.household_data.index, self.min_households - len(self.household_data), replace=False)
+                self.households.index, self.min_households - len(self.households), replace=False)
             n_duplicates = pd.Series(ids).value_counts() + 1
-            duplicates = self.household_data.loc[ids]
+            duplicates = self.households.loc[ids]
 
             # Adjust the weights of the duplicated households
             duplicates['popwgt'] = duplicates['popwgt'] / n_duplicates
 
             # Adjust the weights of the original households
-            self.household_data.loc[ids, 'popwgt'] = self.household_data.loc[ids, 'popwgt'] / \
+            self.households.loc[ids, 'popwgt'] = self.households.loc[ids, 'popwgt'] / \
                 n_duplicates
 
             # Combine the original and duplicated households
-            self.household_data = pd.concat(
-                [self.household_data, duplicates], ignore_index=True)
+            self.households = pd.concat(
+                [self.households, duplicates], ignore_index=True)
 
             # Check if the total weights after duplication is equal to the initial total weights
             # TODO: Allow for a small difference
-            weights_after_duplication = self.household_data['popwgt'].sum()
+            weights_after_duplication = self.households['popwgt'].sum()
             if weights_after_duplication != initial_total_weights:
                 raise ValueError(
                     'Total weights after duplication is not equal to the initial total weights')
 
-            self.household_data.reset_index(drop=True, inplace=True)
+            self.households.reset_index(drop=True, inplace=True)
             print(
-                f'Number of households after duplication: {len(self.household_data)}')
+                f'Number of households after duplication: {len(self.households)}')
         else:
             pass
 
     def _calculate_average_productivity(self, print_statistics: bool = False) -> float:
         '''Calculate average productivity as aeinc \ k_house_ae'''
-        average_productivity = self.household_data['aeinc'] / \
-            self.household_data['k_house_ae']
+        average_productivity = self.households['aeinc'] / \
+            self.households['k_house_ae']
 
         # ?: What's happening here?
         # self.average_productivity = self.average_productivity.iloc[0]
@@ -248,35 +243,35 @@ class Reader():
         self.quintile_DRM_cost = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
             'replication_{}'.format(_) for _ in range(self.n_replications)])
         self.hh_vulnerability = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_transfers = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_savings = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_is_affected = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_asset_loss = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_is_impoverished = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_weeks_pov = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_reco_rate = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_consumption_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_consumption_loss_NPV = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_welfare_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_welfare_loss_updated1 = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_net_consumption_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_net_consumption_loss_NPV = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
         self.hh_DRM_cost = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.household_data.index)
+            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
 
     def _adjust_assets_and_expenditure(self) -> None:
         '''Adjust assets and expenditure of household to match data of asset damage file.
@@ -291,22 +286,23 @@ class Reader():
         # aeexp - adult equivalent expenditure of a household (total)
         # aeexp_house - data['hhexp_house'] (annual rent) / data['hhsize_ae']
         included_variables = ['k_house_ae', 'aeexp', 'aeexp_house']
-        total_asset_in_survey = self.household_data[[
+        total_asset_in_survey = self.households[[
             'popwgt', 'k_house_ae']].prod(axis=1).sum()
         scaling_factor = self.total_asset_stock / total_asset_in_survey
-        self.household_data[included_variables] *= scaling_factor
+        self.households[included_variables] *= scaling_factor
         self.poverty_line *= scaling_factor
         self.indigence_line *= scaling_factor
 
     def _calculate_pml(self) -> None:
         '''Calculate probable maxmium loss of each household'''
         # keff - effective capital stock
-        self.household_data['keff'] = self.household_data['k_house_ae'].copy()
+        self.households['keff'] = self.households['k_house_ae'].copy()
         # pml - probable maximum loss
         # popwgt - population weight of each household
-        self.pml = self.household_data[['popwgt', 'keff']].prod(
+        self.pml = self.households[['popwgt', 'keff']].prod(
             axis=1).sum() * self.expected_loss_fraction
-        print('Probable maximum loss (total) : ', '{:,}'.format(round(self.pml)))
+        print('Probable maximum loss (total) : ',
+              '{:,}'.format(round(self.pml)))
 
     def _print_parameters(self) -> None:
         '''Print all model parameters.'''

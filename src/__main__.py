@@ -5,16 +5,17 @@ from model import Model
 
 country = 'Saint Lucia'
 # * There is a mismatch between the names of the districts in the household survey and the names of the districts in asset damage data.
-districts = ['AnseLaRayeCanaries',  # <- 'Anse-la-Raye' + 'Canaries'
+districts = [
+             'AnseLaRayeCanaries',  # <- 'Anse-la-Raye' + 'Canaries'
              # 'Canaries',  # V <- 'Canaries' + 'Anse-la-Raye'
-             'Castries',  # V
-             'Choiseul',  # V
-             'Dennery',  # V
-             'Gros Islet',  # V
-             'Laborie',  # V
-             'Micoud',  # V
-             'Soufriere',  # <- 'Soufriϋre',
-             'Vieuxfort']  # <- 'Vieux Fort'
+              'Castries',  # V
+              'Choiseul',  # V
+              'Dennery',  # V
+              'Gros Islet',  # V
+              'Laborie',  # V
+              'Micoud',  # V
+              'Soufriere',  # <- 'Soufriϋre',
+              'Vieuxfort']  # <- 'Vieux Fort'
 
 scale = 'district'
 
@@ -32,7 +33,7 @@ uncertainties = {'income_and_expenditure_growth': 0.02,
                  'adjust_assets_and_expenditure': True,
                  'min_households': 1493}
 
-simulation = {'n_replications': 3,
+simulation = {'n_replications': 10,
               'optimization_timestep': 0.01}
 
 scenarios = [{'return_period': 100}]
@@ -56,5 +57,5 @@ if __name__ == "__main__":
                 parameters['district'] = district
                 parameters['scenario'] = [
                     key for key in scenario.values()][0]  # current scenario
-                my_model = Model(print_parameters=True, **parameters)
+                my_model = Model(**parameters)
                 my_model.run_simulation()
