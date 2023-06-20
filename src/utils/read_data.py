@@ -286,6 +286,12 @@ class Reader():
         # aeexp - adult equivalent expenditure of a household (total)
         # aeexp_house - data['hhexp_house'] (annual rent) / data['hhsize_ae']
         included_variables = ['k_house_ae', 'aeexp', 'aeexp_house']
+
+        # Save the initial values
+        self.households['k_house_ae_original'] = self.households['k_house_ae']
+        self.households['aeexp_original'] = self.households['aeexp']
+        self.households['aeexp_house_original'] = self.households['aeexp_house']
+
         total_asset_in_survey = self.households[[
             'popwgt', 'k_house_ae']].prod(axis=1).sum()
         scaling_factor = self.total_asset_stock / total_asset_in_survey

@@ -124,9 +124,12 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.affected_households = None
         self.average_productivity = self._calculate_average_productivity()
         self.optimization_results = self._get_optimization_results()
+
+        # !: Turn off for consumption loss and poverty analysis
+        # !: Turn on for socio-economic resilience analysis
         # Adjust assets and expenditure of household file to match data of asset damage file
-        if self.adjust_assets_and_expenditure:
-            self._adjust_assets_and_expenditure()
+        # if self.adjust_assets_and_expenditure:
+        #     self._adjust_assets_and_expenditure()
 
         # Calculate probable maximum loss
         self._calculate_pml()
