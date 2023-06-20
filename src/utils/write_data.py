@@ -1,12 +1,15 @@
 
 # This file contains the Writer class, which is used to write the results of the simulation into a set of csv files.
+import os
+import pandas as pd
+
 
 class Writer():
     '''Write the results of the simulation into a set of csv files'''
 
     def _write_event_results(self, current_replication: int) -> None:
         '''Write the results of the event to the results dataframes'''
-        data = self.household_data.copy().reset_index().set_index('quintile')
+        data = self.households.copy().reset_index().set_index('quintile')
         self.quintile_asset_loss_totval.loc[current_replication, :] = data.loc[data['affected'] == True, [
             'popwgt', 'keff', 'v']].prod(axis=1).groupby(level='quintile').sum()
         self.quintile_asset_loss_percap.loc[current_replication, :] = data.loc[data['affected'] == True, ['popwgt', 'keff', 'v']].prod(
@@ -21,7 +24,6 @@ class Writer():
             0)
         self.hh_savings[current_replication] = self.affected_households['aesav'].fillna(
             0)
-
         self.hh_is_affected[current_replication] = self.affected_households['popwgt']
         self.hh_asset_loss[current_replication] = self.affected_households[[
             'keff', 'v']].prod(axis=1)
@@ -29,27 +31,30 @@ class Writer():
             self.affected_households['weeks_pov'] > 0, 'popwgt']
         self.hh_weeks_pov[current_replication] = self.affected_households['weeks_pov']
         self.hh_reco_rate[current_replication] = self.affected_households['reco_rate']
-        self.hh_consumption_loss.loc[self.household_data['affected'],
+
+        self.hh_consumption_loss.loc[self.households['affected'],
                                      current_replication] = self.affected_households['consumption_loss']
-        self.hh_consumption_loss.loc[~self.household_data['affected'], current_replication] = - \
-            self.household_data.loc[~self.household_data['affected'], 'DRM_cash']
-        self.hh_welfare_loss.loc[self.household_data['affected'],
+
+        self.hh_consumption_loss.loc[~self.households['affected'], current_replication] = - \
+            self.households.loc[~self.households['affected'], 'DRM_cash']
+
+        self.hh_welfare_loss.loc[self.households['affected'],
                                  current_replication] = self.affected_households['w_final']
-        self.hh_welfare_loss.loc[~self.household_data['affected'],
+        self.hh_welfare_loss.loc[~self.households['affected'],
                                  current_replication] = 0
-        self.hh_welfare_loss_updated1.loc[self.household_data['affected'],
+        self.hh_welfare_loss_updated1.loc[self.households['affected'],
                                           current_replication] = self.affected_households['w_final2']
-        self.hh_welfare_loss_updated1.loc[~self.household_data['affected'],
+        self.hh_welfare_loss_updated1.loc[~self.households['affected'],
                                           current_replication] = 0
-        self.hh_consumption_loss_NPV.loc[self.household_data['affected'],
+        self.hh_consumption_loss_NPV.loc[self.households['affected'],
                                          current_replication] = self.affected_households['consumption_loss_NPV']
-        self.hh_consumption_loss_NPV.loc[~self.household_data['affected'],
-                                         current_replication] = -self.household_data.loc[~self.household_data['affected'], 'DRM_cash']
-        self.hh_net_consumption_loss.loc[self.household_data['affected'],
+        self.hh_consumption_loss_NPV.loc[~self.households['affected'],
+                                         current_replication] = -self.households.loc[~self.households['affected'], 'DRM_cash']
+        self.hh_net_consumption_loss.loc[self.households['affected'],
                                          current_replication] = self.affected_households['net_consumption_loss']
-        self.hh_net_consumption_loss_NPV.loc[self.household_data['affected'],
+        self.hh_net_consumption_loss_NPV.loc[self.households['affected'],
                                              current_replication] = self.affected_households['net_consumption_loss_NPV']
-        self.hh_DRM_cost[current_replication] = self.household_data['DRM_cost']
+        self.hh_DRM_cost[current_replication] = self.households['DRM_cost']
 
         self.affected_households = self.affected_households.reset_index().set_index('quintile')
 
@@ -58,52 +63,62 @@ class Writer():
         self.quintile_recovery_rate.loc[current_replication, :] = self.affected_households[['popwgt', 'reco_rate']].prod(
             axis=1).groupby(level='quintile').sum() / self.affected_households['popwgt'].groupby(level='quintile').sum()
 
-    def _save_affected_household_data(self, current_replication: int) -> None:
+    def _save_affected_households(self, current_replication: int) -> None:
         '''Save the household data for the affected households into a separate csv file'''
         self.affected_households.to_csv(
-            self.results_directory + f'/affected_hh_data_{current_replication}.csv')
+            self.outcomes_directory + f'/affected_hh_data_{current_replication}.csv')
 
     def _save_simulation_results(self) -> None:
         '''Save the simulation results into a set of csv files'''
-        self.simulation_parameters.to_csv(
-            '{}/simulation_params.csv'.format(self.results_directory))
         self.quintile_recovery_rate.to_csv(
-            '{}/quintile_recovery_rate.csv'.format(self.results_directory))
+            '{}/quintile_recovery_rate.csv'.format(self.outcomes_directory))
         self.quintile_weeks_pov.to_csv(
-            '{}/quintile_weeks_pov.csv'.format(self.results_directory))
+            '{}/quintile_weeks_pov.csv'.format(self.outcomes_directory))
         self.quintile_asset_loss_totval.to_csv(
-            '{}/quintile_asset_loss_totval.csv'.format(self.results_directory))
+            '{}/quintile_asset_loss_totval.csv'.format(self.outcomes_directory))
         self.quintile_asset_loss_percap.to_csv(
-            '{}/quintile_asset_loss_percap.csv'.format(self.results_directory))
+            '{}/quintile_asset_loss_percap.csv'.format(self.outcomes_directory))
         self.quintile_DRM_cost.to_csv(
-            '{}/quintile_DRM_cost.csv'.format(self.results_directory))
+            '{}/quintile_DRM_cost.csv'.format(self.outcomes_directory))
         self.hh_vulnerability.to_csv(
-            '{}/hh_vulnerability.csv'.format(self.results_directory))
+            '{}/hh_vulnerability.csv'.format(self.outcomes_directory))
         self.hh_transfers.to_csv(
-            '{}/hh_transfers.csv'.format(self.results_directory))
+            '{}/hh_transfers.csv'.format(self.outcomes_directory))
         self.hh_savings.to_csv(
-            '{}/hh_savings.csv'.format(self.results_directory))
+            '{}/hh_savings.csv'.format(self.outcomes_directory))
         self.hh_is_affected.to_csv(
-            '{}/hh_is_affected.csv'.format(self.results_directory))
+            '{}/hh_is_affected.csv'.format(self.outcomes_directory))
         self.hh_asset_loss.to_csv(
-            '{}/hh_asset_loss.csv'.format(self.results_directory))
+            '{}/hh_asset_loss.csv'.format(self.outcomes_directory))
         self.hh_is_impoverished.to_csv(
-            '{}/hh_is_impoverished.csv'.format(self.results_directory))
+            '{}/hh_is_impoverished.csv'.format(self.outcomes_directory))
         self.hh_weeks_pov.to_csv(
-            '{}/hh_weeks_pov.csv'.format(self.results_directory))
+            '{}/hh_weeks_pov.csv'.format(self.outcomes_directory))
         self.hh_reco_rate.to_csv(
-            '{}/hh_reco_rate.csv'.format(self.results_directory))
+            '{}/hh_reco_rate.csv'.format(self.outcomes_directory))
         self.hh_consumption_loss.to_csv(
-            '{}/hh_consumption_loss.csv'.format(self.results_directory))
+            '{}/hh_consumption_loss.csv'.format(self.outcomes_directory))
         self.hh_consumption_loss_NPV.to_csv(
-            '{}/hh_consumption_loss_NPV.csv'.format(self.results_directory))
+            '{}/hh_consumption_loss_NPV.csv'.format(self.outcomes_directory))
         self.hh_welfare_loss.to_csv(
-            '{}/hh_welfare_loss.csv'.format(self.results_directory))
+            '{}/hh_welfare_loss.csv'.format(self.outcomes_directory))
         self.hh_welfare_loss_updated1.to_csv(
-            '{}/hh_welfare_loss_updated1.csv'.format(self.results_directory))
+            '{}/hh_welfare_loss_updated1.csv'.format(self.outcomes_directory))
         self.hh_net_consumption_loss.to_csv(
-            '{}/hh_net_consumption_loss.csv'.format(self.results_directory))
+            '{}/hh_net_consumption_loss.csv'.format(self.outcomes_directory))
         self.hh_net_consumption_loss_NPV.to_csv(
-            '{}/hh_net_consumption_loss_NPV.csv'.format(self.results_directory))
+            '{}/hh_net_consumption_loss_NPV.csv'.format(self.outcomes_directory))
         self.hh_DRM_cost.to_csv(
-            '{}/hh_DRM_cost.csv'.format(self.results_directory))
+            '{}/hh_DRM_cost.csv'.format(self.outcomes_directory))
+
+    def _write_results(self) -> None:
+        outcome_directory = self.outcomes_directory + '/consumption_loss'
+        if not os.path.exists(outcome_directory):
+            os.makedirs(outcome_directory)
+        file_name = str(self.replication) + '.csv'
+        index = self.affected_households['hhid']
+        values = self.affected_households['consumption_loss']
+        df = self.households
+        df = pd.DataFrame(values, index=index, columns=['consumption_loss'])
+        df.to_csv(outcome_directory + '/' + file_name)
+

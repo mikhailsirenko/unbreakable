@@ -22,6 +22,7 @@ class Model(Reader, Optimizer, Writer, Tester):
                  filepath: str = '',
                  read_parameters_from_file: bool = False,
                  print_parameters: bool = False,
+                 print_statistics: bool = False,
                  **kwargs):
         '''Initialize the model class.'''
 
@@ -47,6 +48,8 @@ class Model(Reader, Optimizer, Writer, Tester):
         # Check whether the provided geographical unit name is available
         self._test_availability_of_geographical_unit(
             country=country, state=state, district=district, scale=scale)
+        
+        self.print_statistics = print_statistics
 
         # ------------------------------ Read parameters ----------------------------- #
         if read_parameters_from_file:
@@ -80,7 +83,7 @@ class Model(Reader, Optimizer, Writer, Tester):
             self.return_period = scenario
             self.policy = policy
 
-        # Read function parameters
+        # Read function parameters: _assign_savings, _set_vulnerability, etc.
         self._read_function_parameters()
 
         # ----------------------------- Read asset damage ---------------------------- #
@@ -88,8 +91,9 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.event_damage = asset_damage['event_damage']
         self.total_asset_stock = asset_damage['total_asset_stock']
         self.expected_loss_fraction = self.event_damage / self.total_asset_stock
-        print('Event damage: ', '{:,}'.format(self.event_damage))
-        print('Total asset stock: ', '{:,}'.format(self.total_asset_stock))
+        print('Event damage: ', '{:,}'.format(round(self.event_damage)))
+        print('Total asset stock: ', '{:,}'.format(
+            round(self.total_asset_stock)))
         print('Expected loss fraction: ', round(
             self.expected_loss_fraction, 2))
 
@@ -98,20 +102,20 @@ class Model(Reader, Optimizer, Writer, Tester):
             country=self.country, state=self.state, district=self.district, scale=self.scale)
 
         # Set up results directory
-        self.results_directory = f'../experiments/{self.country}/{f}/{self.policy}/{self.return_period}/'
+        self.outcomes_directory = f'../experiments/{self.country}/{f}/{self.policy}/{self.return_period}/'
 
         # Create results directory if it does not exist
-        if not os.path.isdir(self.results_directory):
-            os.makedirs(self.results_directory)
+        if not os.path.isdir(self.outcomes_directory):
+            os.makedirs(self.outcomes_directory)
 
         # Read results of the optimization
-        self.optimization_results_filename = self.results_directory + \
+        self.optimization_results_filename = self.outcomes_directory + \
             f"optimization_results={int(self.income_and_expenditure_growth*1E2)}.csv"
 
         # ------------------------ Read household survey data ------------------------ #
-        self.household_data_filename = f"../data/processed/household_survey/{self.country}/{self.country}.csv"
-        self.household_column_id = 'hhid'
-        self.household_data = self._read_household_data()
+        # self.household_column_id = 'hhid'
+        self.households = pd.read_csv(
+            f"../data/processed/household_survey/{self.country}/{self.country}.csv")
 
         # Fix random seed for reproducibility in duplicating households
         np.random.seed(0)
@@ -120,25 +124,29 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.affected_households = None
         self.average_productivity = self._calculate_average_productivity()
         self.optimization_results = self._get_optimization_results()
+
+        # !: Turn off for consumption loss and poverty analysis
+        # !: Turn on for socio-economic resilience analysis
         # Adjust assets and expenditure of household file to match data of asset damage file
-        if self.adjust_assets_and_expenditure:
-            self._adjust_assets_and_expenditure()
+        # if self.adjust_assets_and_expenditure:
+        #     self._adjust_assets_and_expenditure()
 
         # Calculate probable maximum loss
         self._calculate_pml()
 
-        # Save household data for future analysis
-        self.household_data.to_csv(
-            self.results_directory + '/household_data.csv', index=False)
-
-        # Prepare data frames to store simulation results
+        # Prepare dataframes to store simulation results
         self._prepare_data_frames()
 
-        # Collect parametesr parameters into self.parameters
+        # Collect parameters parameters into self.parameters
         self._collect_parameters()
 
-        with open(f'{self.results_directory}/parameters.json', 'w') as fp:
+        with open(f'{self.outcomes_directory}/parameters.json', 'w') as fp:
             json.dump(self.parameters, fp)
+
+        self.households = self.households[self.households['district']
+                                          == self.district]
+        print(
+            f'Number of households in {self.district} the district: {len(self.households)}')
 
         if print_parameters:
             self._print_parameters()
@@ -149,34 +157,43 @@ class Model(Reader, Optimizer, Writer, Tester):
         print('Running simulation...')
         for i in range(self.n_replications):
             print(f"Running replication {i} of {self.n_replications}")
+            self.replication = i
 
             # Fix random seeds for reproducibility
             random.seed(i)
             np.random.seed(i)
-            current_replication = f'replication_{i}'
+            # current_replication = f'replication_{i}'
 
             self._assign_savings()
             self._set_vulnerability()
-            self._calculate_exposure(current_replication)
+            self._calculate_exposure()
             self._determine_affected()
             self._apply_policy()
-            self._write_event_results(current_replication)
+            # self._write_event_results(current_replication)
             self._run_optimization()
             self._integrate_wellbeing()
-            self._write_household_results(current_replication)
-            self._save_affected_household_data(current_replication)
+            # self._write_results()
+            # self._write_household_results(current_replication)
 
-        self._save_simulation_results()
+            # self._save_affected_households(current_replication)
+            self.households.reset_index().to_feather(
+                self.outcomes_directory + f'/households_{self.replication}.feather')
+
+            self.affected_households.reset_index().to_feather(
+                self.outcomes_directory + f'/affected_households_{self.replication}.feather')
+
+        # self._save_simulation_results()
 
         self.optimization_results.dropna().sort_index().to_csv(
             self.optimization_results_filename)
+
         print('Simulation done!')
 
-    def _assign_savings(self, print_statistics=True) -> None:
+    def _assign_savings(self) -> None:
         # TODO: Add docstring
         ''''''
         # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
-        x = self.household_data.eval(f'aeexp*{self.saving_rate}')
+        x = self.households.eval(f'aeexp*{self.saving_rate}')
         name = '_assign_savings'
         params = self.function_parameters[name]
         mean_noise_low = params['mean_noise_low']
@@ -188,27 +205,27 @@ class Model(Reader, Optimizer, Writer, Tester):
             raise ValueError("Only uniform distribution is supported yet.")
 
         scale = params['noise_scale']
-        size = self.household_data.shape[0]
+        size = self.households.shape[0]
         clip_min = params['savings_clip_min']
         clip_max = params['savings_clip_max']
 
         # ?: aesav - adult equivalent household savings?
-        self.household_data['aesav'] = x * \
+        self.households['aesav'] = x * \
             np.random.normal(loc, scale, size).round(
                 2).clip(min=clip_min, max=clip_max)
-        if print_statistics:
+        if self.print_statistics:
             print('Minimum expenditure: ', round(
-                self.household_data['aeexp'].min(), 2))
+                self.households['aeexp'].min(), 2))
             print('Maximum expenditure: ', round(
-                self.household_data['aeexp'].max(), 2))
+                self.households['aeexp'].max(), 2))
             print('Average expenditure: ', round(
-                self.household_data['aeexp'].mean(), 2))
+                self.households['aeexp'].mean(), 2))
             print('Minimum savings: ', round(
-                self.household_data['aesav'].min(), 2))
+                self.households['aesav'].min(), 2))
             print('Maximum savings: ', round(
-                self.household_data['aesav'].max(), 2))
+                self.households['aesav'].max(), 2))
             print('Average savings: ', round(
-                self.household_data['aesav'].mean(), 2))
+                self.households['aesav'].mean(), 2))
 
     def _set_vulnerability(self) -> None:
         # TODO: Add docstring
@@ -223,8 +240,8 @@ class Model(Reader, Optimizer, Writer, Tester):
             low = params['vulnerability_random_low']
             high = params['vulnerability_random_high']
             if params['vulnerability_random_distribution'] == 'uniform':
-                self.household_data['v'] = np.random.uniform(
-                    low, high, self.household_data.shape[0])
+                self.households['v'] = np.random.uniform(
+                    low, high, self.households.shape[0])
             else:
                 raise ValueError(
                     "Only uniform distribution is supported yet.")
@@ -232,71 +249,89 @@ class Model(Reader, Optimizer, Writer, Tester):
         # If vulnerability is not random, use v_init as a starting point and add some noise
         else:
             # ?: Why 0.6 and 1.4?
-            low = 0.6
-            high = 1.4
+            # low = 0.6
+            # high = 1.4
             low = params['vulnerability_initial_low']
             high = params['vulnerability_initial_high']
             # v - actual vulnerability
             # v_init - initial vulnerability
-            self.household_data['v'] = self.household_data['v_init'] * \
-                np.random.uniform(low, high, self.household_data.shape[0])
-            
+            if params['vulnerability_initial_distribution'] == 'uniform':
+                self.households['v'] = self.households['v_init'] * \
+                    np.random.uniform(low, high, self.households.shape[0])
+            else:
+                raise ValueError(
+                    "Only uniform distribution is supported yet.")
+
             # ?: Why 0.95?
             # vulnerability_threshold = 0.95
             vulnerability_threshold = params['vulnerability_initial_threshold']
-            # If vulnerability turned out to be (drawn) is above the threhold, set it to the threhold
-            self.household_data.loc[self.household_data['v']
-                                    > vulnerability_threshold, 'v'] = vulnerability_threshold
+            # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
+            self.households.loc[self.households['v']
+                                > vulnerability_threshold, 'v'] = vulnerability_threshold
 
-    def _calculate_exposure(self, current_replication: str) -> None:
+    def _calculate_exposure(self) -> None:
         # TODO: Add docstring
-        # TODO: Do not hard code the poverty parameters here. Move it to a config file.
+        name = '_calculate_exposure'
+        params = self.function_parameters[name]
 
         # Random value for poverty bias
         if self.poverty_bias == 'random':
             # ?: Why 0.5 and 1.5?
-            lower = 0.5
-            upper = 1.5
-            povbias = np.random.uniform(lower, upper)
+            # low = 0.5
+            # high = 1.5
+            low = params['poverty_bias_random_low']
+            high = params['poverty_bias_random_high']
+            if params['poverty_bias_random_distribution'] == 'uniform':
+                povbias = np.random.uniform(low, high)
+            else:
+                raise ValueError(
+                    "Only uniform distribution is supported yet.")
         else:
             povbias = self.poverty_bias
 
         # Store the poverty bias in the simulation parameters
-        # TODO: Change the name of the file to something more meaningful
-        self.simulation_parameters.loc[current_replication,
-                                       'poverty_bias'] = povbias
+        # self.simulation_parameters.loc[current_replication,
+        #                                'poverty_bias'] = povbias
 
-        # ?: What is fa?
+        # * fa - fraction affected?
         # !: Why 1?
-        self.household_data['poverty_bias'] = 1
-        self.household_data.loc[self.household_data['is_poor']
-                                == True, 'poverty_bias'] = povbias
-        # ?: What is fa0?
-        delimeter = self.household_data[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
+        self.households['poverty_bias'] = 1
+        self.households.loc[self.households['is_poor']
+                            == True, 'poverty_bias'] = povbias
+        # * fa0 - fraction affected 0?
+        delimiter = self.households[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
             axis=1).sum()
 
-        fa0 = self.pml / delimeter
+        fa0 = self.pml / delimiter
 
         # !: Double multiplication?
-        self.household_data['fa'] = fa0*self.household_data[['poverty_bias']]
+        self.households['fa'] = fa0*self.households[['poverty_bias']]
 
-        # !: self.household_data['fa'] seems to be the same for all households
-        self.household_data.drop('poverty_bias', axis=1, inplace=True)
+        # !: self.households['fa'] seems to be the same for all households
+        self.households.drop('poverty_bias', axis=1, inplace=True)
 
     def _determine_affected(self) -> None:
         # TODO: Add docstring
-        # TODO: Do not hard code the parameters here. Move it to a config file.
-        lower = 0
-        upper = 1
+        # ?: Wny 0 and 1?
+        # low = 0
+        # high = 1
+        name = '_determine_affected'
+        params = self.function_parameters[name]
+        low = params['low']
+        high = params['high']
 
-        # fa - fraction affected
+        if params['distribution'] == 'uniform':
+            # fa - fraction affected
+            # !: This is very random
+            self.households['is_affected'] = self.households['fa'] >= np.random.uniform(
+                low, high, self.households.shape[0])
+        else:
+            raise ValueError("Only uniform distribution is supported yet.")
 
-        # !: This is very random
-        self.household_data['affected'] = self.household_data['fa'] >= np.random.uniform(
-            lower, upper, self.household_data.shape[0])
-
-        print('Number of affected households:',
-              self.household_data['affected'].sum())
+        n_affected = self.households['is_affected'].multiply(self.households['popwgt']).sum()
+        fraction_affected = n_affected / self.households['popwgt'].sum()
+        print('Number of affected households: ', '{:,}'.format(round(n_affected)))
+        print(f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
 
         # ? What does it mean?
         # TODO: Create model construction with bifurcate option.
@@ -306,89 +341,90 @@ class Model(Reader, Optimizer, Writer, Tester):
         # TODO: Add docstring
         # TODO: Do not hard code the parameters here. Move it to a config file.
         # TODO: Comment on what policies mean
-        self.household_data['DRM_cost'] = 0
-        self.household_data['DRM_cash'] = 0
+        self.households['DRM_cost'] = 0
+        self.households['DRM_cash'] = 0
 
         if self.policy != 'None':
             print('Applying policy:', self.policy)
 
         if self.policy == 'Existing_SP_100':
-            beneficiaries = self.household_data['affected'] == True
+            beneficiaries = self.households['is_affected'] == True
             # accounting
-            self.household_data.loc[beneficiaries,
-                                    'DRM_cost'] = self.household_data.loc[beneficiaries, 'aesoc']
-            self.household_data['DRM_cost'] = self.household_data['DRM_cost'].fillna(
+            self.households.loc[beneficiaries,
+                                'DRM_cost'] = self.households.loc[beneficiaries, 'aesoc']
+            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(
                 0)
-            self.household_data.loc[beneficiaries,
-                                    'DRM_cash'] = self.household_data.loc[beneficiaries, 'aesoc']
-            self.household_data['DRM_cash'] = self.household_data['DRM_cash'].fillna(
+            self.households.loc[beneficiaries,
+                                'DRM_cash'] = self.households.loc[beneficiaries, 'aesoc']
+            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(
                 0)
             # effect
-            self.household_data.loc[beneficiaries,
-                                    'aesav'] += self.household_data.loc[beneficiaries, 'aesoc']
+            self.households.loc[beneficiaries,
+                                'aesav'] += self.households.loc[beneficiaries, 'aesoc']
 
         elif self.policy == 'Existing_SP_50':
-            beneficiaries = self.household_data['affected'] == True
+            beneficiaries = self.households['is_affected'] == True
             # accounting
-            self.household_data.loc[beneficiaries,
-                                    'DRM_cost'] = self.household_data.loc[beneficiaries, 'aesoc'] * 0.5
-            self.household_data['DRM_cost'] = self.household_data['DRM_cost'].fillna(
+            self.households.loc[beneficiaries,
+                                'DRM_cost'] = self.households.loc[beneficiaries, 'aesoc'] * 0.5
+            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(
                 0)
-            self.household_data.loc[beneficiaries,
-                                    'DRM_cash'] = self.household_data.loc[beneficiaries, 'aesoc'] * 0.5
-            self.household_data['DRM_cash'] = self.household_data['DRM_cash'].fillna(
+            self.households.loc[beneficiaries,
+                                'DRM_cash'] = self.households.loc[beneficiaries, 'aesoc'] * 0.5
+            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(
                 0)
             # effect
-            self.household_data.loc[beneficiaries,
-                                    'aesav'] += self.household_data.loc[beneficiaries, 'aesoc'] * 0.5
+            self.households.loc[beneficiaries,
+                                'aesav'] += self.households.loc[beneficiaries, 'aesoc'] * 0.5
 
         elif self.policy == 'retrofit':
             # accounting
-            self.household_data['DRM_cost'] = 0.05*self.household_data[['keff', 'aewgt']
-                                                                       ].prod(axis=1) * ((self.household_data['v']-0.70)/0.2).clip(lower=0.)
-            self.household_data['DRM_cash'] = 0
+            self.households['DRM_cost'] = 0.05*self.households[['keff', 'aewgt']
+                                                               ].prod(axis=1) * ((self.households['v']-0.70)/0.2).clip(lower=0.)
+            self.households['DRM_cash'] = 0
             # effect
-            self.household_data['v'] = self.household_data['v'].clip(upper=0.7)
+            self.households['v'] = self.households['v'].clip(upper=0.7)
 
         elif self.policy == 'retrofit_roof1':
-            beneficiaries = self.household_data['roof_material'].isin([
-                                                                      2, 4, 5, 6])
+            beneficiaries = self.households['roof_material'].isin([
+                2, 4, 5, 6])
             # accounting
-            self.household_data.loc[beneficiaries, 'DRM_cost'] = 0.05 * \
-                self.household_data['keff'] * (0.1/0.2)
-            self.household_data.loc[beneficiaries, 'DRM_cash'] = 0
+            self.households.loc[beneficiaries, 'DRM_cost'] = 0.05 * \
+                self.households['keff'] * (0.1/0.2)
+            self.households.loc[beneficiaries, 'DRM_cash'] = 0
             # effect
-            self.household_data.loc[beneficiaries, 'v'] -= 0.1
+            self.households.loc[beneficiaries, 'v'] -= 0.1
 
         elif self.policy == 'PDS':
-            # &((self.household_data['aeexp']<=self.household_data['vul_line'])|(self.household_data['age']>=65)|(self.household_data['cct_ae']>0)|(self.household_data['uct_ae']>0))
-            beneficiaries = (self.household_data['affected'] == True) & (
-                self.household_data['own_rent'] == 'own')
+            # &((self.households['aeexp']<=self.households['vul_line'])|(self.households['age']>=65)|(self.households['cct_ae']>0)|(self.households['uct_ae']>0))
+            beneficiaries = (self.households['is_affected'] == True) & (
+                self.households['own_rent'] == 'own')
             # accounting
-            self.household_data.loc[beneficiaries, 'DRM_cost'] = self.household_data.loc[beneficiaries].eval(
+            self.households.loc[beneficiaries, 'DRM_cost'] = self.households.loc[beneficiaries].eval(
                 'keff*v')
-            self.household_data['DRM_cost'] = self.household_data['DRM_cost'].fillna(
+            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(
                 0)
-            self.household_data.loc[beneficiaries, 'DRM_cash'] = self.household_data.loc[beneficiaries].eval(
+            self.households.loc[beneficiaries, 'DRM_cash'] = self.households.loc[beneficiaries].eval(
                 'keff*v')
-            self.household_data['DRM_cash'] = self.household_data['DRM_cash'].fillna(
+            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(
                 0)
 
             # effect
-            self.household_data.loc[beneficiaries,
-                                    'aesav'] += self.household_data.loc[beneficiaries].eval('keff*v')
+            self.households.loc[beneficiaries,
+                                'aesav'] += self.households.loc[beneficiaries].eval('keff*v')
 
         elif self.policy == 'None':
             # accounting
-            self.household_data['DRM_cost'] = 0
-            self.household_data['DRM_cash'] = 0
+            self.households['DRM_cost'] = 0
+            self.households['DRM_cash'] = 0
             # no effect
         else:
-            raise ValueError('Policy not found. Please use one of the following: Existing_SP_100, Existing_SP_50, retrofit, retrofit_roof1, PDS, None')
+            raise ValueError(
+                'Policy not found. Please use one of the following: Existing_SP_100, Existing_SP_50, retrofit, retrofit_roof1, PDS, None')
 
         try:
-            self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'hhid_original', 'popwgt', 'own_rent', 'quintile',
-                                                                                                 'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
+            self.affected_households = self.households.loc[self.households['is_affected'], ['hhid', 'hhid_original', 'popwgt', 'own_rent', 'quintile',
+                                                                                            'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
         except:
-            self.affected_households = self.household_data.loc[self.household_data['affected'], ['hhid', 'popwgt', 'own_rent', 'quintile',
-                                                                                                 'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
+            self.affected_households = self.households.loc[self.households['is_affected'], ['hhid', 'popwgt', 'own_rent', 'quintile',
+                                                                                            'aeexp', 'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']].copy()
