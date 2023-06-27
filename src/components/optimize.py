@@ -28,7 +28,7 @@ class Optimizer():
             return solution
         except:
             # No existing solution found, so we need to optimize
-            t_max_linspace = 10
+            t_max_linspace = 10  # years
             nsteps_linspace = 52*t_max_linspace
             dt = t_max_linspace / nsteps_linspace
 
@@ -89,8 +89,8 @@ class Optimizer():
         self.affected_households[['consumption_loss', 'consumption_loss_NPV',
                                   'net_consumption_loss', 'net_consumption_loss_NPV']] = [0., 0., 0., 0.]
 
-        x_max = 10
-        tstep_n = 52*x_max
+        x_max = 10  # years
+        tstep_n = 52 * x_max  # weeks
         dt = x_max/tstep_n
 
         self.affected_households[['c_t', 'w_final',

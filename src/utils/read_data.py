@@ -83,10 +83,11 @@ class Reader():
                     columns={'Combined Total': 'exposed_value'}, inplace=True)
 
                 # !: Replace with the real data
-                # Let's assume that pml is equal to AAL % by district * by the PML for the whole country
+                # Let's assume that PML is equal to AAL % by district * by the PML for the whole country
                 # These values are from PML Results 19022016 SaintLucia FinalSummary2.xlsx
                 total_pml = {10: 351733.75, 50: 23523224.51, 100: 59802419.04,
                              250: 147799213.30, 500: 248310895.20, 1000: 377593847.00}
+                print('Total PML: ', '{:,}'.format(round(total_pml[self.return_period])))
                 aal = pd.read_excel(
                     '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
                 aal.set_index('Name', inplace=True)
@@ -98,7 +99,8 @@ class Reader():
                 df.to_excel(
                     f'../data/processed/asset_damage/{self.country}/{self.country}.xlsx', index=False)
             else:
-                pass
+                raise ValueError(
+                    'Only district scale is supported for Saint Lucia')
         else:
             pass
 
@@ -129,9 +131,9 @@ class Reader():
                 all_damage['rp'] == self.return_period), column].values[0]
         else:
             event_damage = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['rp'] == self.return_period), 'pml'].values[0]
+                all_damage['rp'] == self.return_period), 'pml'].values[0] # PML
             total_asset_stock = all_damage.loc[(all_damage[self.scale] == self.district) & (
-                all_damage['rp'] == self.return_period), column].values[0]
+                all_damage['rp'] == self.return_period), column].values[0] # Exposed value
 
         return {'event_damage': event_damage, 'total_asset_stock': float(total_asset_stock)}
 
@@ -230,53 +232,10 @@ class Reader():
                            'average_productivity': self.average_productivity,
                            'min_households': self.min_households}
 
-    def _prepare_data_frames(self) -> None:
-        '''Prepare data frames to store simulation results'''
-        self.quintile_recovery_rate = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
-        self.quintile_weeks_pov = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
-        self.quintile_asset_loss_totval = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
-        self.quintile_asset_loss_percap = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
-        self.quintile_DRM_cost = pd.DataFrame({_: None for _ in range(1, self.n_replications + 1)}, index=[
-            'replication_{}'.format(_) for _ in range(self.n_replications)])
-        self.hh_vulnerability = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_transfers = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_savings = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_is_affected = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_asset_loss = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_is_impoverished = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_weeks_pov = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_reco_rate = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_consumption_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_consumption_loss_NPV = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_welfare_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_welfare_loss_updated1 = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_net_consumption_loss = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_net_consumption_loss_NPV = pd.DataFrame(
-            {'replication_{}'.format(_): 0 for _ in range(self.n_replications)}, index=self.households.index)
-        self.hh_DRM_cost = pd.DataFrame(
-            {'replication_{}'.format(_): None for _ in range(self.n_replications)}, index=self.households.index)
-
     def _adjust_assets_and_expenditure(self) -> None:
         '''Adjust assets and expenditure of household to match data of asset damage file.
 
-        There can be a mistmatch between the data in the household survey and the of the asset damage.
+        There can be a mismatch between the data in the household survey and the of the asset damage.
         The latest was created independently.'''
 
         # ?: Do we always have to do that?
@@ -298,6 +257,10 @@ class Reader():
         self.households[included_variables] *= scaling_factor
         self.poverty_line *= scaling_factor
         self.indigence_line *= scaling_factor
+        self.households['poverty_line_adjusted'] = self.poverty_line
+        self.households['indigence_line_adjusted'] = self.indigence_line
+        
+        print()
 
     def _calculate_pml(self) -> None:
         '''Calculate probable maxmium loss of each household'''
@@ -305,8 +268,8 @@ class Reader():
         self.households['keff'] = self.households['k_house_ae'].copy()
         # pml - probable maximum loss
         # popwgt - population weight of each household
-        self.pml = self.households[['popwgt', 'keff']].prod(
-            axis=1).sum() * self.expected_loss_fraction
+        self.pml = self.households[['popwgt', 'keff']].prod(axis=1).sum() * self.expected_loss_fraction
+        self.households['pml'] = self.pml
         print('Probable maximum loss (total) : ',
               '{:,}'.format(round(self.pml)))
 

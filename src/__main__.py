@@ -6,48 +6,51 @@ from model import Model
 country = 'Saint Lucia'
 # * There is a mismatch between the names of the districts in the household survey and the names of the districts in asset damage data.
 districts = [
-             'AnseLaRayeCanaries',  # <- 'Anse-la-Raye' + 'Canaries'
+              'AnseLaRayeCanaries',  # <- 'Anse-la-Raye' + 'Canaries'
              # 'Canaries',  # V <- 'Canaries' + 'Anse-la-Raye'
               'Castries',  # V
               'Choiseul',  # V
-              'Dennery',  # V
+              'Dennery',  # V   
               'Gros Islet',  # V
               'Laborie',  # V
               'Micoud',  # V
               'Soufriere',  # <- 'Soufriϋre',
-              'Vieuxfort']  # <- 'Vieux Fort'
+              'Vieuxfort'  # <- 'Vieux Fort'
+              ]  
 
 scale = 'district'
 
 read_parameters_from_file = False
 
-constants = {'poverty_line': 960,
-             'indigence_line': 288,
-             'saving_rate': 0.75}
+constants = {'poverty_line': 6443, # EC$ per capita per year
+             'indigence_line': 2123, # EC$ per capita per year
+             'saving_rate': 0.02385}
 
-uncertainties = {'income_and_expenditure_growth': 0.02,
-                 'poverty_bias': 1.0,
-                 'discount_rate': 0.06,
+uncertainties = {'income_and_expenditure_growth': 0.02, # 0.01 - 0.03
+                 'poverty_bias': 1.0, # 
+                 'discount_rate': 0.06, # 0.04 - 0.07
                  'consumption_utility': 1.5,
                  'is_vulnerability_random': False,
                  'adjust_assets_and_expenditure': True,
                  'min_households': 1493}
 
-simulation = {'n_replications': 10,
+simulation = {'n_replications': 200,
               'optimization_timestep': 0.01}
 
 scenarios = [{'return_period': 100}]
 
 available_policies = ['Existing_SP_100', 'Existing_SP_50',
                       'retrofit', 'retrofit_roof1', 'PDS', 'None']
-policies = [{'': 'None'}, {'' : 'PDS'}]
+policies = [{'': 'None'}, 
+            # {'' : 'PDS'}
+            ]
 
 parameters = {'country': country,
               'scale': scale,
               'constants': constants,
               'uncertainties': uncertainties,
               'simulation': simulation}
-
+ 
 if __name__ == "__main__":
     for policy in policies:
         parameters['policy'] = [

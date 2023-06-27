@@ -88,7 +88,7 @@ class Model(Reader, Optimizer, Writer, Tester):
 
         # ----------------------------- Read asset damage ---------------------------- #
         asset_damage = self._read_asset_damage()
-        self.event_damage = asset_damage['event_damage']
+        self.event_damage = asset_damage['event_damage'] # * It is already PML
         self.total_asset_stock = asset_damage['total_asset_stock']
         self.expected_loss_fraction = self.event_damage / self.total_asset_stock
         print('Event damage: ', '{:,}'.format(round(self.event_damage)))
@@ -125,17 +125,21 @@ class Model(Reader, Optimizer, Writer, Tester):
         self.average_productivity = self._calculate_average_productivity()
         self.optimization_results = self._get_optimization_results()
 
+        # *: It is important to subset households before calculating PML
+        self.households = self.households[self.households['district']
+                                          == self.district]
+
         # !: Turn off for consumption loss and poverty analysis
         # !: Turn on for socio-economic resilience analysis
         # Adjust assets and expenditure of household file to match data of asset damage file
-        # if self.adjust_assets_and_expenditure:
-        #     self._adjust_assets_and_expenditure()
+        if self.adjust_assets_and_expenditure:
+            self._adjust_assets_and_expenditure()
 
         # Calculate probable maximum loss
         self._calculate_pml()
-
-        # Prepare dataframes to store simulation results
-        self._prepare_data_frames()
+        # self.pml = self.event_damage
+        # self.households['keff'] = self.households['k_house_ae'].copy()
+        # self.households['pml'] = self.pml
 
         # Collect parameters parameters into self.parameters
         self._collect_parameters()
@@ -143,8 +147,6 @@ class Model(Reader, Optimizer, Writer, Tester):
         with open(f'{self.outcomes_directory}/parameters.json', 'w') as fp:
             json.dump(self.parameters, fp)
 
-        self.households = self.households[self.households['district']
-                                          == self.district]
         print(
             f'Number of households in {self.district} the district: {len(self.households)}')
 
@@ -162,27 +164,20 @@ class Model(Reader, Optimizer, Writer, Tester):
             # Fix random seeds for reproducibility
             random.seed(i)
             np.random.seed(i)
-            # current_replication = f'replication_{i}'
 
             self._assign_savings()
             self._set_vulnerability()
             self._calculate_exposure()
             self._determine_affected()
             self._apply_policy()
-            # self._write_event_results(current_replication)
             self._run_optimization()
             self._integrate_wellbeing()
-            # self._write_results()
-            # self._write_household_results(current_replication)
 
-            # self._save_affected_households(current_replication)
             self.households.reset_index().to_feather(
                 self.outcomes_directory + f'/households_{self.replication}.feather')
 
             self.affected_households.reset_index().to_feather(
                 self.outcomes_directory + f'/affected_households_{self.replication}.feather')
-
-        # self._save_simulation_results()
 
         self.optimization_results.dropna().sort_index().to_csv(
             self.optimization_results_filename)
@@ -330,6 +325,7 @@ class Model(Reader, Optimizer, Writer, Tester):
 
         n_affected = self.households['is_affected'].multiply(self.households['popwgt']).sum()
         fraction_affected = n_affected / self.households['popwgt'].sum()
+        print('Total number of households: ', '{:,}'.format(round(self.households['popwgt'].sum())))
         print('Number of affected households: ', '{:,}'.format(round(n_affected)))
         print(f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
 
