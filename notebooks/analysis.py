@@ -1,9 +1,20 @@
 import pandas as pd
 
 
-def load_experiments(districts: list, policies: list, scenarios: list, country: str, n_replications: int,
-                  outcomes_of_interest: list = ['consumption_loss', 'consumption_loss_NPV', 'v', 'c_t', 'c_t_unaffected', 'reco_rate'], 
-                  print_statistics: bool = True, tests: bool = True) -> dict:
+def load_experiments(districts: list, 
+                     policies: list, 
+                     scenarios: list, 
+                     country: str,
+                     n_replications: int,
+                     outcomes_of_interest: list = [
+                         'consumption_loss', 
+                         'consumption_loss_NPV', 
+                         'v', 
+                         'c_t', 
+                         'c_t_unaffected', 
+                         'reco_rate',
+                         'weeks_pov'],
+                     print_statistics: bool = True, tests: bool = True) -> dict:
     # Outcomes structure: district -> policy -> scenario -> outcome -> replication -> data
     outcomes = {}
     for district in districts:
