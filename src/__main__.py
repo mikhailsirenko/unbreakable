@@ -41,8 +41,12 @@ scenarios = [{'return_period': 100}]
 
 available_policies = ['Existing_SP_100', 'Existing_SP_50',
                       'retrofit', 'retrofit_roof1', 'PDS', 'None']
-policies = [{'': 'None'}, 
-            # {'' : 'PDS'}
+policies = [{ '': 'None'}, 
+            # {'' : 'PDS'},
+            # {'' : 'retrofit'},
+            # {'' : 'retrofit_roof1'},
+            # {'' : 'Existing_SP_50'},
+            # {'' : 'Existing_SP_100'}
             ]
 
 parameters = {'country': country,
