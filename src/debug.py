@@ -73,7 +73,7 @@ kwargs = {
     },
     "_determine_affected_params": {
         "low": 0,
-        "high": 0.5,
+        "high": 1.0,
         "distribution": "uniform"
     },
 
@@ -90,40 +90,15 @@ kwargs = {
         'retrofit_roof1_d' : 0.1,}
 }
 
-my_model = SimulationModel(
-    country=country, scale=scale, districts=districts, **kwargs)
-my_model = Model(name='model', function=my_model.run_model)
-
-# TODO: Check how v_init was computed in prepare_data.py
-
-my_model.uncertainties = [
-                            IntegerParameter("random_seed", 2, 3),
-#                           RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
-#                           RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
-#                           RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
-#                           RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
-                         ]
-
-# my_model.levers = [CategoricalParameter('my_policy', ['None', 'PDS'])]
-
-my_model.outcomes = [ArrayOutcome('AnseLaRayeCanaries'),
-                     ArrayOutcome('Castries'),
-                     ArrayOutcome('Choiseul'),
-                     ArrayOutcome('Dennery'),
-                     ArrayOutcome('Gros Islet'),
-                     ArrayOutcome('Laborie'),
-                     ArrayOutcome('Micoud'),
-                     ArrayOutcome('Soufriere'),
-                     ArrayOutcome('Vieuxfort')
-                     ]
-
 n_scenarios = 1
 
-results = perform_experiments(
-    models=my_model, scenarios=n_scenarios)
+# # * Use this to debug more easily
+my_model = SimulationModel(
+    country=country, scale=scale, districts=districts, print_statistics=True, **kwargs)
+results = my_model.run_model(random_seed=1)
 
 # Save results as tar.gz file
 save_results(results, f'../results/results_{n_scenarios}.tar.gz')
 
 # with MultiprocessingEvaluator(my_model) as evaluator:
-#     results = evaluator.perform_experiments(scenarios=2)s
+#     results = evaluator.perform_experiments(scenarios=2)
