@@ -29,8 +29,8 @@ This repository has the following structure:
 │   ├── processed      <- The final, canonical data sets for modeling.
 │   └── raw            <- The original, immutable data dump.
 │
-├── experiments        <- Experiment results.
 ├── notebooks          <- Jupyter notebooks for analysis.
+├── results            <- Experiment results.
 ├── src                <- Source code for use in this project.
 │   ├── __main__.py    <- Runs the simulation model.
 │   ├── model.py       <- The simulation model.
