@@ -1,324 +1,354 @@
 import pandas as pd
 import numpy as np
 import random
-from utils.reader import Reader
-from optimize.optimizer import Optimizer
-from utils.writer import Writer
+from utils.reader import *
+from optimize.optimizer import *
+from utils.writer import *
 import pickle
 
-# This file contains the model class, which is the main class of the simulation model.
+def initialize_model(country: str, 
+                     scale: str, 
+                     min_households: int):
+    # Initialize the model variables.
 
+    # * Can do only one country for now
+    if country not in ['Saint Lucia']:
+        raise ValueError(
+            f'Country {country} is not supported. Please use Saint Lucia.')
 
-class SimulationModel(Reader, Optimizer, Writer):
-    def __init__(self,
-                 country: str = '',
-                 scale: str = '',
-                 districts: list = [],
-                 print_statistics: bool = False,
-                 **kwargs):
-        '''Initialize the model class.'''
+    # * Can do country only district yet
+    if scale not in ['district']:
+        raise ValueError(
+            f'Scale {scale} is not supported. Please use district.')
 
-        self.country = country
-        self.scale = scale
-        self.districts = districts
-        self.print_statistics = print_statistics
+    # Call the functions equivalent to the methods _read_household_survey, _duplicate_households, _read_asset_damage
+    # Assuming these functions are defined and return necessary variables
+    household_survey = read_household_survey(country)
+    min_households = min_households
+    household_survey = duplicate_households(household_survey, min_households)
+    all_damage = read_asset_damage(country)
 
-        # Load parameters from kwargs
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    # For now, just returning the arguments and parameters as a dictionary
+    return household_survey, all_damage
 
-        # Load modules from parent classes
-        super().__init__()
+def run_model(**kwargs):
+    # Initialize the model variables
+    country = kwargs['country']
+    scale = kwargs['scale']
+    min_households = kwargs['min_households']
+    print_statistics = kwargs['print_statistics']
+    
+    household_survey, all_damage = initialize_model(country, scale, min_households)
 
-        # * Can do only one country for now
-        if country not in ['Saint Lucia']:
+    random_seed = kwargs['random_seed']
+    random.seed(random_seed)
+    np.random.seed(random_seed)
+
+    districts = kwargs['districts']
+    return_period = kwargs['return_period']
+    poverty_line = kwargs['poverty_line']
+    indigence_line = kwargs['indigence_line']
+
+    saving_rate = kwargs['saving_rate']
+    assign_savings_params = kwargs['assign_savings_params']
+
+    is_vulnerability_random = kwargs['is_vulnerability_random']
+    set_vulnerability_params = kwargs['set_vulnerability_params']
+    poverty_bias = kwargs['poverty_bias']
+    calculate_exposure_params = kwargs['calculate_exposure_params']
+    determine_affected_params = kwargs['determine_affected_params']
+    apply_individual_policy_params = kwargs['apply_individual_policy_params']
+
+    my_policy = kwargs['my_policy']
+
+    consumption_utility = kwargs['consumption_utility']
+    discount_rate = kwargs['discount_rate']
+    optimization_timestep = kwargs['optimization_timestep']
+    income_and_expenditure_growth = kwargs['income_and_expenditure_growth']
+    x_max = kwargs['x_max']
+
+    outcomes = {}
+
+    for district in districts:
+        event_damage, total_asset_stock, expected_loss_fraction = get_asset_damage(all_damage, scale, district, return_period, print_statistics)
+        households = (select_distict(household_survey, district)
+                        .pipe(adjust_assets_and_expenditure, total_asset_stock, poverty_line, indigence_line, print_statistics)
+                        .pipe(calculate_pml, expected_loss_fraction, print_statistics)
+                        .pipe(assign_savings, saving_rate, assign_savings_params, print_statistics)
+                        .pipe(set_vulnerability, is_vulnerability_random, set_vulnerability_params)
+                        .pipe(calculate_exposure, poverty_bias, calculate_exposure_params, print_statistics)
+                        .pipe(determine_affected, determine_affected_params, print_statistics))
+        households, affected_households = apply_individual_policy(households, my_policy, apply_individual_policy_params)
+
+        average_productivity = calculate_average_productivity(households, print_statistics)
+        affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
+                                .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, x_max))
+        households = prepare_outcomes(households, affected_households)
+        array_outcomes = np.array(list(get_outcomes(households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, x_max).values()))
+        outcomes[district] = array_outcomes
+
+    return outcomes
+
+def select_distict(household_survey:pd.DataFrame, district:str) -> pd.DataFrame:
+        '''Select households for a specific district.'''
+        return household_survey[household_survey['district'] == district].copy()
+
+def assign_savings(households:pd.DataFrame, saving_rate:float, assign_savings_params:dict, print_statistics:bool) -> pd.DataFrame:
+    '''Assign savings to households.
+
+     We assume that savings are a product of expenditure and saving rate with Gaussian noise.
+
+    Args:
+        households (pd.DataFrame): Household survey data for a specific district.
+        saving_rate (float): Saving rate.
+        assign_savings_params (dict): Parameters for assigning savings function.
+
+    Returns:
+        pd.DataFrame: Household survey data with assigned savings.
+
+    '''
+    # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
+
+    # Savings are a product of expenditure and saving rate
+    x = households.eval(f'aeexp*{saving_rate}')
+    params = assign_savings_params
+
+    # Get the mean of the noise with uniform distribution
+    mean_noise_low = params['mean_noise_low']  # default 0
+    mean_noise_high = params['mean_noise_high']  # default 5
+    if params['mean_noise_distribution'] == 'uniform':
+        loc = np.random.uniform(mean_noise_low, mean_noise_high)
+    else:
+        raise ValueError("Only uniform distribution is supported yet.")
+
+    # Get the scale
+    scale = params['noise_scale']  # default 2.5
+    size = households.shape[0]
+    clip_min = params['savings_clip_min']  # default 0.1
+    clip_max = params['savings_clip_max']  # default 1.0
+
+    # Calculate savings with normal noise
+    # !: aesav can go to 0 and above 1 because of the mean noise and loc
+    # !: See `verifcation.ipynb` for more details
+    if params['noise_distribution'] == 'normal':
+        households['aesav'] = x * \
+            np.random.normal(loc, scale, size).round(
+                2).clip(min=clip_min, max=clip_max)
+    else:
+        ValueError("Only normal distribution is supported yet.")
+
+    if print_statistics:
+        print('Minimum expenditure: ', round(
+            households['aeexp'].min(), 2))
+        print('Maximum expenditure: ', round(
+            households['aeexp'].max(), 2))
+        print('Average expenditure: ', round(
+            households['aeexp'].mean(), 2))
+        print('Minimum savings: ', round(
+            households['aesav'].min(), 2))
+        print('Maximum savings: ', round(
+            households['aesav'].max(), 2))
+        print('Average savings: ', round(
+            households['aesav'].mean(), 2))
+    
+    return households
+
+def set_vulnerability(households:pd.DataFrame, is_vulnerability_random:bool, set_vulnerability_params:dict) -> pd.DataFrame:
+    '''Set vulnerability of households.
+    
+    Vulnerability can be random or based on `v_init` with uniform noise.
+
+    Args:
+        households (pd.DataFrame): Household survey data for a specific district.
+        is_vulnerability_random (bool): If True, vulnerability is random.
+
+    Returns:
+        pd.DataFrame: Household survey data with assigned vulnerability.
+
+    Raises:
+        ValueError: If the distribution is not supported.
+    '''
+    params = set_vulnerability_params
+
+    # If vulnerability is random, then draw from the uniform distribution
+    if is_vulnerability_random:
+        low = params['vulnerability_random_low']  # default 0.01
+        high = params['vulnerability_random_high']  # default 0.90
+        if params['vulnerability_random_distribution'] == 'uniform':
+            households['v'] = np.random.uniform(
+                low, high, households.shape[0])
+        else:
             raise ValueError(
-                f'Country {country} is not supported. Please use Saint Lucia.')
+                "Only uniform distribution is supported yet.")
 
-        # * Can do country only district yet
-        if scale not in ['district']:
+    # If vulnerability is not random, use v_init as a starting point and add some noise
+    # ?: What is the point of adding the noise to the v_init if we cap it anyhow
+    else:
+        low = params['vulnerability_initial_low']  # default 0.6
+        high = params['vulnerability_initial_high']  # default 1.4
+        # v - actual vulnerability
+        # v_init - initial vulnerability
+        if params['vulnerability_initial_distribution'] == 'uniform':
+            households['v'] = households['v_init'] * \
+                np.random.uniform(low, high, households.shape[0])
+        else:
             raise ValueError(
-                f'Scale {scale} is not supported. Please use district.')
+                "Only uniform distribution is supported yet.")
 
-        self._read_household_survey() # V
-        self._duplicate_households() # V
-        self._read_asset_damage() # V
+        # default 0.95
+        vulnerability_threshold = params['vulnerability_initial_threshold']
 
-    def run_model(self,
-                  random_seed: int,
-                  # * Use this to run the model with uncertainties
-                  # poverty_bias: float,
-                  # consumption_utility: float,
-                  # discount_rate: float,
-                  # income_and_expenditure_growth: float,
-                  my_policy: str = 'None'):
-        '''Run the model.'''
-        random.seed(random_seed)
-        np.random.seed(random_seed)
+        # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
+        households.loc[households['v']
+                            > vulnerability_threshold, 'v'] = vulnerability_threshold
+        
+        return households
 
-        # * Use this to run the model without uncertainties
-        poverty_bias = self.poverty_bias
-        consumption_utility = self.consumption_utility
-        discount_rate = self.discount_rate
-        income_and_expenditure_growth = self.income_and_expenditure_growth
+def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_exposure_params: dict, print_statistics) -> pd.DataFrame:
+    '''Calculate exposure of households.
 
-        outcomes = {}
-        for district in self.districts:
-            self._get_asset_damage(district) # V
-            self._prepare_households(district) # V
-            self._calculate_pml() # V
-            self._assign_savings() # V
-            self._set_vulnerability()
-            self._calculate_exposure(poverty_bias)
-            self._determine_affected()
-            self._apply_individual_policy(my_policy)
-            self._run_optimization(consumption_utility, discount_rate)
-            self._integrate_wellbeing(
-                consumption_utility, discount_rate, income_and_expenditure_growth)
+    Exposure is a function of poverty bias, effective captial stock, 
+    vulnerability and probable maximum loss.
+    '''
+    pml = households['pml'].iloc[0]
+    params = calculate_exposure_params
 
-            # * Use this to get the household consumption recovery (per time step)
-            # household_consumption = self._integrate_wellbeing(
-            #     consumption_utility, discount_rate, income_and_expenditure_growth)
-
-            # Save household_consumption as a pickle file
-            # with open(f'../results/consumption/{district}.pkl', 'wb') as f:
-            #     pickle.dump(household_consumption, f)
-
-            array_outcomes = np.array(list(self._get_outcomes().values()))
-            outcomes[district] = array_outcomes
-
-        return outcomes
-
-    def _assign_savings(self) -> None:
-        '''Assign savings to households.
-
-        We assume that savings are a product of expenditure and saving rate with Gaussian noise.
-        '''
-        # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
-
-        # Savings are a product of expenditure and saving rate
-        x = self.households.eval(f'aeexp*{self.saving_rate}')
-        params = self._assign_savings_params
-
-        # Get the mean of the noise with uniform distribution
-        mean_noise_low = params['mean_noise_low']  # default 0
-        mean_noise_high = params['mean_noise_high']  # default 5
-        if params['mean_noise_distribution'] == 'uniform':
-            loc = np.random.uniform(mean_noise_low, mean_noise_high)
+    # Random value for poverty bias
+    if poverty_bias == 'random':
+        low = params['poverty_bias_random_low']  # default 0.5
+        high = params['poverty_bias_random_high']  # default 1.5
+        if params['poverty_bias_random_distribution'] == 'uniform':
+            povbias = np.random.uniform(low, high)
         else:
-            raise ValueError("Only uniform distribution is supported yet.")
+            raise ValueError(
+                "Only uniform distribution is supported yet.")
+    else:
+        povbias = poverty_bias
 
-        # Get the scale
-        scale = params['noise_scale']  # default 2.5
-        size = self.households.shape[0]
-        clip_min = params['savings_clip_min']  # default 0.1
-        clip_max = params['savings_clip_max']  # default 1.0
+    # Set poverty bias to 1 for all households
+    households['poverty_bias'] = 1
 
-        # Calculate savings with normal noise
-        # !: aesav can go to 0 and above 1 because of the mean noise and loc
-        # !: See `verifcation.ipynb` for more details
-        if params['noise_distribution'] == 'normal':
-            self.households['aesav'] = x * \
-                np.random.normal(loc, scale, size).round(
-                    2).clip(min=clip_min, max=clip_max)
-        else:
-            ValueError("Only normal distribution is supported yet.")
+    # Set poverty bias to povbias for poor households
+    households.loc[households['is_poor']
+                        == True, 'poverty_bias'] = povbias
 
-        if self.print_statistics:
-            print('Minimum expenditure: ', round(
-                self.households['aeexp'].min(), 2))
-            print('Maximum expenditure: ', round(
-                self.households['aeexp'].max(), 2))
-            print('Average expenditure: ', round(
-                self.households['aeexp'].mean(), 2))
-            print('Minimum savings: ', round(
-                self.households['aesav'].min(), 2))
-            print('Maximum savings: ', round(
-                self.households['aesav'].max(), 2))
-            print('Average savings: ', round(
-                self.households['aesav'].mean(), 2))
+    # DEFF: keff - effective capital stock
+    delimiter = households[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
+        axis=1).sum()
 
-    def _set_vulnerability(self) -> None:
-        '''Set vulnerability of households.
+    # ?: fa - fraction affected?
+    fa0 = pml / delimiter
 
-        Vulnerability can be random or based on `v_init` with uniform noise. 
-        '''
-        params = self._set_vulnerability_params
+    # Print delimiter and fa0 with commas for thousands
+    if print_statistics:
+        print('PML: ', '{:,}'.format(round(pml, 2)))
+        print('Delimiter: ', '{:,}'.format(round(delimiter, 2)))
+        print('f0: ', '{:,}'.format(round(fa0, 2)))
 
-        # If vulnerability is random, then draw from the uniform distribution
-        if self.is_vulnerability_random:
-            low = params['vulnerability_random_low']  # default 0.01
-            high = params['vulnerability_random_high']  # default 0.90
-            if params['vulnerability_random_distribution'] == 'uniform':
-                self.households['v'] = np.random.uniform(
-                    low, high, self.households.shape[0])
-            else:
-                raise ValueError(
-                    "Only uniform distribution is supported yet.")
+    households['fa'] = fa0*households[['poverty_bias']]
 
-        # If vulnerability is not random, use v_init as a starting point and add some noise
-        # ?: What is the point of adding the noise to the v_init if we cap it anyhow
-        else:
-            low = params['vulnerability_initial_low']  # default 0.6
-            high = params['vulnerability_initial_high']  # default 1.4
-            # v - actual vulnerability
-            # v_init - initial vulnerability
-            if params['vulnerability_initial_distribution'] == 'uniform':
-                self.households['v'] = self.households['v_init'] * \
-                    np.random.uniform(low, high, self.households.shape[0])
-            else:
-                raise ValueError(
-                    "Only uniform distribution is supported yet.")
+    # !: households['fa'] seems to be the same for all households
+    households.drop('poverty_bias', axis=1, inplace=True)
+    return households
 
-            # default 0.95
-            vulnerability_threshold = params['vulnerability_initial_threshold']
-
-            # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
-            self.households.loc[self.households['v']
-                                > vulnerability_threshold, 'v'] = vulnerability_threshold
-
-    def _calculate_exposure(self, poverty_bias: float) -> None:
-        '''Calculate exposure of households.
-
-        Exposure is a function of poverty bias, effective captial stock, 
-        vulnerability and probable maximum loss.
-        '''
-        params = self._calculate_exposure_params
-
-        # Random value for poverty bias
-        if poverty_bias == 'random':
-            low = params['poverty_bias_random_low']  # default 0.5
-            high = params['poverty_bias_random_high']  # default 1.5
-            if params['poverty_bias_random_distribution'] == 'uniform':
-                povbias = np.random.uniform(low, high)
-            else:
-                raise ValueError(
-                    "Only uniform distribution is supported yet.")
-        else:
-            povbias = poverty_bias
-
-        # Set poverty bias to 1 for all households
-        self.households['poverty_bias'] = 1
-
-        # Set poverty bias to povbias for poor households
-        self.households.loc[self.households['is_poor']
-                            == True, 'poverty_bias'] = povbias
-
-        # DEFF: keff - effective capital stock
-        delimiter = self.households[['keff', 'v', 'poverty_bias', 'popwgt']].prod(
-            axis=1).sum()
-
-        # ?: fa - fraction affected?
-        fa0 = self.pml / delimiter
-
-        # Print delimiter and fa0 with commas for thousands
-        if self.print_statistics:
-            print('PML: ', '{:,}'.format(round(self.pml, 2)))
-            print('Delimiter: ', '{:,}'.format(round(delimiter, 2)))
-            print('f0: ', '{:,}'.format(round(fa0, 2)))
-
-        self.households['fa'] = fa0*self.households[['poverty_bias']]
-
-        # !: self.households['fa'] seems to be the same for all households
-        self.households.drop('poverty_bias', axis=1, inplace=True)
-
-    def _determine_affected(self) -> None:
-        '''Determine affected households.
+def determine_affected(households: pd.DataFrame, determine_affected_params: dict, print_statistics: bool) -> pd.DataFrame:
+    '''Determine affected households.
 
 
-        '''
-        params = self._determine_affected_params
-        low = params['low']  # default 0
-        high = params['high']  # default 1
+    '''
+    params = determine_affected_params
+    low = params['low']  # default 0
+    high = params['high']  # default 1
 
-        if params['distribution'] == 'uniform':
-            # !: This is very random
-            self.households['is_affected'] = self.households['fa'] >= np.random.uniform(
-                low, high, self.households.shape[0])
-        else:
-            raise ValueError("Only uniform distribution is supported yet.")
+    if params['distribution'] == 'uniform':
+        # !: This is very random
+        households['is_affected'] = households['fa'] >= np.random.uniform(
+            low, high, households.shape[0])
+    else:
+        raise ValueError("Only uniform distribution is supported yet.")
 
-        affected_households = self.households[self.households['is_affected'] == True]
-        total_asset = self.households[['keff', 'popwgt']].prod(axis=1).sum()
-        total_asset_loss = affected_households[['keff', 'v', 'popwgt']].prod(axis=1).sum()
+    affected_households = households[households['is_affected'] == True]
+    total_asset = households[['keff', 'popwgt']].prod(axis=1).sum()
+    total_asset_loss = affected_households[['keff', 'v', 'popwgt']].prod(axis=1).sum()
 
-        if self.print_statistics:
-            n_affected = self.households['is_affected'].multiply(
-                self.households['popwgt']).sum()
-            fraction_affected = n_affected / self.households['popwgt'].sum()
-            print('Total number of households: ', '{:,}'.format(
-                round(self.households['popwgt'].sum())))
-            print('Number of affected households: ',
-                  '{:,}'.format(round(n_affected)))
-            print(
-                f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
-            print('Total asset: ', '{:,}'.format(round(total_asset)))
-            print('Total asset loss: ', '{:,}'.format(round(total_asset_loss)))
+    if print_statistics:
+        n_affected = households['is_affected'].multiply(
+            households['popwgt']).sum()
+        fraction_affected = n_affected / households['popwgt'].sum()
+        print('Total number of households: ', '{:,}'.format(
+            round(households['popwgt'].sum())))
+        print('Number of affected households: ',
+                '{:,}'.format(round(n_affected)))
+        print(
+            f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
+        print('Total asset: ', '{:,}'.format(round(total_asset)))
+        print('Total asset loss: ', '{:,}'.format(round(total_asset_loss)))
 
-        # TODO: Create model construction with bifurcate option
+    # TODO: Create model construction with bifurcate option
+    return households
 
-    def _apply_individual_policy(self, my_policy: str) -> None:
-        self.households['DRM_cost'] = 0
-        self.households['DRM_cash'] = 0
+def apply_individual_policy(households:pd.DataFrame, my_policy: str, apply_individual_policy_params: dict) -> pd.DataFrame:
+        households['DRM_cost'] = 0
+        households['DRM_cash'] = 0
 
         if my_policy == 'None':
-            self.households['DRM_cost'] = 0
-            self.households['DRM_cash'] = 0
+            households['DRM_cost'] = 0
+            households['DRM_cash'] = 0
 
         elif my_policy == 'Existing_SP_100':
             # Beneficiaries are affected households
-            beneficiaries = self.households['is_affected'] == True
+            beneficiaries = households['is_affected'] == True
 
             # Assign `DRM_cost`` to `aesoc` to beneficiaries, for the rest 0
-            self.households.loc[beneficiaries,
-                                'DRM_cost'] = self.households.loc[beneficiaries, 'aesoc']
-            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(0)
+            households.loc[beneficiaries,
+                                'DRM_cost'] = households.loc[beneficiaries, 'aesoc']
+            households['DRM_cost'] = households['DRM_cost'].fillna(0)
 
             # Assign `DRM_cash` to `aesoc` for beneficiaries, for the rest 0
-            self.households.loc[beneficiaries,
-                                'DRM_cash'] = self.households.loc[beneficiaries, 'aesoc']
-            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(0)
+            households.loc[beneficiaries,
+                                'DRM_cash'] = households.loc[beneficiaries, 'aesoc']
+            households['DRM_cash'] = households['DRM_cash'].fillna(0)
 
             # Increase `aesav` by `aesoc`
-            self.households.loc[beneficiaries,
-                                'aesav'] += self.households.loc[beneficiaries, 'aesoc']
+            households.loc[beneficiaries,
+                                'aesav'] += households.loc[beneficiaries, 'aesoc']
 
         elif my_policy == 'Existing_SP_50':
             # Beneficiaries are those who are affected
-            beneficiaries = self.households['is_affected'] == True
+            beneficiaries = households['is_affected'] == True
 
             # Assign `DRM_cost`` to 0.5 * `aesoc` to beneficiaries, for the rest 0
-            self.households.loc[beneficiaries,
-                                'DRM_cost'] = self.households.loc[beneficiaries, 'aesoc'] * 0.5
-            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(0)
+            households.loc[beneficiaries,
+                                'DRM_cost'] = households.loc[beneficiaries, 'aesoc'] * 0.5
+            households['DRM_cost'] = households['DRM_cost'].fillna(0)
 
             # Assign `DRM_cash` to 0.5 * `aesoc` to beneficiaries, for the rest 0
-            self.households.loc[beneficiaries,
-                                'DRM_cash'] = self.households.loc[beneficiaries, 'aesoc'] * 0.5
-            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(0)
+            households.loc[beneficiaries,
+                                'DRM_cash'] = households.loc[beneficiaries, 'aesoc'] * 0.5
+            households['DRM_cash'] = households['DRM_cash'].fillna(0)
 
             # Increase `aesav` by 0.5 `aesoc`
-            self.households.loc[beneficiaries,
-                                'aesav'] += self.households.loc[beneficiaries, 'aesoc'] * 0.5
+            households.loc[beneficiaries,
+                                'aesav'] += households.loc[beneficiaries, 'aesoc'] * 0.5
 
         elif my_policy == 'retrofit':
-            params = self._apply_individual_policy_params
+            params = apply_individual_policy_params
             a = params['retrofit_a']  # default 0.05
             b = params['retrofit_b']  # default 0.7
             c = params['retrofit_c']  # default 0.2
             clip_lower = params['retrofit_clip_lower']  # default 0
             clip_upper = params['retrofit_clip_upper']  # default 0.7
-            self.households['DRM_cost'] = a * self.households[['keff', 'aewgt']
-                                                              ].prod(axis=1) * ((self.households['v'] - b) / c).clip(lower=clip_lower)
-            self.households['DRM_cash'] = 0
-            self.households['v'] = self.households['v'].clip(upper=clip_upper)
+            households['DRM_cost'] = a * households[['keff', 'aewgt']
+                                                              ].prod(axis=1) * ((households['v'] - b) / c).clip(lower=clip_lower)
+            households['DRM_cash'] = 0
+            households['v'] = households['v'].clip(upper=clip_upper)
 
         elif my_policy == 'retrofit_roof1':
-            params = self._apply_individual_policy_params
+            params = apply_individual_policy_params
             # default [2, 4, 5, 6]
             roof_material_of_interest = params['retrofit_roof1_roof_materials_of_interest']
             # Beneficiaries are those who have roof of a certain material
-            beneficiaries = self.households['roof_material'].isin(
+            beneficiaries = households['roof_material'].isin(
                 roof_material_of_interest)
 
             a = params['retrofit_roof1_a']  # default 0.05
@@ -326,31 +356,31 @@ class SimulationModel(Reader, Optimizer, Writer):
             c = params['retrofit_roof1_c']  # default 0.2
             d = params['retrofit_roof1_d']  # default 0.1
 
-            self.households.loc[beneficiaries, 'DRM_cost'] = a * \
-                self.households['keff'] * (b / c)
+            households.loc[beneficiaries, 'DRM_cost'] = a * \
+                households['keff'] * (b / c)
 
-            self.households.loc[beneficiaries, 'DRM_cash'] = 0
+            households.loc[beneficiaries, 'DRM_cash'] = 0
 
             # Decrease vulnerability `v` by `d`
-            self.households.loc[beneficiaries, 'v'] -= d
+            households.loc[beneficiaries, 'v'] -= d
 
         elif my_policy == 'PDS':
             # Benefiaries are those who are affected and have their own house
-            beneficiaries = (self.households['is_affected'] == True) & (
-                self.households['own_rent'] == 'own')
+            beneficiaries = (households['is_affected'] == True) & (
+                households['own_rent'] == 'own')
             # accounting
-            self.households.loc[beneficiaries, 'DRM_cost'] = self.households.loc[beneficiaries].eval(
+            households.loc[beneficiaries, 'DRM_cost'] = households.loc[beneficiaries].eval(
                 'keff*v')
-            self.households['DRM_cost'] = self.households['DRM_cost'].fillna(
+            households['DRM_cost'] = households['DRM_cost'].fillna(
                 0)
-            self.households.loc[beneficiaries, 'DRM_cash'] = self.households.loc[beneficiaries].eval(
+            households.loc[beneficiaries, 'DRM_cash'] = households.loc[beneficiaries].eval(
                 'keff*v')
-            self.households['DRM_cash'] = self.households['DRM_cash'].fillna(
+            households['DRM_cash'] = households['DRM_cash'].fillna(
                 0)
 
             # Increase `aesav` by `keff*v`
-            self.households.loc[beneficiaries,
-                                'aesav'] += self.households.loc[beneficiaries].eval('keff*v')
+            households.loc[beneficiaries,
+                                'aesav'] += households.loc[beneficiaries].eval('keff*v')
 
         else:
             raise ValueError(
@@ -368,5 +398,6 @@ class SimulationModel(Reader, Optimizer, Writer):
                                'aesoc',
                                'delta_tax_safety']
 
-        self.affected_households = self.households.loc[self.households['is_affected'], columns_of_interest].copy(
+        affected_households = households.loc[households['is_affected'], columns_of_interest].copy(
         )
+        return households, affected_households
