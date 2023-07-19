@@ -69,10 +69,30 @@ def run_model(**kwargs):
 
     outcomes = {}
 
+    # PIPELINE:
+    # 1. Load all damage
+    # 2. Load household survey
+    # 3. Select district
+        # 4. Get event damage, total asset stock, expected loss fraction
+        # 5. Calculate average productivity
+        # 6. Adjust assets and expenditure
+        # 7. Calculate PML
+        # 8. Assign savings
+        # 9. Set vulnerability
+        # 10. Calculate exposure
+        # 11. Determine affected
+        # 12. Apply individual policy
+        # 13. Run optimization
+        # 14. Integrate wellbeing
+        # 15. Prepare outcomes
+        # 16. Get outcomes
+    
     for district in districts:
         event_damage, total_asset_stock, expected_loss_fraction = get_asset_damage(all_damage, scale, district, return_period, print_statistics)
-        households = (select_distict(household_survey, district)
-                        .pipe(adjust_assets_and_expenditure, total_asset_stock, poverty_line, indigence_line, print_statistics)
+        households = select_distict(household_survey, district)
+        average_productivity = calculate_average_productivity(households, print_statistics)
+
+        households = (adjust_assets_and_expenditure(households, total_asset_stock, poverty_line, indigence_line, print_statistics)
                         .pipe(calculate_pml, expected_loss_fraction, print_statistics)
                         .pipe(assign_savings, saving_rate, assign_savings_params, print_statistics)
                         .pipe(set_vulnerability, is_vulnerability_random, set_vulnerability_params)
