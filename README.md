@@ -34,9 +34,9 @@ This repository has the following structure:
 ├── src                <- Source code for use in this project.
 │   ├── __main__.py    <- Runs the simulation model.
 │   ├── model.py       <- The simulation model.
-│   ├── components     <- Components of the simulation model.
+│   ├── optimize       <- Components of the simulation model, namely, optimisation algorithm.
 │   ├── tests          <- Various test for the simulation model.
-│   └── utils          <- Utility functions (e.g. to read and write data).
+│   └── utils          <- Utility functions (e.g. to prepare, read and write data).
 │
 ├── environment.yml    <- The conda environment file for reproducing the analysis environment.
 ├── README.md          <- The top-level README for using this project.
