@@ -113,13 +113,13 @@ class Optimizer():
 
             # consumption at this timestep
             self.affected_households['c_t'] = (self.affected_households['aeexp'] * gfac \
-                                               + np.e**(-self.affected_households['recovery_rate']*_t) \ 
-                                               * (self.affected_households['aesav'] * self.affected_households['recovery_rate'] \ 
-                                                  - self.affected_households['v'] * gfac \ 
-                                                  * (self.affected_households['aeexp_house'] \ 
-                                                     + self.affected_households[['keff', 'recovery_rate']].prod(axis=1)) \ 
-                                                     - (1-self.affected_households['delta_tax_safety']) \ 
-                                                     * self.average_productivity*self.affected_households['keff'] \ 
+                                               + np.e**(-self.affected_households['recovery_rate']*_t) \
+                                               * (self.affected_households['aesav'] * self.affected_households['recovery_rate'] \
+                                                  - self.affected_households['v'] * gfac \
+                                                  * (self.affected_households['aeexp_house'] \
+                                                     + self.affected_households[['keff', 'recovery_rate']].prod(axis=1)) \
+                                                     - (1-self.affected_households['delta_tax_safety']) \
+                                                     * self.average_productivity*self.affected_households['keff'] \
                                                      * self.affected_households['v']))
             self.affected_households['c_t_unaffected'] = self.affected_households['aeexp']*gfac
             # consumption cannot be lower than 0
