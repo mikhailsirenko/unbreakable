@@ -58,7 +58,7 @@ if __name__ == '__main__':
         },
         "determine_affected_params": {
             "low": 0,
-            "high": 0.5,
+            "high": 1.0,
             "distribution": "uniform"
         },
         "apply_individual_policy_params": {
@@ -132,8 +132,10 @@ if __name__ == '__main__':
     # results = perform_experiments(
     #     models=my_model, scenarios=1)
     
+    n_scenarios = 100
+
     with MultiprocessingEvaluator(my_model) as evaluator:
-        results = evaluator.perform_experiments(scenarios=100)
+        results = evaluator.perform_experiments(scenarios=n_scenarios)
 
     # Save results as tar.gz file
-    # save_results(results, f'../results/results_{n_scenarios}.tar.gz')
+    save_results(results, f'../results/results_{n_scenarios}.tar.gz')
