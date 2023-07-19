@@ -61,7 +61,6 @@ class Reader():
         )
         self._calculate_average_productivity()
         self._adjust_assets_and_expenditure()
-        self._duplicate_households()
 
     def _duplicate_households(self) -> None:
         '''Duplicates households if the number of households is less than the threshold.

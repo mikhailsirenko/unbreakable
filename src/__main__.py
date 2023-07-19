@@ -95,9 +95,12 @@ my_model = SimulationModel(
 my_model = Model(name='model', function=my_model.run_model)
 
 # TODO: Check how v_init was computed in prepare_data.py
+n_scenarios = 100
+seed_start = 0
+seend_end = 1000000
 
 my_model.uncertainties = [
-                            IntegerParameter("random_seed", 2, 3),
+                            IntegerParameter("random_seed", seed_start, seend_end),
 #                           RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
 #                           RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
 #                           RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
@@ -117,13 +120,12 @@ my_model.outcomes = [ArrayOutcome('AnseLaRayeCanaries'),
                      ArrayOutcome('Vieuxfort')
                      ]
 
-n_scenarios = 1
-
 results = perform_experiments(
     models=my_model, scenarios=n_scenarios)
 
 # Save results as tar.gz file
-save_results(results, f'../results/results_{n_scenarios}.tar.gz')
+high = kwargs['_determine_affected_params']['high']
+save_results(results, f'../results/results_{n_scenarios}_high={high}.tar.gz')
 
 # with MultiprocessingEvaluator(my_model) as evaluator:
 #     results = evaluator.perform_experiments(scenarios=2)s
