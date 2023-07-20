@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 def prepare_outcomes_dict(results: pd.DataFrame, district: str, add_scenario_column: bool, add_policy_column: bool, used_policies: list = ['None']) -> dict:
@@ -75,28 +76,37 @@ def prepare_outcomes_dataframe(results) -> pd.DataFrame:
                      ]
 
     columns = ['scenario', 'policy', 'district'] + outcome_names
-    outcomes = pd.DataFrame(columns=columns)
+    
     scenarios = results[0]['scenario'].unique()
     n_scenarios = scenarios.size
     policies = results[0]['policy'].unique()
+    n_policies = policies.size
+    n_districts = len(results[1].keys())
+
+    n_columns = len(columns)
+    n_rows = n_scenarios * n_policies * n_districts
+
+    outcomes = np.zeros((n_rows, n_columns), dtype=object)
 
     k = 0  # row index
-    for district, distict_outcomes in results[1].items():
+    for district, district_outcomes in results[1].items():
         i = 0  # scenario index
         j = 0  # policy index
-        for arr in distict_outcomes:
+        for arr in district_outcomes:
             if i == n_scenarios:
                 i = 0
                 j += 1
 
-            outcomes.loc[k, 'scenario'] = scenarios[i]
-            outcomes.loc[k, 'policy'] = policies[j]
-            outcomes.loc[k, 'district'] = district
+            outcomes[k, 0] = scenarios[i]
+            outcomes[k, 1] = policies[j]
+            outcomes[k, 2] = district
 
+            l = 3
             for v, name in zip(arr, outcome_names):
-                outcomes.loc[k, name] = v
+                outcomes[k, l] = v
+                l += 1
 
             k += 1
             i += 1
 
-    return outcomes
+    return pd.DataFrame(outcomes, columns=columns)
