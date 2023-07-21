@@ -15,7 +15,9 @@ def prepare_outcomes_dict(results: pd.DataFrame, district: str, add_scenario_col
                      'new_poverty_gap',
                      'annual_average_consumption_loss',
                      'annual_average_consumption_loss_pct',
-                     'r']
+                     'r',
+                     # 'years_in_poverty'
+                     ]
 
     outcomes = {}
 
@@ -72,7 +74,8 @@ def prepare_outcomes_dataframe(results) -> pd.DataFrame:
                      'new_poverty_gap',
                      'annual_average_consumption_loss',
                      'annual_average_consumption_loss_pct',
-                     'r'
+                     'r',
+                     # 'years_in_poverty'
                      ]
 
     columns = ['scenario', 'policy', 'district'] + outcome_names
