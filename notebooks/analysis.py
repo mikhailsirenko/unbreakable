@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import ast
 
 
 def prepare_outcomes_dict(results: pd.DataFrame, district: str, add_scenario_column: bool, add_policy_column: bool, used_policies: list = ['None']) -> dict:
@@ -16,7 +17,7 @@ def prepare_outcomes_dict(results: pd.DataFrame, district: str, add_scenario_col
                      'annual_average_consumption_loss',
                      'annual_average_consumption_loss_pct',
                      'r',
-                     # 'years_in_poverty'
+                     'years_in_poverty'
                      ]
 
     outcomes = {}
@@ -75,7 +76,7 @@ def prepare_outcomes_dataframe(results) -> pd.DataFrame:
                      'annual_average_consumption_loss',
                      'annual_average_consumption_loss_pct',
                      'r',
-                     # 'years_in_poverty'
+                     'years_in_poverty'
                      ]
 
     columns = ['scenario', 'policy', 'district'] + outcome_names
@@ -106,7 +107,10 @@ def prepare_outcomes_dataframe(results) -> pd.DataFrame:
 
             l = 3
             for v, name in zip(arr, outcome_names):
-                outcomes[k, l] = v
+                if name == 'years_in_poverty':
+                    outcomes[k, l] = ast.literal_eval(v)
+                else:
+                    outcomes[k, l] = v
                 l += 1
 
             k += 1
