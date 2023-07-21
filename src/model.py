@@ -161,27 +161,26 @@ def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_
 
     # Savings are a product of expenditure and saving rate
     x = households.eval(f'aeexp*{saving_rate}')
-    params = assign_savings_params
 
     # Get the mean of the noise with uniform distribution
-    mean_noise_low = params['mean_noise_low']  # default 0
-    mean_noise_high = params['mean_noise_high']  # default 5
+    mean_noise_low = assign_savings_params['mean_noise_low']  # default 0
+    mean_noise_high = assign_savings_params['mean_noise_high']  # default 5
 
-    if params['mean_noise_distribution'] == 'uniform':
+    if assign_savings_params['mean_noise_distribution'] == 'uniform':
         loc = np.random.uniform(mean_noise_low, mean_noise_high)
     else:
         raise ValueError("Only uniform distribution is supported yet.")
 
     # Get the scale
-    scale = params['noise_scale']  # default 2.5
+    scale = assign_savings_params['noise_scale']  # default 2.5
     size = households.shape[0]
-    clip_min = params['savings_clip_min']  # default 0.1
-    clip_max = params['savings_clip_max']  # default 1.0
+    clip_min = assign_savings_params['savings_clip_min']  # default 0.1
+    clip_max = assign_savings_params['savings_clip_max']  # default 1.0
 
     # Calculate savings with normal noise
     # !: aesav can go to 0 and above 1 because of the mean noise and loc
     # !: See `verification.ipynb` for more details
-    if params['noise_distribution'] == 'normal':
+    if assign_savings_params['noise_distribution'] == 'normal':
         households['aesav'] = x * \
             np.random.normal(loc, scale, size).round(
                 2).clip(min=clip_min, max=clip_max)
@@ -206,13 +205,12 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     Raises:
         ValueError: If the distribution is not supported.
     '''
-    params = set_vulnerability_params
 
     # If vulnerability is random, then draw from the uniform distribution
     if is_vulnerability_random:
-        low = params['vulnerability_random_low']  # default 0.01
-        high = params['vulnerability_random_high']  # default 0.90
-        if params['vulnerability_random_distribution'] == 'uniform':
+        low = set_vulnerability_params['vulnerability_random_low']  # default 0.01
+        high = set_vulnerability_params['vulnerability_random_high']  # default 0.90
+        if set_vulnerability_params['vulnerability_random_distribution'] == 'uniform':
             households['v'] = np.random.uniform(
                 low, high, households.shape[0])
         else:
@@ -222,11 +220,11 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     # If vulnerability is not random, use v_init as a starting point and add some noise
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
-        low = params['vulnerability_initial_low']  # default 0.6
-        high = params['vulnerability_initial_high']  # default 1.4
+        low = set_vulnerability_params['vulnerability_initial_low']  # default 0.6
+        high = set_vulnerability_params['vulnerability_initial_high']  # default 1.4
         # v - actual vulnerability
         # v_init - initial vulnerability
-        if params['vulnerability_initial_distribution'] == 'uniform':
+        if set_vulnerability_params['vulnerability_initial_distribution'] == 'uniform':
             households['v'] = households['v_init'] * \
                 np.random.uniform(low, high, households.shape[0])
         else:
@@ -234,7 +232,7 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
                 "Only uniform distribution is supported yet.")
 
         # default 0.95
-        vulnerability_threshold = params['vulnerability_initial_threshold']
+        vulnerability_threshold = set_vulnerability_params['vulnerability_initial_threshold']
 
         # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
         households.loc[households['v']
@@ -259,13 +257,12 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
         pd.DataFrame: Household survey data with calculated exposure.
     '''
     pml = households['pml'].iloc[0]
-    params = calculate_exposure_params
 
     # Random value for poverty bias
     if poverty_bias == 'random':
-        low = params['poverty_bias_random_low']  # default 0.5
-        high = params['poverty_bias_random_high']  # default 1.5
-        if params['poverty_bias_random_distribution'] == 'uniform':
+        low = calculate_exposure_params['poverty_bias_random_low']  # default 0.5
+        high = calculate_exposure_params['poverty_bias_random_high']  # default 1.5
+        if calculate_exposure_params['poverty_bias_random_distribution'] == 'uniform':
             povbias = np.random.uniform(low, high)
         else:
             raise ValueError(

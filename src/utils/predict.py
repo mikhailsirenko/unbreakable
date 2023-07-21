@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import numpy.polynomial.polynomial as poly
 
-# Some regresion-like functions
+# Some regression-alike functions
 # * I did not test them
 
 np.random.seed(123)

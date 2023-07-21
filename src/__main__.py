@@ -124,11 +124,11 @@ if __name__ == '__main__':
     # results = perform_experiments(
     #     models=my_model, scenarios=2, policies=2)
     
-    n_scenarios = 100
-    n_policies = 100
+    n_scenarios = 300
+    n_policies = 0
     with MultiprocessingEvaluator(my_model) as evaluator:
         results = evaluator.perform_experiments(scenarios=n_scenarios, 
-                                                policies=n_policies
+                                                # policies=n_policies
                                                 )
 
     # Save results as tar.gz file
