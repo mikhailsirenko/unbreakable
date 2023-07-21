@@ -121,8 +121,8 @@ if __name__ == '__main__':
                          ArrayOutcome('Vieuxfort')
                          ]
     
-    results = perform_experiments(
-        models=my_model, scenarios=2, policies=2)
+    # results = perform_experiments(
+    #     models=my_model, scenarios=2, policies=2)
     
     n_scenarios = 100
     n_policies = 100
