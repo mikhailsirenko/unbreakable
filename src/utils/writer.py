@@ -64,8 +64,11 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
 
     if poverty_line == 0:
         raise ValueError('Poverty line is zero')
+    
+    # * 
+    max_years = 10
+    years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
 
-    # years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
     initial_poverty_gap, new_poverty_gap = calculate_poverty_gap(
         poor_initial, new_poor, poverty_line)
 
@@ -100,6 +103,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'annual_average_consumption_loss': annual_average_consumption_loss,
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
+        'years_in_poverty': years_in_poverty
         # 'n_resilience_more_than_1' : n_resilience_more_than_1
     }
 
