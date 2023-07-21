@@ -1,7 +1,7 @@
 # TODO: Check how v_init was computed in prepare_data.py
 
 from model import *
-from ema_workbench import (Model, Constant, IntegerParameter, RealParameter, ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
+from ema_workbench import (Model, Constant, CategoricalParameter, IntegerParameter, RealParameter, ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
 
 ema_logging.log_to_stderr(ema_logging.INFO)
 
@@ -59,23 +59,14 @@ if __name__ == '__main__':
         "determine_affected_params": {
             "low": 0,
             "high": 1.0,
-            "distribution": "uniform"
-        },
-        "apply_individual_policy_params": {
-            "retrofit_a": 0.05,
-            "retrofit_b": 0.7,
-            "retrofit_c": 0.2,
-            "retrofit_clip_lower": 0,
-            "retrofit_clip_upper": 0.7,
-            'retrofit_roof1_roof_materials_of_interest' : [2, 4, 5, 6],
-            'retrofit_roof1_a' : 0.05,
-            'retrofit_roof1_b' : 0.1,
-            'retrofit_roof1_c' : 0.2,
-            'retrofit_roof1_d' : 0.1,}
+            "distribution": "uniform",
+            "delta_pct" : 0.025,
+            "num_masks": 1000,
+        }
     }
 
     seed_start = 0
-    seend_end = 1000000
+    seed_end = 1000000
 
     my_model.constants = [# Case study constants
                           Constant('country', country),
@@ -104,18 +95,19 @@ if __name__ == '__main__':
                           Constant('assign_savings_params', kwargs['assign_savings_params']),
                           Constant('set_vulnerability_params', kwargs['set_vulnerability_params']),
                           Constant('calculate_exposure_params', kwargs['calculate_exposure_params']),
-                          Constant('determine_affected_params', kwargs['determine_affected_params']),
-                          Constant('apply_individual_policy_params', kwargs['apply_individual_policy_params'])]
+                          Constant('determine_affected_params', kwargs['determine_affected_params'])]
 
     my_model.uncertainties = [
-                              IntegerParameter("random_seed", seed_start, seend_end),
+                              IntegerParameter("random_seed", seed_start, seed_end),
     #                         RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
     #                         RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
     #                         RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
     #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
                              ]
 
-    # my_model.levers = [CategoricalParameter('my_policy', ['None', 'PDS'])]
+    my_model.levers = [
+                       CategoricalParameter('top_up', [0, 10, 30, 50]),
+                       CategoricalParameter('target_group', ['all', 'poor', 'poor_near_poor1.25', 'poor_near_poor2.0'])]
 
     my_model.outcomes = [
                          ArrayOutcome('AnseLaRayeCanaries'),
@@ -129,13 +121,15 @@ if __name__ == '__main__':
                          ArrayOutcome('Vieuxfort')
                          ]
     
-    # results = perform_experiments(
-    #     models=my_model, scenarios=1)
+    results = perform_experiments(
+        models=my_model, scenarios=2, policies=2)
     
     n_scenarios = 100
-
+    n_policies = 100
     with MultiprocessingEvaluator(my_model) as evaluator:
-        results = evaluator.perform_experiments(scenarios=n_scenarios)
+        results = evaluator.perform_experiments(scenarios=n_scenarios, 
+                                                policies=n_policies
+                                                )
 
     # Save results as tar.gz file
-    save_results(results, f'../results/results_{n_scenarios}.tar.gz')
+    save_results(results, f'../results/scenarios={n_scenarios}, policies={n_policies}.tar.gz')
