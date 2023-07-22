@@ -1,5 +1,3 @@
-# TODO: Check how v_init was computed in prepare_data.py
-
 from model import *
 from ema_workbench import (Model, Constant, CategoricalParameter, IntegerParameter, RealParameter, ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
 
@@ -61,7 +59,7 @@ if __name__ == '__main__':
             "high": 1.0,
             "distribution": "uniform",
             "delta_pct" : 0.025,
-            "num_masks": 1000,
+            "num_masks": 2000,
         }
     }
 
@@ -124,11 +122,11 @@ if __name__ == '__main__':
     # results = perform_experiments(
     #     models=my_model, scenarios=2, policies=2)
     
-    n_scenarios = 300
-    n_policies = 0
+    n_scenarios = 150
+    n_policies = 16
     with MultiprocessingEvaluator(my_model) as evaluator:
         results = evaluator.perform_experiments(scenarios=n_scenarios, 
-                                                # policies=n_policies
+                                                policies=n_policies
                                                 )
 
     # Save results as tar.gz file
