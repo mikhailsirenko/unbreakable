@@ -3,12 +3,9 @@ import numpy as np
 import random
 from utils.reader import *
 from optimize.optimizer import *
-from tests.tester import *
 from utils.writer import *
 import pickle
 import time
-
-# TODO: Move RaiseValueError to tests
 
 
 def initialize_model(country: str, scale: str, min_households: int) -> tuple:
@@ -23,8 +20,6 @@ def initialize_model(country: str, scale: str, min_households: int) -> tuple:
     Returns:
         tuple: Household survey and asset damage files.
     '''
-    test_country(country)
-    test_scale(scale)
 
     # Read household survey and asset damage files
     household_survey = read_household_survey(country)
@@ -72,10 +67,11 @@ def run_model(**kwargs):
     try:
         my_policy = kwargs['my_policy']
     except:
+        # If a policy is not provided, use the default policy
         my_policy = 'all+0'
 
     # Outcomes
-    # Store outcomes in a dictionary, where key is a district and value is a dictionary of outcomes
+    # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
     # Print statistics for debugging
@@ -304,6 +300,17 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
 
     We assume that all households have the same probability of being affected, 
     but based on `fa` calculated in `calculate_exposure`.
+
+    Args:
+        households (pd.DataFrame): Household survey data for a specific district.
+        determine_affected_params (dict): Parameters for determining affected households function.
+
+    Returns:
+        tuple: Household survey data with determined affected households and asset loss for each household.
+
+    Raises:
+        ValueError: If total asset is less than PML.
+        ValueError: If no mask was found.
     '''
     # Get PML, it is the same for all households
     pml = households['pml'].iloc[0]
@@ -356,8 +363,16 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     return households
 
 
-def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: float) -> pd.DataFrame:
-    '''Apply a policy to a specific target group.'''
+def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: float) -> tuple:
+    '''Apply a policy to a specific target group.
+
+    Args:
+        households (pd.DataFrame): Household survey data for a specific district.
+        my_policy (str): Policy to apply. The structure of the policy is `target_group`+`top_up` in a single string. `target_group` can be `all`, `poor`, `poor_near_poor1.25`, `poor_near_poor2.0`, and the `top_up` 0, 10, 30 or 50.
+
+    Returns:
+        tuple: Household survey data with applied policy and affected households.
+    '''
 
     target_group, top_up = my_policy.split('+')
     top_up = float(top_up)
