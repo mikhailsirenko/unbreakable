@@ -4,49 +4,6 @@ import ast
 from ema_workbench import load_results
 
 
-# def prepare_outcomes_dict(results: pd.DataFrame, district: str, add_scenario_column: bool, add_policy_column: bool, used_policies: list = ['None']) -> dict:
-#     '''Prepare outcomes for a single `district`.'''
-#     outcome_names = ['total_population',
-#                      'n_affected_households',
-#                      'annual_average_consumption',
-#                      'poverty_line',
-#                      'pml',
-#                      'n_poor_initial',
-#                      'n_new_poor',
-#                      'initial_poverty_gap',
-#                      'new_poverty_gap',
-#                      'annual_average_consumption_loss',
-#                      'annual_average_consumption_loss_pct',
-#                      'r',
-#                      'years_in_poverty'
-#                      ]
-
-#     outcomes = {}
-
-#     for i, outcome_name in enumerate(outcome_names):
-#         l = []
-#         for arr in results[1][district]:
-#             l.append(arr[i])
-#         outcomes[outcome_name] = l
-
-#     used_scenarios = results[0]['scenario'].unique().sort_values().tolist()
-#     scenarios = []
-#     policies = []
-
-#     for _, policy in enumerate(used_policies):
-#         for _, scenario in enumerate(used_scenarios):
-#             if add_scenario_column:
-#                 scenarios.append(scenario)
-#             if add_policy_column:
-#                 policies.append(policy)
-#     if add_scenario_column:
-#         outcomes[f'scenario'] = scenarios
-#     if add_policy_column:
-#         outcomes[f'policy'] = policies
-
-#     return outcomes
-
-
 def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFrame:
     '''Convert outcomes dict into a data frame.
 
@@ -84,7 +41,8 @@ def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFra
     policy_names = ['my_policy']
 
     if add_policies:
-        columns = ['scenario', 'policy', 'district'] + policy_names + outcome_names
+        columns = ['scenario', 'policy', 'district'] + \
+            policy_names + outcome_names
     else:
         columns = ['scenario', 'policy', 'district'] + outcome_names
 
@@ -103,7 +61,8 @@ def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFra
 
     i = 0  # to iterate over rows = scenarios * policies * districts
     for district, district_outcomes in results[1].items():
-        k = 0  # to iterate over rows = scenarios * policies (experiments dataframe)
+        # to iterate over rows = scenarios * policies (experiments dataframe)
+        k = 0
         # We reset k every time we change district
         for arr in district_outcomes:
             # The first 3 rows for scenario, policy and district

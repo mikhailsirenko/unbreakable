@@ -22,7 +22,7 @@ def initialize_model(country: str, scale: str, min_households: int) -> tuple:
 
     Returns:
         tuple: Household survey and asset damage files.
-    '''    
+    '''
     test_country(country)
     test_scale(scale)
 
@@ -206,8 +206,10 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
 
     # If vulnerability is random, then draw from the uniform distribution
     if is_vulnerability_random:
-        low = set_vulnerability_params['vulnerability_random_low']  # default 0.01
-        high = set_vulnerability_params['vulnerability_random_high']  # default 0.90
+        # default 0.01
+        low = set_vulnerability_params['vulnerability_random_low']
+        # default 0.90
+        high = set_vulnerability_params['vulnerability_random_high']
         if set_vulnerability_params['vulnerability_random_distribution'] == 'uniform':
             households['v'] = np.random.uniform(
                 low, high, households.shape[0])
@@ -218,8 +220,10 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     # If vulnerability is not random, use v_init as a starting point and add some noise
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
-        low = set_vulnerability_params['vulnerability_initial_low']  # default 0.6
-        high = set_vulnerability_params['vulnerability_initial_high']  # default 1.4
+        # default 0.6
+        low = set_vulnerability_params['vulnerability_initial_low']
+        # default 1.4
+        high = set_vulnerability_params['vulnerability_initial_high']
         # v - actual vulnerability
         # v_init - initial vulnerability
         if set_vulnerability_params['vulnerability_initial_distribution'] == 'uniform':
@@ -258,8 +262,10 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
 
     # Random value for poverty bias
     if poverty_bias == 'random':
-        low = calculate_exposure_params['poverty_bias_random_low']  # default 0.5
-        high = calculate_exposure_params['poverty_bias_random_high']  # default 1.5
+        # default 0.5
+        low = calculate_exposure_params['poverty_bias_random_low']
+        # default 1.5
+        high = calculate_exposure_params['poverty_bias_random_high']
         if calculate_exposure_params['poverty_bias_random_distribution'] == 'uniform':
             povbias = np.random.uniform(low, high)
         else:
