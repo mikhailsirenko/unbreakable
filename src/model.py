@@ -3,8 +3,12 @@ import numpy as np
 import random
 from utils.reader import *
 from optimize.optimizer import *
+from tests.tester import *
 from utils.writer import *
 import pickle
+import time
+
+# TODO: Move RaiseValueError to tests
 
 
 def initialize_model(country: str, scale: str, min_households: int) -> tuple:
@@ -18,20 +22,9 @@ def initialize_model(country: str, scale: str, min_households: int) -> tuple:
 
     Returns:
         tuple: Household survey and asset damage files.
-
-    Raises:
-        ValueError: If country is not supported.
-        ValueError: If scale is not supported.
     '''
-    # * Can do only one country for now
-    if country not in ['Saint Lucia']:
-        raise ValueError(
-            f'Country {country} is not supported. Please use Saint Lucia.')
-
-    # * Can do country only district yet
-    if scale not in ['district']:
-        raise ValueError(
-            f'Scale {scale} is not supported. Please use district.')
+    test_country(country)
+    test_scale(scale)
 
     # Read household survey and asset damage files
     household_survey = read_household_survey(country)
@@ -67,7 +60,6 @@ def run_model(**kwargs):
     set_vulnerability_params = kwargs['set_vulnerability_params']
     calculate_exposure_params = kwargs['calculate_exposure_params']
     determine_affected_params = kwargs['determine_affected_params']
-    apply_individual_policy_params = kwargs['apply_individual_policy_params']
 
     # Uncertainties
     poverty_bias = kwargs['poverty_bias']
@@ -77,7 +69,10 @@ def run_model(**kwargs):
     income_and_expenditure_growth = kwargs['income_and_expenditure_growth']
 
     # Policy levers
-    my_policy = kwargs['my_policy']
+    try:
+        my_policy = kwargs['my_policy']
+    except:
+        my_policy = 'all+0'
 
     # Outcomes
     # Store outcomes in a dictionary, where key is a district and value is a dictionary of outcomes
@@ -120,19 +115,19 @@ def run_model(**kwargs):
         # Model the impact of a disaster on households
         households = (adjust_assets_and_expenditure(households, total_asset_stock, poverty_line, indigence_line, print_statistics)
                       .pipe(calculate_pml, expected_loss_fraction, print_statistics)
-                      .pipe(assign_savings, saving_rate, assign_savings_params, print_statistics)
+                      .pipe(assign_savings, saving_rate, assign_savings_params)
                       .pipe(set_vulnerability, is_vulnerability_random, set_vulnerability_params)
                       .pipe(calculate_exposure, poverty_bias, calculate_exposure_params, print_statistics)
-                      .pipe(determine_affected, determine_affected_params, print_statistics))
-        
+                      .pipe(determine_affected, determine_affected_params))
+
         # Apply a policy
         households, affected_households = apply_individual_policy(
-            households, my_policy, apply_individual_policy_params)
+            households, my_policy, poverty_line)
 
         # Calculate the impact and recovery
         affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
                                .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, x_max))
-        
+
         # Get outcomes
         households = prepare_outcomes(households, affected_households)
         array_outcomes = np.array(list(get_outcomes(
@@ -147,7 +142,7 @@ def select_district(household_survey: pd.DataFrame, district: str) -> pd.DataFra
     return household_survey[household_survey['district'] == district].copy()
 
 
-def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_params: dict, print_statistics: bool) -> pd.DataFrame:
+def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_params: dict) -> pd.DataFrame:
     '''Assign savings to households.
 
      We assume that savings are a product of expenditure and saving rate with Gaussian noise.
@@ -159,51 +154,36 @@ def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_
 
     Returns:
         pd.DataFrame: Household survey data with assigned savings.
-
     '''
     # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
 
     # Savings are a product of expenditure and saving rate
     x = households.eval(f'aeexp*{saving_rate}')
-    params = assign_savings_params
 
     # Get the mean of the noise with uniform distribution
-    mean_noise_low = params['mean_noise_low']  # default 0
-    mean_noise_high = params['mean_noise_high']  # default 5
-    if params['mean_noise_distribution'] == 'uniform':
+    mean_noise_low = assign_savings_params['mean_noise_low']  # default 0
+    mean_noise_high = assign_savings_params['mean_noise_high']  # default 5
+
+    if assign_savings_params['mean_noise_distribution'] == 'uniform':
         loc = np.random.uniform(mean_noise_low, mean_noise_high)
     else:
         raise ValueError("Only uniform distribution is supported yet.")
 
     # Get the scale
-    scale = params['noise_scale']  # default 2.5
+    scale = assign_savings_params['noise_scale']  # default 2.5
     size = households.shape[0]
-    clip_min = params['savings_clip_min']  # default 0.1
-    clip_max = params['savings_clip_max']  # default 1.0
+    clip_min = assign_savings_params['savings_clip_min']  # default 0.1
+    clip_max = assign_savings_params['savings_clip_max']  # default 1.0
 
     # Calculate savings with normal noise
     # !: aesav can go to 0 and above 1 because of the mean noise and loc
-    # !: See `verifcation.ipynb` for more details
-    if params['noise_distribution'] == 'normal':
+    # !: See `verification.ipynb` for more details
+    if assign_savings_params['noise_distribution'] == 'normal':
         households['aesav'] = x * \
             np.random.normal(loc, scale, size).round(
                 2).clip(min=clip_min, max=clip_max)
     else:
         ValueError("Only normal distribution is supported yet.")
-
-    if print_statistics:
-        print('Minimum expenditure: ', round(
-            households['aeexp'].min(), 2))
-        print('Maximum expenditure: ', round(
-            households['aeexp'].max(), 2))
-        print('Average expenditure: ', round(
-            households['aeexp'].mean(), 2))
-        print('Minimum savings: ', round(
-            households['aesav'].min(), 2))
-        print('Maximum savings: ', round(
-            households['aesav'].max(), 2))
-        print('Average savings: ', round(
-            households['aesav'].mean(), 2))
 
     return households
 
@@ -223,13 +203,14 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     Raises:
         ValueError: If the distribution is not supported.
     '''
-    params = set_vulnerability_params
 
     # If vulnerability is random, then draw from the uniform distribution
     if is_vulnerability_random:
-        low = params['vulnerability_random_low']  # default 0.01
-        high = params['vulnerability_random_high']  # default 0.90
-        if params['vulnerability_random_distribution'] == 'uniform':
+        # default 0.01
+        low = set_vulnerability_params['vulnerability_random_low']
+        # default 0.90
+        high = set_vulnerability_params['vulnerability_random_high']
+        if set_vulnerability_params['vulnerability_random_distribution'] == 'uniform':
             households['v'] = np.random.uniform(
                 low, high, households.shape[0])
         else:
@@ -239,11 +220,13 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     # If vulnerability is not random, use v_init as a starting point and add some noise
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
-        low = params['vulnerability_initial_low']  # default 0.6
-        high = params['vulnerability_initial_high']  # default 1.4
+        # default 0.6
+        low = set_vulnerability_params['vulnerability_initial_low']
+        # default 1.4
+        high = set_vulnerability_params['vulnerability_initial_high']
         # v - actual vulnerability
         # v_init - initial vulnerability
-        if params['vulnerability_initial_distribution'] == 'uniform':
+        if set_vulnerability_params['vulnerability_initial_distribution'] == 'uniform':
             households['v'] = households['v_init'] * \
                 np.random.uniform(low, high, households.shape[0])
         else:
@@ -251,7 +234,7 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
                 "Only uniform distribution is supported yet.")
 
         # default 0.95
-        vulnerability_threshold = params['vulnerability_initial_threshold']
+        vulnerability_threshold = set_vulnerability_params['vulnerability_initial_threshold']
 
         # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
         households.loc[households['v']
@@ -271,18 +254,19 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
         poverty_bias (float): Poverty bias.
         calculate_exposure_params (dict): Parameters for calculating exposure function.
         print_statistics (bool): If True, print statistics.
-    
+
     Returns:
         pd.DataFrame: Household survey data with calculated exposure.
     '''
     pml = households['pml'].iloc[0]
-    params = calculate_exposure_params
 
     # Random value for poverty bias
     if poverty_bias == 'random':
-        low = params['poverty_bias_random_low']  # default 0.5
-        high = params['poverty_bias_random_high']  # default 1.5
-        if params['poverty_bias_random_distribution'] == 'uniform':
+        # default 0.5
+        low = calculate_exposure_params['poverty_bias_random_low']
+        # default 1.5
+        high = calculate_exposure_params['poverty_bias_random_high']
+        if calculate_exposure_params['poverty_bias_random_distribution'] == 'uniform':
             povbias = np.random.uniform(low, high)
         else:
             raise ValueError(
@@ -310,184 +294,97 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
         print('Delimiter: ', '{:,}'.format(round(delimiter, 2)))
         print('f0: ', '{:,}'.format(round(fa0, 2)))
 
-    households['fa'] = fa0*households[['poverty_bias']]
-
-    # !: households['fa'] seems to be the same for all households
+    households['fa'] = fa0 * households[['poverty_bias']]
     households.drop('poverty_bias', axis=1, inplace=True)
     return households
 
 
-def determine_affected(households: pd.DataFrame, determine_affected_params: dict, print_statistics: bool) -> tuple:
-    '''Determine affected households.
+def determine_affected(households: pd.DataFrame, determine_affected_params: dict) -> tuple:
+    '''Determines affected households.
 
-    Args:
-        households (pd.DataFrame): Household survey data for a specific district.
-        determine_affected_params (dict): Parameters for determining affected households function.
-        print_statistics (bool): If True, print statistics.
-
-    Returns:
-        tuple: Households and affected households dataframes.
-
-    Raises:
-        ValueError: If the distribution is not supported.
+    We assume that all households have the same probability of being affected, 
+    but based on `fa` calculated in `calculate_exposure`.
     '''
-    params = determine_affected_params
-    low = params['low']  # default 0
-    high = params['high']  # default 1
+    # Get PML, it is the same for all households
+    pml = households['pml'].iloc[0]
 
-    if params['distribution'] == 'uniform':
-        # !: This is very random
-        households['is_affected'] = households['fa'] >= np.random.uniform(
-            low, high, households.shape[0])
-    else:
-        raise ValueError("Only uniform distribution is supported yet.")
+    # Allow for a relatively small error of 2.5%
+    delta = pml * determine_affected_params['delta_pct']  # default 0.025
 
-    affected_households = households[households['is_affected'] == True]
+    # Check if total asset is less than PML
     total_asset = households[['keff', 'popwgt']].prod(axis=1).sum()
-    total_asset_loss = affected_households[[
-        'keff', 'v', 'popwgt']].prod(axis=1).sum()
+    if total_asset < pml:
+        raise ValueError(
+            'Total asset is less than PML.')
 
-    if print_statistics:
-        n_affected = households['is_affected'].multiply(
-            households['popwgt']).sum()
-        fraction_affected = n_affected / households['popwgt'].sum()
-        print('Total number of households: ', '{:,}'.format(
-            round(households['popwgt'].sum())))
-        print('Number of affected households: ',
-              '{:,}'.format(round(n_affected)))
-        print(
-            f'Fraction of affected households: {round((fraction_affected * 100), 2)}%')
-        print('Total asset: ', '{:,}'.format(round(total_asset)))
-        print('Total asset loss: ', '{:,}'.format(round(total_asset_loss)))
+    low = determine_affected_params['low']  # default 0
+    high = determine_affected_params['high']  # default 1
 
-    # TODO: Create model construction with bifurcate option
+    # Generate multiple boolean masks at once
+    num_masks = determine_affected_params['num_masks']  # default 1000
+    masks = np.random.uniform(
+        low, high, (num_masks, households.shape[0])) <= households['fa'].values
+
+    # Compute total_asset_loss for each mask
+    asset_losses = (
+        masks * households[['keff', 'v', 'popwgt']].values.prod(axis=1)).sum(axis=1)
+
+    # Find the first mask that yields a total_asset_loss within the desired range
+    mask_index = np.where((asset_losses >= pml - delta) &
+                          (asset_losses <= pml + delta))
+
+    # Raise an error if no mask was found
+    if mask_index is None:
+        raise ValueError(
+            f'Cannot find affected households in {num_masks} iterations.')
+    else:
+        try:
+            mask_index = mask_index[0][0]
+        except:
+            print('mask_index: ', mask_index)
+
+    chosen_mask = masks[mask_index]
+
+    # Assign the chosen mask to the 'is_affected' column of the DataFrame
+    households['is_affected'] = chosen_mask
+
+    # Save the asset loss for each household
+    households['asset_loss'] = households.loc[households['is_affected'], [
+        'keff', 'v', 'popwgt']].prod(axis=1).round(2)
+    households['asset_loss'] = households['asset_loss'].fillna(0)
+
     return households
 
 
-def apply_individual_policy(households: pd.DataFrame, my_policy: str, apply_individual_policy_params: dict) -> pd.DataFrame:
-    '''Apply individual policy to households.
+def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: float) -> pd.DataFrame:
+    '''Apply a policy to a specific target group.'''
 
-    Args:
-        households (pd.DataFrame): Household survey data for a specific district.
-        my_policy (str): Policy to apply. Options are: None, Existing_SP_100, Existing_SP_50, retrofit, retrofit_roof1 or PDS.
-        apply_individual_policy_params (dict): Parameters for applying individual policy function.
+    target_group, top_up = my_policy.split('+')
+    top_up = float(top_up)
 
-    Returns:
-        pd.DataFrame: Household survey data with applied individual policy.
-
-    Raises:
-        ValueError: If the policy is not supported.
-    '''
-    households['DRM_cost'] = 0
-    households['DRM_cash'] = 0
-
-    if my_policy == 'None':
-        households['DRM_cost'] = 0
-        households['DRM_cash'] = 0
-
-    elif my_policy == 'Existing_SP_100':
-        # Beneficiaries are affected households
+    # Select a target group
+    if target_group == 'all':
         beneficiaries = households['is_affected'] == True
 
-        # Assign `DRM_cost`` to `aesoc` to beneficiaries, for the rest 0
-        households.loc[beneficiaries,
-                       'DRM_cost'] = households.loc[beneficiaries, 'aesoc']
-        households['DRM_cost'] = households['DRM_cost'].fillna(0)
-
-        # Assign `DRM_cash` to `aesoc` for beneficiaries, for the rest 0
-        households.loc[beneficiaries,
-                       'DRM_cash'] = households.loc[beneficiaries, 'aesoc']
-        households['DRM_cash'] = households['DRM_cash'].fillna(0)
-
-        # Increase `aesav` by `aesoc`
-        households.loc[beneficiaries,
-                       'aesav'] += households.loc[beneficiaries, 'aesoc']
-
-    elif my_policy == 'Existing_SP_50':
-        # Beneficiaries are those who are affected
-        beneficiaries = households['is_affected'] == True
-
-        # Assign `DRM_cost`` to 0.5 * `aesoc` to beneficiaries, for the rest 0
-        households.loc[beneficiaries,
-                       'DRM_cost'] = households.loc[beneficiaries, 'aesoc'] * 0.5
-        households['DRM_cost'] = households['DRM_cost'].fillna(0)
-
-        # Assign `DRM_cash` to 0.5 * `aesoc` to beneficiaries, for the rest 0
-        households.loc[beneficiaries,
-                       'DRM_cash'] = households.loc[beneficiaries, 'aesoc'] * 0.5
-        households['DRM_cash'] = households['DRM_cash'].fillna(0)
-
-        # Increase `aesav` by 0.5 `aesoc`
-        households.loc[beneficiaries,
-                       'aesav'] += households.loc[beneficiaries, 'aesoc'] * 0.5
-
-    elif my_policy == 'retrofit':
-        params = apply_individual_policy_params
-        a = params['retrofit_a']  # default 0.05
-        b = params['retrofit_b']  # default 0.7
-        c = params['retrofit_c']  # default 0.2
-        clip_lower = params['retrofit_clip_lower']  # default 0
-        clip_upper = params['retrofit_clip_upper']  # default 0.7
-        households['DRM_cost'] = a * households[['keff', 'aewgt']
-                                                ].prod(axis=1) * ((households['v'] - b) / c).clip(lower=clip_lower)
-        households['DRM_cash'] = 0
-        households['v'] = households['v'].clip(upper=clip_upper)
-
-    elif my_policy == 'retrofit_roof1':
-        params = apply_individual_policy_params
-        # default [2, 4, 5, 6]
-        roof_material_of_interest = params['retrofit_roof1_roof_materials_of_interest']
-        # Beneficiaries are those who have roof of a certain material
-        beneficiaries = households['roof_material'].isin(
-            roof_material_of_interest)
-
-        a = params['retrofit_roof1_a']  # default 0.05
-        b = params['retrofit_roof1_b']  # default 0.1
-        c = params['retrofit_roof1_c']  # default 0.2
-        d = params['retrofit_roof1_d']  # default 0.1
-
-        households.loc[beneficiaries, 'DRM_cost'] = a * \
-            households['keff'] * (b / c)
-
-        households.loc[beneficiaries, 'DRM_cash'] = 0
-
-        # Decrease vulnerability `v` by `d`
-        households.loc[beneficiaries, 'v'] -= d
-
-    elif my_policy == 'PDS':
-        # Benefiaries are those who are affected and have their own house
+    elif target_group == 'poor':
         beneficiaries = (households['is_affected'] == True) & (
-            households['own_rent'] == 'own')
-        # accounting
-        households.loc[beneficiaries, 'DRM_cost'] = households.loc[beneficiaries].eval(
-            'keff*v')
-        households['DRM_cost'] = households['DRM_cost'].fillna(
-            0)
-        households.loc[beneficiaries, 'DRM_cash'] = households.loc[beneficiaries].eval(
-            'keff*v')
-        households['DRM_cash'] = households['DRM_cash'].fillna(
-            0)
+            households['is_poor'] == True)
 
-        # Increase `aesav` by `keff*v`
-        households.loc[beneficiaries,
-                       'aesav'] += households.loc[beneficiaries].eval('keff*v')
+    elif target_group == 'poor_near_poor1.25':
+        beneficiaries = (households['is_affected'] == True) & (
+            households['aeexp'] > 1.25 * poverty_line)
 
-    else:
-        raise ValueError(
-            'Policy not found. Please use one of the following: None, Existing_SP_100, Existing_SP_50, retrofit, retrofit_roof1 or PDS.')
+    elif target_group == 'poor_near_poor2.0':
+        beneficiaries = (households['is_affected'] == True) & (
+            households['aeexp'] > 2 * poverty_line)
 
-    columns_of_interest = ['hhid',
-                           'popwgt',
-                           'own_rent',
-                           'quintile',
-                           'aeexp',
-                           'aeexp_house',
-                           'keff',
-                           'v',
-                           'aesav',
-                           'aesoc',
-                           'delta_tax_safety']
+    # Apply a policy
+    households.loc[beneficiaries, 'aesav'] += households.loc[beneficiaries,
+                                                             'asset_loss'] * top_up / 100
 
-    affected_households = households.loc[households['is_affected'], columns_of_interest].copy(
-    )
+    # Select columns of interest
+    columns_of_interest = ['hhid', 'popwgt', 'own_rent', 'quintile', 'aeexp',
+                           'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']
+    affected_households = households.loc[households['is_affected'],
+                                         columns_of_interest].copy()
     return households, affected_households

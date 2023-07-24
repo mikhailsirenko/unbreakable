@@ -59,13 +59,16 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         # zero_consumption_loss += 1
         pass
 
-    n_poor_initial, n_new_poor, poor_initial, new_poor = find_poor(
+    n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
         households, poverty_line, x_max)
 
     if poverty_line == 0:
         raise ValueError('Poverty line is zero')
+    
+    # * 
+    max_years = 10
+    years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
 
-    # years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
     initial_poverty_gap, new_poverty_gap = calculate_poverty_gap(
         poor_initial, new_poor, poverty_line)
 
@@ -94,12 +97,14 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'poverty_line': poverty_line,
         'pml': pml,
         'n_poor_initial': n_poor_initial,
+        'n_poor_affected' : n_poor_affected,
         'n_new_poor': n_new_poor,
         'initial_poverty_gap': initial_poverty_gap,
         'new_poverty_gap': new_poverty_gap,
         'annual_average_consumption_loss': annual_average_consumption_loss,
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
+        'years_in_poverty': years_in_poverty
         # 'n_resilience_more_than_1' : n_resilience_more_than_1
     }
 
@@ -117,6 +122,7 @@ def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tupl
     # First, find the poor at the beginning of the simulation
     poor_initial = households[households['is_poor'] == True]
     n_poor_initial = round(poor_initial['popwgt'].sum())
+    n_poor_affected = round(poor_initial[poor_initial['is_affected'] == True]['popwgt'].sum())
 
     # Second, find the new poor at the end of the simulation (`x_max``)
     not_poor = households[households['is_poor'] == False]
@@ -130,7 +136,7 @@ def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tupl
     new_poor = not_poor_affected.loc[x < poverty_line, :]
     n_new_poor = round(new_poor['popwgt'].sum())
 
-    return n_poor_initial, n_new_poor, poor_initial, new_poor
+    return n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor
 
 
 def get_people_by_years_in_poverty(new_poor: pd.DataFrame, max_years: int) -> dict:

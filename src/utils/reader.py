@@ -47,13 +47,13 @@ def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return
 
 def read_household_survey(country: str) -> pd.DataFrame:
     '''Reads household survey from a CSV file.
-    
+
     Args:
         country (str): Country name.
 
     Returns:
         pd.DataFrame: Household survey data.
-    
+
     '''
     household_survey = pd.read_csv(
         f"../data/processed/household_survey/{country}/{country}.csv")

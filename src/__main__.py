@@ -1,7 +1,6 @@
-# TODO: Check how v_init was computed in prepare_data.py
-
 from model import *
-from ema_workbench import (Model, Constant, IntegerParameter, RealParameter, ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
+from ema_workbench import (Model, Constant, CategoricalParameter, IntegerParameter, RealParameter,
+                           ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
 
 ema_logging.log_to_stderr(ema_logging.INFO)
 
@@ -19,7 +18,7 @@ if __name__ == '__main__':
         'indigence_line': 2123,  # EC$ per capita per year
         'saving_rate': 0.02385,
         'is_vulnerability_random': False,
-        'min_households': 1493, # min households we need to have a good enough representation
+        'min_households': 1493,  # min households we need to have a good enough representation
         'optimization_timestep': 0.01,
         'x_max': 10,  # number of years in optimization algorithm
 
@@ -28,9 +27,6 @@ if __name__ == '__main__':
         'consumption_utility': 1.0,
         'discount_rate': 0.04,
         'income_and_expenditure_growth': 0.01,
-
-        # Policy levers
-        'my_policy': 'None',
 
         # Model constants
         "assign_savings_params": {
@@ -59,83 +55,81 @@ if __name__ == '__main__':
         "determine_affected_params": {
             "low": 0,
             "high": 1.0,
-            "distribution": "uniform"
-        },
-        "apply_individual_policy_params": {
-            "retrofit_a": 0.05,
-            "retrofit_b": 0.7,
-            "retrofit_c": 0.2,
-            "retrofit_clip_lower": 0,
-            "retrofit_clip_upper": 0.7,
-            'retrofit_roof1_roof_materials_of_interest' : [2, 4, 5, 6],
-            'retrofit_roof1_a' : 0.05,
-            'retrofit_roof1_b' : 0.1,
-            'retrofit_roof1_c' : 0.2,
-            'retrofit_roof1_d' : 0.1,}
+            "distribution": "uniform",
+            "delta_pct": 0.025,
+            "num_masks": 2000,
+        }
     }
 
     seed_start = 0
-    seend_end = 1000000
+    seed_end = 1000000 # to make sure that we have enough unique seeds
 
-    my_model.constants = [# Case study constants
-                          Constant('country', country),
-                          Constant('scale', scale),
-                          Constant('districts', districts),
-                          Constant('print_statistics', False),
-                          Constant('return_period', kwargs['return_period']),
-                          Constant('poverty_line', kwargs['poverty_line']),
-                          Constant('indigence_line', kwargs['indigence_line']),
-                          Constant('saving_rate', kwargs['saving_rate']),
-                          Constant('is_vulnerability_random', kwargs['is_vulnerability_random']),
-                          Constant('min_households', kwargs['min_households']),
-                          Constant('optimization_timestep', kwargs['optimization_timestep']),
-                          Constant('x_max', kwargs['x_max']),
+    my_model.constants = [  
+        # Case study constants
+        Constant('country', country),
+        Constant('scale', scale),
+        Constant('districts', districts),
+        Constant('print_statistics', False),
+        Constant('return_period', kwargs['return_period']),
+        Constant('poverty_line', kwargs['poverty_line']),
+        Constant('indigence_line', kwargs['indigence_line']),
+        Constant('saving_rate', kwargs['saving_rate']),
+        Constant('is_vulnerability_random', kwargs['is_vulnerability_random']),
+        Constant('min_households', kwargs['min_households']),
+        Constant('optimization_timestep', kwargs['optimization_timestep']),
+        Constant('x_max', kwargs['x_max']),
 
-                          # Uncertainties
-                          Constant('poverty_bias', kwargs['poverty_bias']),
-                          Constant('consumption_utility', kwargs['consumption_utility']),
-                          Constant('discount_rate', kwargs['discount_rate']),
+        # Uncertainties
+        Constant('poverty_bias', kwargs['poverty_bias']),
+        Constant('consumption_utility', kwargs['consumption_utility']),
+        Constant('discount_rate', kwargs['discount_rate']),
 
-                          # Policy levers
-                          Constant('my_policy', kwargs['my_policy']),
-                          
-                          # Model constants
-                          Constant('income_and_expenditure_growth', kwargs['income_and_expenditure_growth']),
-                          Constant('assign_savings_params', kwargs['assign_savings_params']),
-                          Constant('set_vulnerability_params', kwargs['set_vulnerability_params']),
-                          Constant('calculate_exposure_params', kwargs['calculate_exposure_params']),
-                          Constant('determine_affected_params', kwargs['determine_affected_params']),
-                          Constant('apply_individual_policy_params', kwargs['apply_individual_policy_params'])]
+        # Model constants
+        Constant('income_and_expenditure_growth', kwargs['income_and_expenditure_growth']),
+        Constant('assign_savings_params', kwargs['assign_savings_params']),
+        Constant('set_vulnerability_params', kwargs['set_vulnerability_params']),
+        Constant('calculate_exposure_params', kwargs['calculate_exposure_params']),
+        Constant('determine_affected_params', kwargs['determine_affected_params'])]
 
     my_model.uncertainties = [
-                              IntegerParameter("random_seed", seed_start, seend_end),
-    #                         RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
-    #                         RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
-    #                         RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
-    #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
-                             ]
+        IntegerParameter("random_seed", seed_start, seed_end),
+        #                         RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
+        #                         RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
+        #                         RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
+        #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
+    ]
 
-    # my_model.levers = [CategoricalParameter('my_policy', ['None', 'PDS'])]
+    my_model.levers = [
+        CategoricalParameter('my_policy', ['all+0', 'all+10', 'all+30', 'all+50',
+                                           'poor+0', 'poor+10', 'poor+30', 'poor+50',
+                                           'poor_near_poor1.25+0', 'poor_near_poor1.25+10', 'poor_near_poor1.25+30', 'poor_near_poor1.25+50',
+                                           'poor_near_poor2.0+0', 'poor_near_poor2.0+10', 'poor_near_poor2.0+30', 'poor_near_poor2.0+50'
+                                           ])
+    ]
 
     my_model.outcomes = [
-                         ArrayOutcome('AnseLaRayeCanaries'),
-                         ArrayOutcome('Castries'),
-                         ArrayOutcome('Choiseul'),
-                         ArrayOutcome('Dennery'),
-                         ArrayOutcome('Gros Islet'),
-                         ArrayOutcome('Laborie'),
-                         ArrayOutcome('Micoud'),
-                         ArrayOutcome('Soufriere'),
-                         ArrayOutcome('Vieuxfort')
-                         ]
-    
-    # results = perform_experiments(
-    #     models=my_model, scenarios=1)
-    
-    n_scenarios = 100
+        ArrayOutcome('AnseLaRayeCanaries'),
+        ArrayOutcome('Castries'),
+        ArrayOutcome('Choiseul'),
+        ArrayOutcome('Dennery'),
+        ArrayOutcome('Gros Islet'),
+        ArrayOutcome('Laborie'),
+        ArrayOutcome('Micoud'),
+        ArrayOutcome('Soufriere'),
+        ArrayOutcome('Vieuxfort')
+    ]
 
-    with MultiprocessingEvaluator(my_model) as evaluator:
-        results = evaluator.perform_experiments(scenarios=n_scenarios)
+    n_scenarios = 16
+    n_policies = 16
+
+    # results = perform_experiments(
+    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
+
+    with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
+        results = evaluator.perform_experiments(scenarios=n_scenarios,
+                                                policies=n_policies
+                                                )
 
     # Save results as tar.gz file
-    save_results(results, f'../results/results_{n_scenarios}.tar.gz')
+    save_results(
+        results, f'../results/scenarios={n_scenarios}, policies={n_policies}.tar.gz')
