@@ -27,9 +27,6 @@ if __name__ == '__main__':
         'discount_rate': 0.04,
         'income_and_expenditure_growth': 0.01,
 
-        # Policy levers
-        'my_policy': 'None',
-
         # Model constants
         "assign_savings_params": {
             "mean_noise_low": 0,
@@ -84,9 +81,6 @@ if __name__ == '__main__':
                           Constant('poverty_bias', kwargs['poverty_bias']),
                           Constant('consumption_utility', kwargs['consumption_utility']),
                           Constant('discount_rate', kwargs['discount_rate']),
-
-                          # Policy levers
-                          Constant('my_policy', kwargs['my_policy']),
                           
                           # Model constants
                           Constant('income_and_expenditure_growth', kwargs['income_and_expenditure_growth']),
@@ -102,10 +96,18 @@ if __name__ == '__main__':
     #                         RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
     #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
                              ]
+#     my_model.levers = [
+#                        CategoricalParameter('top_up', [0, 10, 30, 50]),
+#                        CategoricalParameter('target_group', ['all', 'poor', 'poor_near_poor1.25', 'poor_near_poor2.0'])
+#                        ]
 
     my_model.levers = [
-                       CategoricalParameter('top_up', [0, 10, 30, 50]),
-                       CategoricalParameter('target_group', ['all', 'poor', 'poor_near_poor1.25', 'poor_near_poor2.0'])]
+        CategoricalParameter('my_policy', ['all+0', 'all+10', 'all+30', 'all+50',
+                                           'poor+0', 'poor+10', 'poor+30', 'poor+50',
+                                           'poor_near_poor1.25+0', 'poor_near_poor1.25+10', 'poor_near_poor1.25+30', 'poor_near_poor1.25+50',
+                                           'poor_near_poor2.0+0', 'poor_near_poor2.0+10', 'poor_near_poor2.0+30', 'poor_near_poor2.0+50'
+                                           ])
+    ]
 
     my_model.outcomes = [
                          ArrayOutcome('AnseLaRayeCanaries'),
@@ -118,13 +120,14 @@ if __name__ == '__main__':
                          ArrayOutcome('Soufriere'),
                          ArrayOutcome('Vieuxfort')
                          ]
-    
-    # results = perform_experiments(
-    #     models=my_model, scenarios=2, policies=2)
-    
-    n_scenarios = 150
+
+    n_scenarios = 16
     n_policies = 16
-    with MultiprocessingEvaluator(my_model) as evaluator:
+
+    # results = perform_experiments(
+    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
+    
+    with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
         results = evaluator.perform_experiments(scenarios=n_scenarios, 
                                                 policies=n_policies
                                                 )

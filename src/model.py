@@ -70,11 +70,9 @@ def run_model(**kwargs):
 
     # Policy levers
     try:
-        top_up = kwargs['top_up']
-        target_group = kwargs['target_group']
+        my_policy = kwargs['my_policy']
     except:
-        top_up = 0
-        target_group = 'all'
+        my_policy = 'all+0'
 
     # Outcomes
     # Store outcomes in a dictionary, where key is a district and value is a dictionary of outcomes
@@ -124,7 +122,7 @@ def run_model(**kwargs):
 
         # Apply a policy
         households, affected_households = apply_individual_policy(
-            households, top_up, target_group, poverty_line)
+            households, my_policy, poverty_line)
 
         # Calculate the impact and recovery
         affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
@@ -352,8 +350,11 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     return households
 
 
-def apply_individual_policy(households: pd.DataFrame, top_up: int, target_group: str, poverty_line: float) -> pd.DataFrame:
+def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: float) -> pd.DataFrame:
     '''Apply a policy to a specific target group.'''
+
+    target_group, top_up = my_policy.split('+')
+    top_up = float(top_up)
 
     # Select a target group
     if target_group == 'all':
