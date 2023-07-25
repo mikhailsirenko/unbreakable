@@ -118,7 +118,7 @@ def run_model(**kwargs):
 
         # Apply a policy
         households, affected_households = apply_individual_policy(
-            households, my_policy, poverty_line)
+            households, my_policy)
 
         # Calculate the impact and recovery
         affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
@@ -363,7 +363,7 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     return households
 
 
-def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: float) -> tuple:
+def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
     '''Apply a policy to a specific target group.
 
     Args:
@@ -373,6 +373,8 @@ def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: f
     Returns:
         tuple: Household survey data with applied policy and affected households.
     '''
+
+    poverty_line_adjusted = households['poverty_line_adjusted'].iloc[0]
 
     target_group, top_up = my_policy.split('+')
     top_up = float(top_up)
@@ -386,16 +388,25 @@ def apply_individual_policy(households: pd.DataFrame, my_policy, poverty_line: f
             households['is_poor'] == True)
 
     elif target_group == 'poor_near_poor1.25':
-        beneficiaries = (households['is_affected'] == True) & (
-            households['aeexp'] > 1.25 * poverty_line)
+        poor_affected = (households['is_affected'] == True) & (
+            households['is_poor'] == True)
+        near_poor_affected = (households['is_affected'] == True) & (
+            households['is_poor'] == False) & (households['aeexp'] < 1.25 * poverty_line_adjusted)
+        beneficiaries = poor_affected | near_poor_affected
 
     elif target_group == 'poor_near_poor2.0':
-        beneficiaries = (households['is_affected'] == True) & (
-            households['aeexp'] > 2 * poverty_line)
+        poor_affected = (households['is_affected'] == True) & (
+            households['is_poor'] == True)
+        near_poor_affected = (households['is_affected'] == True) & (
+            households['is_poor'] == False) & (households['aeexp'] < 2 * poverty_line_adjusted)
+        beneficiaries = poor_affected | near_poor_affected
 
     # Apply a policy
-    households.loc[beneficiaries, 'aesav'] += households.loc[beneficiaries,
-                                                             'asset_loss'] * top_up / 100
+    # households.loc[beneficiaries, 'aesav'] += households.loc[beneficiaries,
+    #                                                          'keff', 'v'] * top_up / 100
+
+    households.loc[beneficiaries,
+                   'aesav'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
 
     # Select columns of interest
     columns_of_interest = ['hhid', 'popwgt', 'own_rent', 'quintile', 'aeexp',
