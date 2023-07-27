@@ -15,8 +15,23 @@ def read_asset_damage(country) -> None:
     return all_damage
 
 
-def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return_period: int, print_statistics: bool) -> None:
-    '''Get asset damage for a specific district.'''
+def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return_period: int, print_statistics: bool) -> tuple:
+    '''Get asset damage for a specific district.
+    
+    Args:
+        all_damage (pd.DataFrame): Asset damage data for all districts.
+        scale (str): Scale of the analysis. Only `district` is supported.
+        district (str): District name.
+        return_period (int): Return period.
+        print_statistics (bool): Whether to print the statistics.
+
+    Returns:
+        tuple: Event damage, total asset stock, expected loss fraction.
+
+    Raises:
+        ValueError: If the expected loss fraction is greater than 1.
+        ValueError: If the scale is not `district`.   
+    '''
     if scale == 'district':
         event_damage = all_damage.loc[(all_damage[scale] == district) & (
             all_damage['rp'] == return_period), 'pml'].values[0]  # PML
@@ -53,7 +68,6 @@ def read_household_survey(country: str) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: Household survey data.
-
     '''
     household_survey = pd.read_csv(
         f"../data/processed/household_survey/{country}/{country}.csv")
@@ -119,6 +133,7 @@ def calculate_average_productivity(households: pd.DataFrame, print_statistics: b
     '''Calculate average productivity as aeinc \ k_house_ae.
 
     Args:
+        households (pd.DataFrame): Household survey data.
         print_statistics (bool, optional): Whether to print the average productivity. Defaults to False.
 
     Returns:
@@ -138,11 +153,22 @@ def calculate_average_productivity(households: pd.DataFrame, print_statistics: b
     return average_productivity
 
 
-def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float, print_statistics: bool) -> None:
+def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float, print_statistics: bool) -> pd.DataFrame:
     '''Adjust assets and expenditure of household to match data of asset damage file.
 
     There can be a mismatch between the data in the household survey and the of the asset damage.
-    The latest was created independently.'''
+    The latest was created independently.
+    
+    Args:
+        households (pd.DataFrame): Household survey data.
+        total_asset_stock (float): Total asset stock.
+        poverty_line (float): Poverty line.
+        indigence_line (float): Indigence line.
+        print_statistics (bool, optional): Whether to print the statistics. Defaults to False.
+
+    Returns:
+        pd.DataFrame: Household survey data with adjusted assets and expenditure.
+    '''
 
     # ?: Do we always have to do that?
     # If yes, remove the corresponding variable. Or else add a condition?
@@ -178,8 +204,17 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     return households
 
 
-def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print_statistics: bool) -> None:
-    '''Calculate probable maxmium loss as a product of population weight, effective capital stock and expected loss fraction.'''
+def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print_statistics: bool) -> pd.DataFrame:
+    '''Calculate probable maximum loss as a product of population weight, effective capital stock and expected loss fraction.
+    
+    Args:
+        households (pd.DataFrame): Household survey data.
+        expected_loss_fraction (float): Expected loss fraction.
+        print_statistics (bool, optional): Whether to print the statistics. Defaults to False.
+
+    Returns:
+        pd.DataFrame: Household survey data with probable maximum loss.
+    '''
     # DEF: keff - effective capital stock
     # DEF: pml - probable maximum loss
     # DEF: popwgt - population weight of each household

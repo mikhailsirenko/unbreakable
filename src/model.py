@@ -4,8 +4,6 @@ import random
 from utils.reader import *
 from optimize.optimizer import *
 from utils.writer import *
-import pickle
-import time
 
 
 def initialize_model(country: str, scale: str, min_households: int) -> tuple:

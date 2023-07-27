@@ -100,10 +100,10 @@ if __name__ == '__main__':
     ]
 
     my_model.levers = [
-        CategoricalParameter('my_policy', ['all+0', 'all+10', 'all+30', 'all+50',
-                                           'poor+0', 'poor+10', 'poor+30', 'poor+50',
-                                           'poor_near_poor1.25+0', 'poor_near_poor1.25+10', 'poor_near_poor1.25+30', 'poor_near_poor1.25+50',
-                                           'poor_near_poor2.0+0', 'poor_near_poor2.0+10', 'poor_near_poor2.0+30', 'poor_near_poor2.0+50'
+        CategoricalParameter('my_policy', ['all+0', 'all+10', 'all+30', 'all+50', 'all+100',
+                                           'poor+0', 'poor+10', 'poor+30', 'poor+50', 'poor+100',
+                                           'poor_near_poor1.25+0', 'poor_near_poor1.25+10', 'poor_near_poor1.25+30', 'poor_near_poor1.25+50', 'poor_near_poor1.25+100',
+                                           'poor_near_poor2.0+0', 'poor_near_poor2.0+10', 'poor_near_poor2.0+30', 'poor_near_poor2.0+50', 'poor_near_poor2.0+100',
                                            ])
     ]
 
@@ -119,8 +119,8 @@ if __name__ == '__main__':
         ArrayOutcome('Vieuxfort')
     ]
 
-    n_scenarios = 16
-    n_policies = 16
+    n_scenarios = 3000
+    n_policies = 0
 
     # results = perform_experiments(
     #     models=my_model, scenarios=n_scenarios, policies=n_policies)
