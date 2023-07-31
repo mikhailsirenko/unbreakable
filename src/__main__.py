@@ -1,3 +1,5 @@
+# The main file of the model. It runs the model with the parameters specified in the kwargs dictionary.
+
 from model import *
 from ema_workbench import (
     Model,
@@ -17,8 +19,10 @@ ema_logging.log_to_stderr(ema_logging.INFO)
 my_model = Model(name="model", function=run_model)
 
 if __name__ == "__main__":
+    # Specify the country, scale of the model
     country = "Saint Lucia"
     scale = "district"
+    # Specify the districts of interest
     districts = [
         "AnseLaRayeCanaries",
         "Castries",
@@ -30,7 +34,8 @@ if __name__ == "__main__":
         "Soufriere",
         "Vieuxfort",
     ]
-
+    
+    # Specify the parameters of the model
     kwargs = {
         # Case study constants
         "return_period": 100,
@@ -82,6 +87,7 @@ if __name__ == "__main__":
     seed_start = 0
     seed_end = 1000000  # to make sure that we have enough unique seeds
 
+    # To run the model with EMA Workbench we need to specify the uncertainties, levers and outcomes in a certain way
     my_model.constants = [
         # Case study constants
         Constant("country", country),
@@ -118,6 +124,13 @@ if __name__ == "__main__":
         #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
     ]
 
+    # Specify the levers of the model
+    # The naming convention is: <target group> + <top up percentage>
+    # The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
+    # There are no limitations on the top-up percentage
+    # * Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
+    # * It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
+    # * where `v` is the vulnerability of the household and `keff` is the effective capital stock
     my_model.levers = [
         CategoricalParameter(
             "my_policy",
@@ -146,6 +159,8 @@ if __name__ == "__main__":
         )
     ]
 
+    # We store the outcomes of interest by district
+    # To see which exact outcomes are stored, check the `get_outcomes` function in `write.py`
     my_model.outcomes = [
         ArrayOutcome("AnseLaRayeCanaries"),
         ArrayOutcome("Castries"),
@@ -158,8 +173,11 @@ if __name__ == "__main__":
         ArrayOutcome("Vieuxfort"),
     ]
 
-    n_scenarios = 100
-    n_policies = 0
+    # Specify the number of scenarios and policies
+    n_scenarios = 5
+
+    # * If the number of policies is equal to the number of specified levers, then all policies are evaluated 
+    n_policies = 20
 
     # results = perform_experiments(
     #     models=my_model, scenarios=n_scenarios, policies=n_policies)

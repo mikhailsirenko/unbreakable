@@ -1,3 +1,5 @@
+# Prepare the results of the experiments for the analysis.
+
 import pandas as pd
 import numpy as np
 import ast
@@ -8,12 +10,13 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     '''Convert outcomes dict into a data frame.
 
     Args:
-        results (tuple): The results of the experiments.
+        results (tuple): The results of the experiments in the EMA Workbench format.
 
     Returns:
         pd.DataFrame: Outcomes data frame.
     '''
-
+    # * Note that we specify all outcomes in `get_outcomes` function in `write.py`
+    # * Here we just read them in the same sequence that they are written
     outcome_names = [
         'total_population',
         'total_asset_loss',
@@ -66,9 +69,9 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     n_rows = n_scenarios * n_policies * n_districts
     outcomes = np.zeros((n_rows, n_columns), dtype=object)
 
-    i = 0  # to iterate over rows = scenarios * policies * districts
+    i = 0  # To iterate over rows = scenarios * policies * districts
     for district, district_outcomes in results[1].items():
-        # to iterate over rows = scenarios * policies (experiments dataframe)
+        # To iterate over rows = scenarios * policies (experiments dataframe)
         k = 0
         # We reset k every time we change district
         for arr in district_outcomes:

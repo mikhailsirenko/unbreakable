@@ -384,6 +384,7 @@ def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
     if target_group == 'all':
         beneficiaries = households['is_affected'] == True
 
+    # * If the target group is poor, the policy won't decrease the number of new poor
     elif target_group == 'poor':
         beneficiaries = (households['is_affected'] == True) & (
             households['is_poor'] == True)
@@ -402,12 +403,9 @@ def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
             households['is_poor'] == False) & (households['aeexp'] < 2 * poverty_line_adjusted)
         beneficiaries = poor_affected | near_poor_affected
 
-    # Apply a policy
-    # households.loc[beneficiaries, 'aesav'] += households.loc[beneficiaries,
-    #                                                          'keff', 'v'] * top_up / 100
-
+    # * Here we have to decide to what to add to aeexp or aesav
     households.loc[beneficiaries,
-                   'aesav'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
+                   'aeexp'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
 
     # Select columns of interest
     columns_of_interest = ['hhid', 'popwgt', 'own_rent', 'quintile', 'aeexp',
