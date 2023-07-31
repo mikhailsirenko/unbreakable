@@ -7,15 +7,14 @@ from modules.optimize import *
 from modules.households import *
 
 
-def initialize_model(country: str, scale: str, min_households: int) -> tuple:
+def initialize_model(country: str, min_households: int) -> tuple:
     '''Initialize the model.
 
     Read household survey and asset damage files.
 
     Args:
         country (str): Country name.
-        scale (str): Scale of the model. Available options: district.
-        min_households (int): Minimum number of households.
+        min_households (int): Minimum number of households that we need to have in a sample to be representative.
 
     Returns:
         tuple: Household survey and asset damage files.
@@ -41,7 +40,7 @@ def run_model(**kwargs):
 
     # Read household survey and asset damage files
     household_survey, all_damage = initialize_model(
-        country, scale, min_households)
+        country, min_households)
 
     # Case study constants
     return_period = kwargs['return_period']

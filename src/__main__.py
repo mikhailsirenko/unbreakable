@@ -159,7 +159,7 @@ if __name__ == "__main__":
     ]
 
     n_scenarios = 10
-    n_policies = 0
+    n_policies = 20
 
     # results = perform_experiments(
     #     models=my_model, scenarios=n_scenarios, policies=n_policies)

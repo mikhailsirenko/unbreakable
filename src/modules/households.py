@@ -384,6 +384,7 @@ def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
     if target_group == 'all':
         beneficiaries = households['is_affected'] == True
 
+    # * If the target group is poor, the policy won't decrease the number of new poor
     elif target_group == 'poor':
         beneficiaries = (households['is_affected'] == True) & (
             households['is_poor'] == True)
