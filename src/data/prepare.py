@@ -1,3 +1,6 @@
+from sklearn.linear_model import LinearRegression
+import numpy.polynomial.polynomial as poly
+from sklearn.preprocessing import FunctionTransformer
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -81,11 +84,11 @@ def prepare_asset_damage(country: str, scale: str, return_period: int = 100) -> 
             # Let's assume that PML is equal to AAL % by district * by the PML for the whole country
             # These values are from PML Results 19022016 SaintLucia FinalSummary2.xlsx
             total_pml = {10: 351733.75,  # 3,517,337.50
-                         50: 23523224.51, # 2,352,322,451.00
-                         100: 59802419.04, # 5,980,241,904.00
-                         250: 147799213.30, # 14,779,921,330.00
-                         500: 248310895.20, # 24,831,089,520.00
-                         1000: 377593847.00} # 37,759,384,700.00
+                         50: 23523224.51,  # 2,352,322,451.00
+                         100: 59802419.04,  # 5,980,241,904.00
+                         250: 147799213.30,  # 14,779,921,330.00
+                         500: 248310895.20,  # 24,831,089,520.00
+                         1000: 377593847.00}  # 37,759,384,700.00
             aal = pd.read_excel(
                 '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
             aal.set_index('Name', inplace=True)
@@ -602,15 +605,9 @@ def merge_districts(data: pd.DataFrame) -> pd.DataFrame:
                                'Castries City': 'Castries'}}, inplace=True)
     return data
 
-from sklearn.linear_model import LinearRegression
-from sklearn.preprocessing import FunctionTransformer
-import pandas as pd
-import numpy as np
-import numpy.polynomial.polynomial as poly
 
 # Some regression-alike functions
 # * I did not test them
-
 np.random.seed(123)
 
 
@@ -667,5 +664,7 @@ def linear_regression(data: pd.DataFrame, X_column: str, y_column: str, weights:
     else:
         return y_pred, coef, r2
 
+
 prepare_household_survey(country='Saint Lucia')
-prepare_asset_damage(country='Saint Lucia', scale='district', return_period=100)
+prepare_asset_damage(country='Saint Lucia',
+                     scale='district', return_period=100)
