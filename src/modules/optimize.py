@@ -122,9 +122,11 @@ def integrate_wellbeing(affected_households: pd.DataFrame, consumption_utility: 
                                          * average_productivity*affected_households['keff']
                                          * affected_households['v']))
         affected_households['c_t_unaffected'] = affected_households['aeexp']*gfac
+        
         # consumption cannot be lower than 0
         affected_households.loc[affected_households['c_t']
                                 < 1, 'c_t'] = 1
+        
         # consumption after hit by disaster should be lower than or equal to consumption before hit by disaster
         affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'],
                                 'c_t'] = affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'], 'c_t_unaffected']
