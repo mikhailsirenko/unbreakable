@@ -37,6 +37,7 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
         'r',
         'years_in_poverty'
     ]
+
     experiments, _ = results
     experiments['random_seed'] = experiments['random_seed'].astype(int)
     experiments['scenario'] = experiments['scenario'].astype(int)
@@ -84,6 +85,16 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
                 # Add outcomes
                 # From 3 + len(policy_names) to 3 + len(policy_names) + len(outcome_names) outcomes
                 l = 3 + len(policy_names)
+                for v, name in zip(arr, outcome_names):
+                    if name == 'years_in_poverty':
+                        outcomes[i, l] = ast.literal_eval(v)
+                    else:
+                        outcomes[i, l] = v
+                    l += 1
+            else:
+                # Add outcomes
+                # From 3 to 3 + len(outcome_names) outcomes
+                l = 3
                 for v, name in zip(arr, outcome_names):
                     if name == 'years_in_poverty':
                         outcomes[i, l] = ast.literal_eval(v)
