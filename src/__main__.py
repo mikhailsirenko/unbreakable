@@ -158,7 +158,7 @@ if __name__ == "__main__":
         ArrayOutcome("Vieuxfort"),
     ]
 
-    n_scenarios = 100
+    n_scenarios = 10
     n_policies = 0
 
     # results = perform_experiments(

@@ -148,7 +148,7 @@ def get_people_by_years_in_poverty(new_poor: pd.DataFrame) -> dict:
     new_poor = new_poor.assign(
         years_in_poverty=new_poor['weeks_pov'] // 52)
     d = {}
-    longest_in_poverty = 25
+    longest_in_poverty = 10
     for i in range(longest_in_poverty):
         d[i] = round(new_poor[new_poor['years_in_poverty'] == i]
                      ['popwgt'].sum())
