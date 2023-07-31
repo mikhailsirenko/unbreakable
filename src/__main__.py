@@ -158,16 +158,16 @@ if __name__ == "__main__":
         ArrayOutcome("Vieuxfort"),
     ]
 
-    n_scenarios = 300
+    n_scenarios = 100
     n_policies = 0
 
-    results = perform_experiments(
-        models=my_model, scenarios=n_scenarios, policies=n_policies)
+    # results = perform_experiments(
+    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    # with MultiprocessingEvaluator(my_model, n_processes=49) as evaluator:
-    #     results = evaluator.perform_experiments(
-    #         scenarios=n_scenarios, policies=n_policies
-    #     )
+    with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
+        results = evaluator.perform_experiments(
+            scenarios=n_scenarios, policies=n_policies
+        )
 
     # Save results as tar.gz file
     save_results(

@@ -17,20 +17,20 @@ def read_asset_damage(country) -> None:
 
 def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return_period: int, print_statistics: bool) -> tuple:
     '''Get asset damage for a specific district.
-    
+
     Args:
         all_damage (pd.DataFrame): Asset damage data for all districts.
         scale (str): Scale of the analysis. Only `district` is supported.
         district (str): District name.
         return_period (int): Return period.
-        print_statistics (bool): Whether to print the statistics.
+        print_statistics (bool): Print the statistics.
 
     Returns:
         tuple: Event damage, total asset stock, expected loss fraction.
 
     Raises:
-        ValueError: If the expected loss fraction is greater than 1.
         ValueError: If the scale is not `district`.   
+        ValueError: If the expected loss fraction is greater than 1.
     '''
     if scale == 'district':
         event_damage = all_damage.loc[(all_damage[scale] == district) & (
@@ -68,7 +68,14 @@ def read_household_survey(country: str) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: Household survey data.
+    
+    Raises:
+        ValueError: If the country is not `Saint Lucia`.
     '''
-    household_survey = pd.read_csv(
-        f"../data/processed/household_survey/{country}/{country}.csv")
+    if country == 'Saint Lucia':
+        household_survey = pd.read_csv(
+            f"../data/processed/household_survey/{country}/{country}.csv")
+    else:
+        raise ValueError('Only `Saint Lucia` is supported.')
+
     return household_survey
