@@ -60,9 +60,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     if poverty_line_adjusted == 0:
         raise ValueError('Poverty line is zero')
 
-    # *
-    max_years = 10
-    years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
+    years_in_poverty = get_people_by_years_in_poverty(new_poor)
 
     initial_poverty_gap, new_poverty_gap = calculate_poverty_gap(
         poor_initial, new_poor, poverty_line_adjusted, x_max)
@@ -100,8 +98,8 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'annual_average_consumption_loss': annual_average_consumption_loss,
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
-        'years_in_poverty': years_in_poverty,
-        'recovery_rate' : recovery_rate
+        'recovery_rate' : recovery_rate,
+        'years_in_poverty': years_in_poverty
         # 'n_resilience_more_than_1' : n_resilience_more_than_1
     }
 
@@ -138,12 +136,11 @@ def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tupl
     return n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor
 
 
-def get_people_by_years_in_poverty(new_poor: pd.DataFrame, max_years: int) -> dict:
+def get_people_by_years_in_poverty(new_poor: pd.DataFrame) -> dict:
     '''Get the number of people in poverty for each year in poverty.
 
     Args:
         new_poor (pd.DataFrame): New poor dataframe
-        max_years (int): Maximum number of years in poverty
 
     Returns:
         dict: Number of people in poverty for each year in poverty
@@ -151,11 +148,12 @@ def get_people_by_years_in_poverty(new_poor: pd.DataFrame, max_years: int) -> di
     new_poor = new_poor.assign(
         years_in_poverty=new_poor['weeks_pov'] // 52)
     d = {}
-    for i in range(max_years):
+    longest_in_poverty = 25
+    for i in range(longest_in_poverty):
         d[i] = round(new_poor[new_poor['years_in_poverty'] == i]
                      ['popwgt'].sum())
-    d[max_years] = round(
-        new_poor[new_poor['years_in_poverty'] >= max_years]['popwgt'].sum())
+    d[longest_in_poverty] = round(
+        new_poor[new_poor['years_in_poverty'] >= longest_in_poverty]['popwgt'].sum())
 
     return d
 
