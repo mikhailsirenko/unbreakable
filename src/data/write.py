@@ -24,10 +24,6 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     total_population = households['popwgt'].sum()
 
     # Save some outcomes for verification
-    event_damage = event_damage
-    total_asset_stock = total_asset_stock
-    expected_loss_fraction = expected_loss_fraction
-    average_productivity = average_productivity
     total_asset_in_survey = households['total_asset_in_survey'].iloc[0]
 
     # Actual outcomes of interest
@@ -41,28 +37,32 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         households['aeexp'] * households['popwgt']).sum() / households['popwgt'].sum()
 
     # * Poverty line is different across replications
-    poverty_line = households['poverty_line_adjusted'].values[0]
+    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
 
-    if poverty_line == 0:
+    if poverty_line_adjusted == 0:
         raise ValueError('Poverty line is zero')
 
     # Get PML, its the same across replications and stored in households
     pml = households['pml'].iloc[0]
 
+    # Statistics
+    no_affected_households = 0
+    zero_consumption_loss = 0
+
     # * Some runs give no affected households and we will skip these
     if len(affected_households) == 0:
-        # no_affected_households += 1
+        no_affected_households += 1
         pass
 
     # * Sometimes households are affected but they have no consumption loss
     if affected_households['consumption_loss_NPV'].sum() == 0:
-        # zero_consumption_loss += 1
+        zero_consumption_loss += 1
         pass
 
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
-        households, poverty_line, x_max)
+        households, poverty_line_adjusted, x_max)
 
-    if poverty_line == 0:
+    if poverty_line_adjusted == 0:
         raise ValueError('Poverty line is zero')
     
     # * 
@@ -70,17 +70,18 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     years_in_poverty = get_people_by_years_in_poverty(new_poor, max_years)
 
     initial_poverty_gap, new_poverty_gap = calculate_poverty_gap(
-        poor_initial, new_poor, poverty_line)
+        poor_initial, new_poor, poverty_line_adjusted, x_max)
 
-    if poverty_line == 0:
+    if poverty_line_adjusted == 0:
         raise ValueError('Poverty line is zero')
 
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
         affected_households, x_max)
+    
     r = calculate_resilience(
         affected_households, pml)
 
-    if poverty_line == 0:
+    if poverty_line_adjusted == 0:
         raise ValueError('Poverty line is zero')
 
     return {
@@ -94,7 +95,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'expected_loss_fraction': expected_loss_fraction,
         'n_affected_people': n_affected_people,
         'annual_average_consumption': annual_average_consumption,
-        'poverty_line': poverty_line,
+        'poverty_line_adjusted': poverty_line_adjusted,
         'pml': pml,
         'n_poor_initial': n_poor_initial,
         'n_poor_affected' : n_poor_affected,
@@ -121,6 +122,7 @@ def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tupl
     '''
     # First, find the poor at the beginning of the simulation
     poor_initial = households[households['is_poor'] == True]
+    n_people = round(households['popwgt'].sum())
     n_poor_initial = round(poor_initial['popwgt'].sum())
     n_poor_affected = round(poor_initial[poor_initial['is_affected'] == True]['popwgt'].sum())
 
@@ -150,21 +152,24 @@ def get_people_by_years_in_poverty(new_poor: pd.DataFrame, max_years: int) -> di
         dict: Number of people in poverty for each year in poverty
     '''
     new_poor = new_poor.assign(
-        years_in_poverty=new_poor['weeks_pov'] // 52)
+        years_in_poverty = new_poor['weeks_pov'] // 52)
     d = {}
     for i in range(max_years):
         d[i] = round(new_poor[new_poor['years_in_poverty'] == i]
                      ['popwgt'].sum())
+    d[max_years] = round(new_poor[new_poor['years_in_poverty'] >= max_years]['popwgt'].sum())
+    
     return d
 
 
-def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, poverty_line: float) -> tuple:
+def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, poverty_line: float, x_max: int) -> tuple:
     '''Calculate the poverty gap at the beginning and at the end of the simulation.
 
     Args:
         poor_initial (pd.DataFrame): Poor at the beginning of the simulation
         new_poor (pd.DataFrame): New poor at the end of the simulation
         poverty_line (float): Poverty line
+        x_max (int): Number of years of the optimization algorithm
 
     Returns:
         tuple: Poverty gap at the beginning and at the end of the simulation
@@ -174,11 +179,14 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         Exception: If the poverty gap is greater than 1
     '''
     # First, get the average expenditure of the poor at the beginning of the simulation
-    average_expenditure_poor_inital = (
+    average_expenditure_poor_initial = (
         poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
     initial_poverty_gap = (
-        poverty_line - average_expenditure_poor_inital) / poverty_line
+        poverty_line - average_expenditure_poor_initial) / poverty_line
 
+    # !: Check the impact of this line
+    new_poor['aaexp'] = new_poor['aeexp'] - new_poor['consumption_loss_NPV'] / x_max
+ 
     all_poor = pd.concat([poor_initial, new_poor])
 
     # Check whether poor initial and new poor households are not the same
@@ -215,9 +223,11 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
     if len(affected_households) == 0:
         return np.nan, np.nan
 
+    # SUM(Total consumption loss / number of years * population weight)
     annual_consumption_loss = (
-        affected_households['consumption_loss_NPV'] / x_max * affected_households['popwgt']).sum()
+        affected_households['consumption_loss_NPV'].div(x_max).multiply(affected_households['popwgt'])).sum()
 
+    # Annual consumption loss / population weight
     annual_average_consumption_loss = annual_consumption_loss / \
         affected_households['popwgt'].sum()
 

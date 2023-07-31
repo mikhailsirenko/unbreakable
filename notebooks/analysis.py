@@ -4,7 +4,7 @@ import ast
 from ema_workbench import load_results
 
 
-def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFrame:
+def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     '''Convert outcomes dict into a data frame.
 
     Args:
@@ -25,7 +25,7 @@ def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFra
         'expected_loss_fraction',
         'n_affected_people',
         'annual_average_consumption',
-        'poverty_line',
+        'poverty_line_adjusted',
         'pml',
         'n_poor_initial',
         'n_poor_affected',
@@ -37,6 +37,12 @@ def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFra
         'r',
         'years_in_poverty'
     ]
+
+    experiments, _ = results
+    experiments['random_seed'] = experiments['random_seed'].astype(int)
+    experiments['scenario'] = experiments['scenario'].astype(int)
+    if len(experiments['random_seed'].unique()) != experiments['scenario'].max() - experiments['scenario'].min() + 1:
+        raise ValueError('Random seeds are not unique')
 
     policy_names = ['my_policy']
 
@@ -79,6 +85,16 @@ def prepare_outcomes_dataframe(results: tuple, add_policies: bool) -> pd.DataFra
                 # Add outcomes
                 # From 3 + len(policy_names) to 3 + len(policy_names) + len(outcome_names) outcomes
                 l = 3 + len(policy_names)
+                for v, name in zip(arr, outcome_names):
+                    if name == 'years_in_poverty':
+                        outcomes[i, l] = ast.literal_eval(v)
+                    else:
+                        outcomes[i, l] = v
+                    l += 1
+            else:
+                # Add outcomes
+                # From 3 to 3 + len(outcome_names) outcomes
+                l = 3
                 for v, name in zip(arr, outcome_names):
                     if name == 'years_in_poverty':
                         outcomes[i, l] = ast.literal_eval(v)

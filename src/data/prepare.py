@@ -1,7 +1,9 @@
+from sklearn.linear_model import LinearRegression
+import numpy.polynomial.polynomial as poly
+from sklearn.preprocessing import FunctionTransformer
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-from predict import linear_regression
 
 # Prepare Saint Lucia data as an input into simulation model.
 
@@ -82,11 +84,11 @@ def prepare_asset_damage(country: str, scale: str, return_period: int = 100) -> 
             # Let's assume that PML is equal to AAL % by district * by the PML for the whole country
             # These values are from PML Results 19022016 SaintLucia FinalSummary2.xlsx
             total_pml = {10: 351733.75,  # 3,517,337.50
-                         50: 23523224.51, # 2,352,322,451.00
-                         100: 59802419.04, # 5,980,241,904.00
-                         250: 147799213.30, # 14,779,921,330.00
-                         500: 248310895.20, # 24,831,089,520.00
-                         1000: 377593847.00} # 37,759,384,700.00
+                         50: 23523224.51,  # 2,352,322,451.00
+                         100: 59802419.04,  # 5,980,241,904.00
+                         250: 147799213.30,  # 14,779,921,330.00
+                         500: 248310895.20,  # 24,831,089,520.00
+                         1000: 377593847.00}  # 37,759,384,700.00
             aal = pd.read_excel(
                 '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
             aal.set_index('Name', inplace=True)
@@ -604,5 +606,65 @@ def merge_districts(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+# Some regression-alike functions
+# * I did not test them
+np.random.seed(123)
+
+
+def exponential_regression(data: pd.DataFrame, X_column: str, y_column: str, weights: np.array = None, return_model: bool = False) -> tuple[np.array, float]:
+    X = data[X_column].values.reshape(-1, 1)
+    y = data[y_column].values.reshape(-1, 1)
+    transformer = FunctionTransformer(np.log, validate=True)
+    y_transformed = transformer.fit_transform(y)
+
+    lr = LinearRegression()
+    lr.fit(X, y_transformed, sample_weight=weights)
+    y_pred = lr.predict(X)
+    coef = lr.coef_
+    r2 = lr.score(X, y_transformed, sample_weight=weights)
+    if return_model:
+        return lr
+    else:
+        return y_pred, coef, r2
+
+
+def polynomial_regression(data: pd.DataFrame,
+                          X_column: str,
+                          y_column: str,
+                          power: int,
+                          weights: np.array = None,
+                          X_new: np.array = None,
+                          X_start: int = 0,
+                          X_end: int = 40,
+                          X_num: int = 100):
+    # !: Weights are not used in this function
+    X = data[X_column].squeeze().T
+    y = data[y_column].squeeze().T
+    coef = poly.polyfit(X, y, power)
+
+    if X_new is None:
+        X_new = np.linspace(X_start, X_end, num=X_num)
+
+    f = poly.polyval(X_new, coef)
+
+    return X_new, f
+
+
+def linear_regression(data: pd.DataFrame, X_column: str, y_column: str, weights: np.array = None, return_model: bool = False) -> tuple[np.array, float, float]:
+    '''Do a linear regression on the data and return the predicted values, the coefficient and the r2 score.'''
+    X = data[X_column].values.reshape(-1, 1)
+    y = data[y_column].values.reshape(-1, 1)
+    lr = LinearRegression()
+    lr.fit(X, y, sample_weight=weights)
+    y_pred = lr.predict(X)
+    coef = lr.coef_
+    r2 = lr.score(X, y, sample_weight=weights)
+    if return_model:
+        return lr
+    else:
+        return y_pred, coef, r2
+
+
 prepare_household_survey(country='Saint Lucia')
-prepare_asset_damage(country='Saint Lucia', scale='district', return_period=100)
+prepare_asset_damage(country='Saint Lucia',
+                     scale='district', return_period=100)
