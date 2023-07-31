@@ -1,4 +1,4 @@
-# This file contains the model function, which is called by the ema_workbench.
+# The model function pipeline, which is called by the ema_workbench in `__main__.py`.
 
 import pandas as pd
 import numpy as np

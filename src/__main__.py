@@ -1,4 +1,4 @@
-# This file is the main file of the model, and it runs the model with the parameters specified in the kwargs dictionary.
+# The main file of the model. It runs the model with the parameters specified in the kwargs dictionary.
 
 from model import *
 from ema_workbench import (
