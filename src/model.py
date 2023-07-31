@@ -1,3 +1,5 @@
+# This file contains the model function, which is called by the ema_workbench.
+
 import pandas as pd
 import numpy as np
 import random
@@ -8,9 +10,7 @@ from modules.households import *
 
 
 def initialize_model(country: str, min_households: int) -> tuple:
-    '''Initialize the model.
-
-    Read household survey and asset damage files.
+    '''Initialize the model by reading household survey and asset damage files.
 
     Args:
         country (str): Country name.
@@ -32,7 +32,7 @@ def initialize_model(country: str, min_households: int) -> tuple:
 
 def run_model(**kwargs):
     '''Run the model.'''
-    # Case study parameters
+    # ------------------------- Read the model parameters ------------------------ #
     country = kwargs['country']
     scale = kwargs['scale']
     districts = kwargs['districts']
@@ -99,6 +99,8 @@ def run_model(**kwargs):
     # 14. Integrate wellbeing
     # 15. Prepare outcomes
     # 16. Get outcomes
+
+    # ---------------------- Run the model for each district --------------------- #
 
     for district in districts:
         # Read household survey and asset damage files for a specific district
