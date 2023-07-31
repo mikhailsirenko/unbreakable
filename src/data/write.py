@@ -29,6 +29,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     total_consumption_loss = affected_households[['consumption_loss_NPV', 'popwgt']].prod(axis=1).sum()
     n_affected_people = affected_households['popwgt'].sum()
     annual_average_consumption = (households['aeexp'] * households['popwgt']).sum() / households['popwgt'].sum()
+    recovery_rate = households['recovery_rate'].mean()
 
     # * Poverty line is different across replications
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
@@ -99,7 +100,8 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'annual_average_consumption_loss': annual_average_consumption_loss,
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
-        'years_in_poverty': years_in_poverty
+        'years_in_poverty': years_in_poverty,
+        'recovery_rate' : recovery_rate
         # 'n_resilience_more_than_1' : n_resilience_more_than_1
     }
 
@@ -178,14 +180,9 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
     average_expenditure_poor_initial = (poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
     initial_poverty_gap = (poverty_line - average_expenditure_poor_initial) / poverty_line
 
-    # !: Check the impact of this line
     new_poor['aeexp'] = new_poor['aeexp'] - new_poor['consumption_loss_NPV'] / x_max
 
     all_poor = pd.concat([poor_initial, new_poor])
-
-    # Check whether poor initial and new poor households are not the same
-    if all_poor.index.duplicated().any():
-        raise Exception('Index is duplicated')
 
     # Now, get the average expenditure of the poor at the end of the simulation
     average_expenditure_poor_new = (all_poor['aeexp'] * all_poor['popwgt']).sum() / all_poor['popwgt'].sum()

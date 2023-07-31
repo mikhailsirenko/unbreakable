@@ -35,7 +35,8 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
         'annual_average_consumption_loss',
         'annual_average_consumption_loss_pct',
         'r',
-        'years_in_poverty'
+        'years_in_poverty',
+        'recovery_rate',
     ]
 
     experiments, _ = results
