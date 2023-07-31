@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import random
-from utils.read import *
-from utils.write import *
+from data.read import *
+from data.write import *
 from modules.optimize import *
 from modules.households import *
 
