@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 from data.read import *
 from data.write import *
 from modules.optimize import *
@@ -118,6 +119,9 @@ def run_model(**kwargs):
                       .pipe(calculate_exposure, poverty_bias, calculate_exposure_params, print_statistics)
                       .pipe(determine_affected, determine_affected_params))
 
+        # households['aesav'].hist()
+        # plt.show()
+
         # Apply a policy
         households, affected_households = apply_individual_policy(
             households, my_policy)
@@ -130,6 +134,11 @@ def run_model(**kwargs):
         households = prepare_outcomes(households, affected_households)
         array_outcomes = np.array(list(get_outcomes(
             households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, x_max).values()))
+
+        # * To check whether we have different households affected in different runs        
+        # if district == 'Castries':
+        #     affected_households.to_csv(f'affected_households_{random_seed}.csv')
+
         outcomes[district] = array_outcomes
 
     return outcomes

@@ -316,7 +316,7 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     # Get PML, it is the same for all households
     pml = households['pml'].iloc[0]
 
-    # Allow for a relatively small error of 2.5%
+    # Allow for a relatively small error
     delta = pml * determine_affected_params['delta_pct']  # default 0.025
 
     # Check if total asset is less than PML
@@ -329,7 +329,7 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     high = determine_affected_params['high']  # default 1
 
     # Generate multiple boolean masks at once
-    num_masks = determine_affected_params['num_masks']  # default 1000
+    num_masks = determine_affected_params['num_masks']  # default 2000
     masks = np.random.uniform(
         low, high, (num_masks, households.shape[0])) <= households['fa'].values
 
