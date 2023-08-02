@@ -45,7 +45,7 @@ if __name__ == "__main__":
         "is_vulnerability_random": False,
         "min_households": 1493,  # min households we need to have a good enough representation
         "optimization_timestep": 0.01,
-        "x_max": 10,  # number of years in optimization algorithm
+        "n_years": 10,  # number of years in optimization algorithm
         # Uncertainties
         "poverty_bias": 1.0,
         "consumption_utility": 1.0,
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         Constant("is_vulnerability_random", kwargs["is_vulnerability_random"]),
         Constant("min_households", kwargs["min_households"]),
         Constant("optimization_timestep", kwargs["optimization_timestep"]),
-        Constant("x_max", kwargs["x_max"]),
+        Constant("n_years", kwargs["n_years"]),
         # Uncertainties
         Constant("poverty_bias", kwargs["poverty_bias"]),
         Constant("consumption_utility", kwargs["consumption_utility"]),

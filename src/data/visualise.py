@@ -33,7 +33,8 @@ def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize)
     border.plot(ax=ax, facecolor='none',
                 edgecolor='black', alpha=.5)  # city border
     for idx, row in data.iterrows():
-        ax.annotate(text=row['NAME_1'], xy=row['geometry'].centroid.coords[0], ha='center', fontsize=8, color='white')
+        ax.annotate(text=row['NAME_1'], xy=row['geometry'].centroid.coords[0],
+                    ha='center', fontsize=8, color='white')
 
     plt.tight_layout()  # "tighten" two figures map and basemap
     plt.axis('off')  # we don't need axis with coordinates
@@ -86,7 +87,8 @@ def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize)
     ax2.annotate("", xy=(1, 0), xytext=(0, 0), arrowprops=dict(
         arrowstyle="->", lw=1, color='black'))  # draw arrow for y
     ax2.text(s=x_label, x=0.1, y=-0.25, fontsize=8)  # annotate x axis
-    ax2.text(s=y_label, x=-0.25, y=0.1, rotation=90, fontsize=8)  # annotate y axis
+    ax2.text(s=y_label, x=-0.25, y=0.1, rotation=90,
+             fontsize=8)  # annotate y axis
     # plt.savefig('bivariate_choropleth.png', dpi=300)
 
 

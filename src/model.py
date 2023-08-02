@@ -49,7 +49,7 @@ def run_model(**kwargs):
     indigence_line = kwargs['indigence_line']
     saving_rate = kwargs['saving_rate']
     is_vulnerability_random = kwargs['is_vulnerability_random']
-    x_max = kwargs['x_max']  # number of years in optimization algorithm
+    n_years = kwargs['n_years']  # number of years in optimization algorithm
 
     # Model constants
     assign_savings_params = kwargs['assign_savings_params']
@@ -128,12 +128,13 @@ def run_model(**kwargs):
 
         # Calculate the impact and recovery
         affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
-                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, x_max))
+                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years))
 
+        # Add columns of affected households to the original households dataframe
+        households = add_columns(households, affected_households)
         # Get outcomes
-        households = prepare_outcomes(households, affected_households)
         array_outcomes = np.array(list(get_outcomes(
-            households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, x_max).values()))
+            households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, n_years).values()))
 
         # * To check whether we have different households affected in different runs        
         # if district == 'Castries':
