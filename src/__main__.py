@@ -175,18 +175,18 @@ if __name__ == "__main__":
     ]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 100
+    n_scenarios = 1
 
     # * If the number of policies is equal to the number of specified levers, then all policies are evaluated 
     n_policies = 0
 
-    # results = perform_experiments(
-    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
+    results = perform_experiments(
+        models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
-        results = evaluator.perform_experiments(
-            scenarios=n_scenarios, policies=n_policies
-        )
+    # with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
+    #     results = evaluator.perform_experiments(
+    #         scenarios=n_scenarios, policies=n_policies
+    #     )
 
     # Save results as tar.gz file
     delta_pct = kwargs["determine_affected_params"]['delta_pct']

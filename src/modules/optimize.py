@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
+import pickle
 
 
-def run_optimization(affected_households: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float) -> pd.DataFrame:
+def run_optimization(affected_households: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> pd.DataFrame:
     '''This function calculates the recovery rate for each affected household.
 
     Args:
@@ -11,6 +12,7 @@ def run_optimization(affected_households: pd.DataFrame, consumption_utility: flo
         discount_rate (float): The discount rate.
         average_productivity (float): The average productivity.
         optimization_timestep (float): The timestep for the optimization.
+        n_years (int): The number of years in the optimization algorithm.
 
     Returns:
         pd.DataFrame: A data frame containing the affected households with the recovery rate.
@@ -38,7 +40,7 @@ def run_optimization(affected_households: pd.DataFrame, consumption_utility: flo
 
     # Calculate the recovery rate for each affected household
     affected_households['recovery_rate'] = affected_households['v'].apply(
-        lambda x: optimize_recovery_rate(x, optimization_results, consumption_utility, discount_rate, average_productivity, optimization_timestep))
+        lambda x: optimize_recovery_rate(x, optimization_results, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years))
 
     # TODO: Check whether this has any impact on anything 
     # optimization_results = optimization_results.sort_index()
@@ -46,7 +48,7 @@ def run_optimization(affected_households: pd.DataFrame, consumption_utility: flo
     return affected_households
 
 
-def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, n_years: int, optimization_timestep: float) -> float:
+def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> float:
     try:
         # Look for the existing solution
         solution = optimization_results.loc[(
@@ -108,8 +110,7 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
                         average_productivity: float, 
                         poverty_line: float, 
                         n_years: int,
-                        transfer_time: list = [],
-                        transfer_amount: float = {},
+                        cash_transfer: dict = {},
                         ) -> pd.DataFrame:
     
     # We need to reset some columns to zero to start the integration
@@ -120,14 +121,21 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
     n_weeks = 52 * n_years
     dt = n_years / n_weeks
     
+    # * Store consumption recovery in a dict for verification and debugging purposes
+    # consumption_recovery = {}
+
+    # We need to adjust the cash transfer to the timestep of the integration
+    if cash_transfer != {}:
+        cash_transfer_transformed = {np.linspace(0, n_years, n_weeks)[t]: cash_transfer[t] for t in list(cash_transfer.keys())}
+
     # Calculate the consumption loss for each affected household
     for _t in np.linspace(0, n_years, n_weeks):
         gfac = (1 + income_and_expenditure_growth)**_t
         
         # TODO: Add an extra condition about to whom the transfer is given
         # A "dynamic policy"
-        if _t in transfer_time:
-            affected_households['c_t'] += transfer_amount[_t]
+        if _t in list(cash_transfer_transformed.keys()):
+            affected_households['aesav'] += cash_transfer_transformed[_t]
 
         # `c_t` is the consumption at time t
         affected_households['c_t'] = (affected_households['aeexp'] * gfac
@@ -184,5 +192,13 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
         # w_final2 version 02
         affected_households['w_final2'] += affected_households['c_t_unaffected']**(1-consumption_utility)/(1-consumption_utility)*dt*(
             (1-((affected_households['c_t_unaffected'] - affected_households['c_t'])/affected_households['c_t_unaffected'])*np.e**(-affected_households['recovery_rate']*_t))**(1-consumption_utility)-1)*np.e**(-discount_rate*_t)
+
+        # * Use to examine individual consumption recovery
+        # Save consumption recovery value at the time _t
+        # consumption_recovery[_t] = affected_households['c_t']
+        
+    # Save consumption recovery as pickle file
+    # with open('consumption_recovery.pickle', 'wb') as handle:
+    #     pickle.dump(consumption_recovery, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     return affected_households

@@ -127,8 +127,10 @@ def run_model(**kwargs):
             households, my_policy)
 
         # Calculate the impact and recovery
-        affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep)
-                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years))
+        # cash_transfer = {52: 1000, 208: 5000}
+        cash_transfer = {}
+        affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
+                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, cash_transfer))
 
         # Add columns of affected households to the original households dataframe
         households = add_columns(households, affected_households)
