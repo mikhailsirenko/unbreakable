@@ -4,9 +4,10 @@ import pandas as pd
 import numpy as np
 
 
-def prepare_outcomes(households: pd.DataFrame, affected_households: pd.DataFrame) -> pd.DataFrame:
+def add_columns(households: pd.DataFrame, affected_households: pd.DataFrame) -> pd.DataFrame:
     '''Add columns/outcomes of interest from `affected households` to the `households` dataframe.'''
 
+    # Outcomes of interest from affected households
     outcomes_of_interest: list = [
         'consumption_loss',
         'consumption_loss_NPV',
@@ -14,13 +15,15 @@ def prepare_outcomes(households: pd.DataFrame, affected_households: pd.DataFrame
         'c_t_unaffected',
         'recovery_rate',
         'weeks_pov']
+
+    # Merge affected households onto households
     columns = ['hhid'] + outcomes_of_interest
     households = pd.merge(
         households, affected_households[columns], on='hhid', how='left')
     return households
 
 
-def get_outcomes(households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, x_max) -> dict:
+def get_outcomes(households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, n_years) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
@@ -29,7 +32,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         total_asset_stock (float): Total asset stock.
         expected_loss_fraction (float): Expected loss fraction.
         average_productivity (float): Average productivity.
-        x_max (float): Number of years to consider for calculations (same as for optimization algorithm).
+        n_years (float): Number of years to consider for calculations (same as for optimization algorithm).
 
     Returns:
         dict: Outcomes of interest.
@@ -71,15 +74,15 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
 
     # Calculate outcomes of interest
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
-        households, poverty_line_adjusted, x_max)
+        households, poverty_line_adjusted, n_years)
 
     years_in_poverty = get_people_by_years_in_poverty(new_poor)
 
     initial_poverty_gap, new_poverty_gap = calculate_poverty_gap(
-        poor_initial, new_poor, poverty_line_adjusted, x_max)
+        poor_initial, new_poor, poverty_line_adjusted, n_years)
 
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
-        affected_households, x_max)
+        affected_households, n_years)
 
     r = calculate_resilience(
         affected_households, pml)
@@ -111,7 +114,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     }
 
 
-def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tuple:
+def find_poor(households: pd.DataFrame, poverty_line: float, n_years: int) -> tuple:
     '''Get the poor at the beginning of the simulation and the poor at the end of the simulation
 
     Args:
@@ -127,11 +130,11 @@ def find_poor(households: pd.DataFrame, poverty_line: float, x_max: int) -> tupl
     n_poor_affected = round(
         poor_initial[poor_initial['is_affected'] == True]['popwgt'].sum())
 
-    # Second, find the new poor at the end of the simulation (`x_max``)
+    # Second, find the new poor at the end of the simulation (`n_years`)
     not_poor = households[households['is_poor'] == False]
     not_poor_affected = not_poor[not_poor['is_affected'] == True]
     x = not_poor_affected['aeexp'] - \
-        not_poor_affected['consumption_loss_NPV'] / x_max
+        not_poor_affected['consumption_loss_NPV'] / n_years
     new_poor = not_poor_affected.loc[x < poverty_line, :]
     n_new_poor = round(new_poor['popwgt'].sum())
 
@@ -150,7 +153,7 @@ def get_people_by_years_in_poverty(new_poor: pd.DataFrame) -> dict:
     new_poor = new_poor.assign(
         years_in_poverty=new_poor['weeks_pov'] // 52)
     d = {}
-    # !: This cannot be higher > x_max
+    # !: This cannot be higher > n_years
     longest_years_in_poverty = 10
     for i in range(longest_years_in_poverty):
         d[i] = round(new_poor[new_poor['years_in_poverty'] == i]
@@ -161,14 +164,14 @@ def get_people_by_years_in_poverty(new_poor: pd.DataFrame) -> dict:
     return d
 
 
-def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, poverty_line: float, x_max: int) -> tuple:
+def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, poverty_line: float, n_years: int) -> tuple:
     '''Calculate the poverty gap at the beginning and at the end of the simulation.
 
     Args:
         poor_initial (pd.DataFrame): Poor at the beginning of the simulation
         new_poor (pd.DataFrame): New poor at the end of the simulation
         poverty_line (float): Poverty line
-        x_max (int): Number of years of the optimization algorithm
+        n_years (int): Number of years of the optimization algorithm
 
     Returns:
         tuple: Poverty gap at the beginning and at the end of the simulation
@@ -184,7 +187,7 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         poverty_line - average_expenditure_poor_initial) / poverty_line
 
     new_poor['aeexp'] = new_poor['aeexp'] - \
-        new_poor['consumption_loss_NPV'] / x_max
+        new_poor['consumption_loss_NPV'] / n_years
 
     all_poor = pd.concat([poor_initial, new_poor])
 
@@ -201,12 +204,12 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
     return initial_poverty_gap, new_poverty_gap
 
 
-def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame, x_max: int) -> tuple:
+def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame, n_years: int) -> tuple:
     '''Get the average annual consumption loss and the average annual consumption loss as a percentage of average annual consumption.
 
     Args:
         affected_households (pd.DataFrame): Affected households dataframe
-        x_max (int): Number of years of the optimization algorithm
+        n_years (int): Number of years of the optimization algorithm
 
     Returns:
         tuple: Average annual consumption loss and average annual consumption loss as a percentage of average annual consumption
@@ -220,7 +223,7 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
 
     # SUM(Total consumption loss / number of years * population weight)
     annual_consumption_loss = (
-        affected_households['consumption_loss_NPV'].div(x_max).multiply(affected_households['popwgt'])).sum()
+        affected_households['consumption_loss_NPV'].div(n_years).multiply(affected_households['popwgt'])).sum()
 
     # Annual consumption loss / population weight
     annual_average_consumption_loss = annual_consumption_loss / \
