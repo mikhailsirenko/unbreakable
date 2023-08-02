@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def duplicate_households(household_survey: pd.DataFrame, min_households: int) -> pd.DataFrame:
     '''Duplicates households if the number of households is less than `min_households` threshold.
 
@@ -16,7 +17,8 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
     '''
 
     if len(household_survey) < min_households:
-        print(f'Number of households = {len(household_survey)} is less than the threshold = {min_households}')
+        print(
+            f'Number of households = {len(household_survey)} is less than the threshold = {min_households}')
 
         initial_total_weights = household_survey['popwgt'].sum()
 
@@ -24,7 +26,8 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
         household_survey['hhid_original'] = household_survey[['hhid']]
 
         # Get random ids from the household data to be duplicated
-        ids = np.random.choice(household_survey.index, min_households - len(household_survey), replace=True)
+        ids = np.random.choice(
+            household_survey.index, min_households - len(household_survey), replace=True)
         n_duplicates = pd.Series(ids).value_counts() + 1
         duplicates = household_survey.loc[ids]
 
@@ -32,19 +35,23 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
         duplicates['popwgt'] = duplicates['popwgt'] / n_duplicates
 
         # Adjust the weights of the original households
-        household_survey.loc[ids, 'popwgt'] = household_survey.loc[ids, 'popwgt'] / n_duplicates
+        household_survey.loc[ids, 'popwgt'] = household_survey.loc[ids,
+                                                                   'popwgt'] / n_duplicates
 
         # Combine the original and duplicated households
-        household_survey = pd.concat([household_survey, duplicates], ignore_index=True)
+        household_survey = pd.concat(
+            [household_survey, duplicates], ignore_index=True)
 
         # Check if the total weights after duplication is equal to the initial total weights
         # TODO: Allow for a small difference
         weights_after_duplication = household_survey['popwgt'].sum()
         if weights_after_duplication != initial_total_weights:
-            raise ValueError('Total weights after duplication is not equal to the initial total weights')
+            raise ValueError(
+                'Total weights after duplication is not equal to the initial total weights')
 
         household_survey.reset_index(drop=True, inplace=True)
-        print(f'Number of households after duplication: {len(household_survey)}')
+        print(
+            f'Number of households after duplication: {len(household_survey)}')
     else:
         return household_survey
 
@@ -66,7 +73,8 @@ def calculate_average_productivity(households: pd.DataFrame, print_statistics: b
     # average_productivity = average_productivity.iloc[0]
     average_productivity = np.nanmedian(average_productivity)
     if print_statistics:
-        print('Average productivity of capital = ' + str(np.round(average_productivity, 3)))
+        print('Average productivity of capital = ' +
+              str(np.round(average_productivity, 3)))
     return average_productivity
 
 
@@ -75,7 +83,7 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
 
     There can be a mismatch between the data in the household survey and the of the asset damage.
     The latest was created independently.
-    
+
     Args:
         households (pd.DataFrame): Household survey data.
         total_asset_stock (float): Total asset stock.
@@ -86,10 +94,6 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     Returns:
         pd.DataFrame: Household survey data with adjusted assets and expenditure.
     '''
-
-    # ?: Do we always have to do that?
-    # If yes, remove the corresponding variable. Or else add a condition?
-
     # k_house_ae - effective capital stock of the household
     # aeexp - adult equivalent expenditure of a household (total)
     # aeexp_house - data['hhexp_house'] (annual rent) / data['hhsize_ae']
@@ -101,7 +105,8 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     households['aeexp_house_original'] = households['aeexp_house']
 
     # Calculate the total asset in the survey
-    total_asset_in_survey = households[['popwgt', 'k_house_ae']].prod(axis=1).sum()
+    total_asset_in_survey = households[[
+        'popwgt', 'k_house_ae']].prod(axis=1).sum()
     households['total_asset_in_survey'] = total_asset_in_survey
 
     # Calculate the scaling factor and adjust the variables
@@ -111,8 +116,10 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     households['indigence_line_adjusted'] = indigence_line * scaling_factor
 
     if print_statistics:
-        print('Total asset in survey =', '{:,}'.format(round(total_asset_in_survey)))
-        print('Total asset in asset damage file =', '{:,}'.format(round(total_asset_stock)))
+        print('Total asset in survey =', '{:,}'.format(
+            round(total_asset_in_survey)))
+        print('Total asset in asset damage file =',
+              '{:,}'.format(round(total_asset_stock)))
         print('Scaling factor =', round(scaling_factor, 3))
 
     return households
@@ -120,7 +127,7 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
 
 def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print_statistics: bool) -> pd.DataFrame:
     '''Calculate probable maximum loss as a product of population weight, effective capital stock and expected loss fraction.
-    
+
     Args:
         households (pd.DataFrame): Household survey data.
         expected_loss_fraction (float): Expected loss fraction.
@@ -133,11 +140,13 @@ def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print
     # DEF: pml - probable maximum loss
     # DEF: popwgt - population weight of each household
     households['keff'] = households['k_house_ae'].copy()
-    pml = households[['popwgt', 'keff']].prod(axis=1).sum() * expected_loss_fraction
+    pml = households[['popwgt', 'keff']].prod(
+        axis=1).sum() * expected_loss_fraction
     households['pml'] = pml
     if print_statistics:
         print('Probable maximum loss (total) : ', '{:,}'.format(round(pml)))
     return households
+
 
 def select_district(household_survey: pd.DataFrame, district: str) -> pd.DataFrame:
     '''Select households for a specific district.'''

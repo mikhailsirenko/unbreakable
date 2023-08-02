@@ -125,8 +125,10 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
     # consumption_recovery = {}
 
     # We need to adjust the cash transfer to the timestep of the integration
-    if cash_transfer != {}:
+    if cash_transfer != {}: # If there is a cash transfer
         cash_transfer_transformed = {np.linspace(0, n_years, n_weeks)[t]: cash_transfer[t] for t in list(cash_transfer.keys())}
+    else:
+        cash_transfer_transformed = {}
 
     # Calculate the consumption loss for each affected household
     for _t in np.linspace(0, n_years, n_weeks):
@@ -138,6 +140,7 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
             affected_households['aesav'] += cash_transfer_transformed[_t]
 
         # `c_t` is the consumption at time t
+        # !: It seems that keff remains constant over time
         affected_households['c_t'] = (affected_households['aeexp'] * gfac
                                       + np.e**(-affected_households['recovery_rate']*_t)
                                       * (affected_households['aesav'] * affected_households['recovery_rate']

@@ -107,5 +107,18 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
                     l += 1
             k += 1  # increase row index to get next experiment for the current district
             i += 1  # increase row index of the outcomes dataframe
+    outcomes = pd.DataFrame(outcomes, columns=columns)
 
-    return pd.DataFrame(outcomes, columns=columns)
+    # Convert numeric columns to numeric
+    numeric_columns = outcomes.columns[3:-1].tolist()
+    outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+
+    # Rename a district
+    outcomes['district'].replace({'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
+
+    # Convert pct columns to percentage
+    outcomes['annual_average_consumption_loss_pct'] = outcomes['annual_average_consumption_loss_pct'] * 100
+    outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
+    outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
+
+    return outcomes
