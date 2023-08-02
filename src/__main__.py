@@ -79,7 +79,7 @@ if __name__ == "__main__":
             "low": 0,
             "high": 1.0,
             "distribution": "uniform",
-            "delta_pct": 0.025,
+            "delta_pct": 0.0025,
             "num_masks": 2000,
         },
     }
@@ -116,6 +116,7 @@ if __name__ == "__main__":
         Constant("determine_affected_params", kwargs["determine_affected_params"]),
     ]
 
+    # !: What's the impact of it on no policy vs policy runs? 
     my_model.uncertainties = [
         IntegerParameter("random_seed", seed_start, seed_end),
         #                         RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
@@ -174,10 +175,10 @@ if __name__ == "__main__":
     ]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 5
+    n_scenarios = 100
 
     # * If the number of policies is equal to the number of specified levers, then all policies are evaluated 
-    n_policies = 20
+    n_policies = 0
 
     # results = perform_experiments(
     #     models=my_model, scenarios=n_scenarios, policies=n_policies)
@@ -188,6 +189,7 @@ if __name__ == "__main__":
         )
 
     # Save results as tar.gz file
+    delta_pct = kwargs["determine_affected_params"]['delta_pct']
     save_results(
-        results, f"../results/scenarios={n_scenarios}, policies={n_policies}.tar.gz"
+        results, f"../results/scenarios={n_scenarios}, policies={n_policies}, delta_pct={delta_pct}.tar.gz"
     )
