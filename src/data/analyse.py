@@ -3,6 +3,7 @@
 import pandas as pd
 import numpy as np
 import ast
+import geopandas as gpd
 from ema_workbench import load_results
 
 
@@ -110,15 +111,70 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     outcomes = pd.DataFrame(outcomes, columns=columns)
 
     # Convert numeric columns to numeric
-    numeric_columns = outcomes.columns[3:-1].tolist()
-    outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+    if add_policies:
+        numeric_columns = outcomes.columns[4:-1].tolist()
+        outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+    else:
+        numeric_columns = outcomes.columns[3:-1].tolist()
+        outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
 
     # Rename a district
-    outcomes['district'].replace({'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
+    outcomes['district'].replace(
+        {'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
 
     # Convert pct columns to percentage
     outcomes['annual_average_consumption_loss_pct'] = outcomes['annual_average_consumption_loss_pct'] * 100
     outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
     outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
 
+    # Calculate the percentage of new poor
+    outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
+        outcomes['total_population']).multiply(100))
+
     return outcomes
+
+
+def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = [], country: str = 'Saint Lucia', aggregation: str = 'mean') -> gpd.GeoDataFrame:
+    # Load country shapefile
+    country = 'Saint Lucia'
+    gdf = gpd.read_file(
+        f'../data/raw/shapefiles/{country}/gadm36_LCA_shp/gadm36_LCA_1.shp')
+
+    # Align district names with the ones in the outcomes
+    gdf['NAME_1'].replace(
+        {'Soufrière': 'Soufriere', 'Vieux Fort': 'Vieuxfort'}, inplace=True)
+
+    # Merge Anse-la-Raye and Canaries into a single geometry
+    geometry = gdf[gdf['NAME_1'].isin(
+        ['Anse-la-Raye', 'Canaries'])].unary_union
+
+    # Add it to the dataframe
+    gdf.loc[len(gdf)] = [None, None, 'LCA.11_1', 'Anse-La-Raye & Canaries',
+                         None, None, None, None, None, None, geometry]
+    gdf = gdf[gdf['NAME_1'].isin(outcomes['district'].unique())]
+
+    if len(outcomes_of_interest) == 0:
+        outcomes_of_interest = ['total_asset_loss',
+                                'total_consumption_loss',
+                                'n_affected_people',
+                                'n_new_poor',
+                                'new_poverty_gap',
+                                'annual_average_consumption_loss',
+                                'annual_average_consumption_loss_pct',
+                                'n_new_poor_increase_pct',
+                                'r']
+
+    # Aggregate outcomes
+    if aggregation == 'mean':
+        aggregated = outcomes[['district'] +
+                              outcomes_of_interest].groupby('district').mean()
+    elif aggregation == 'median':
+        aggregated = outcomes[['district'] +
+                              outcomes_of_interest].groupby('district').median()
+    else:
+        raise ValueError('Aggregation must be either mean or median')
+
+    # Merge with the shapefile
+    gdf = pd.merge(gdf, aggregated, left_on='NAME_1', right_index=True)
+    gdf.reset_index(inplace=True, drop=True)
+    return gdf
