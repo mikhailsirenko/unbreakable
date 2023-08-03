@@ -4,7 +4,171 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import ptitprince as pt
+import seaborn as sns
+from matplotlib.ticker import MaxNLocator
 # import contextily as ctx
+
+
+def rainclouds(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
+    districts = outcomes['district'].unique().tolist()
+    n_districts = len(districts)
+    colors = sns.color_palette(color_palette, n_colors=len(districts))
+    
+    if len(x_columns) == 0:
+        x_columns = [
+            'n_affected_people',
+            'n_new_poor_increase_pct',
+            'n_new_poor',
+            'annual_average_consumption_loss_pct',
+            'r',
+            'new_poverty_gap',
+            # 'one_year_in_poverty',
+            # 'two_years_in_poverty',
+            # 'three_years_in_poverty',
+            # 'four_years_in_poverty',
+            # 'five_years_in_poverty',
+            # 'six_years_in_poverty',
+            # 'seven_years_in_poverty',
+            # 'eight_years_in_poverty',
+            # 'nine_years_in_poverty',
+            # 'ten_years_in_poverty'
+        ]
+    
+    if len(x_titles) == 0:
+        x_titles = [
+            'Affected people (#)',
+            'Increase in new poor (%)',
+            'New poor (#)',
+            'Annual average consumption loss (%)',
+            'Socio-economic resilience',
+            'Poverty gap',
+            # 'One year in poverty',
+            # 'Two years in poverty',
+            # 'Three years in poverty',
+            # 'Four years in poverty',
+            # 'Five years in poverty',
+            # 'Six years in poverty',
+            # 'Seven years in poverty',
+            # 'Eight years in poverty',
+            # 'Nine years in poverty',
+            # 'Ten years in poverty'
+        ]
+
+    is_years_in_poverty = False
+
+    for x_column, x_title in zip(x_columns, x_titles):
+        fig, ax = plt.subplots(ncols=3, nrows=3, figsize=(
+            5 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
+
+        for district in districts:
+            df = outcomes[outcomes['district'] == district].copy()
+
+            # Calculate an increase in new poor in respect to the total population
+            # df = df.assign(one_year_in_poverty = df['years_in_poverty'].apply(lambda x: x[0]))
+            # df = df.assign(two_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[1]))
+            # df = df.assign(three_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[2]))
+            # df = df.assign(four_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[3]))
+            # df = df.assign(five_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[4]))
+            # df = df.assign(six_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[5]))
+            # df = df.assign(seven_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[6]))
+            # df = df.assign(eight_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[7]))
+            # df = df.assign(nine_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[8]))
+            # df = df.assign(ten_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[9]))
+
+            df[x_column] = df[x_column].astype(float)
+
+            # Make a half violin plot
+            pt.half_violinplot(x=x_column,
+                               y='policy',  # hue='scenario',
+                               data=df,
+                               color=colors[districts.index(district)],
+                               bw=.2,
+                               cut=0.,
+                               scale="area",
+                               width=.6,
+                               inner=None,
+                               ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+
+            # Add stripplot
+            sns.stripplot(x=x_column,
+                          y='policy',  # hue='scenario',
+                          data=df,
+                          color=colors[districts.index(district)],
+                          edgecolor='white',
+                          size=3,
+                          jitter=1,
+                          zorder=0,
+                          orient='h',
+                          ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+
+            # Add boxplot
+            sns.boxplot(x=x_column,
+                        y='policy',  # hue='scenario',
+                        data=df,
+                        color="black",
+                        width=.15,
+                        zorder=10,
+                        showcaps=True,
+                        boxprops={'facecolor': 'none', "zorder": 10},
+                        showfliers=True,
+                        whiskerprops={'linewidth': 2, "zorder": 10},
+                        saturation=1,
+                        orient='h',
+                        ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+
+            if is_years_in_poverty:
+                title = district + ', E = ' + \
+                    f'{round(df[x_column].mean())}'
+            else:
+                title = district
+            ax[districts.index(district) // 3,
+               districts.index(district) % 3].set_title(title)
+            ax[districts.index(district) // 3,
+               districts.index(district) % 3].set_ylabel('')
+            ax[districts.index(district) // 3,
+               districts.index(district) % 3].set_xlabel(x_title)
+
+            # Remove y ticks and labels
+            ax[districts.index(district) // 3,
+               districts.index(district) % 3].set_yticklabels([])
+            ax[districts.index(district) // 3,
+               districts.index(district) % 3].set_yticks([])
+
+            # Do not display floats in the x-axis
+            ax[districts.index(district) // 3, districts.index(district) %
+               3].xaxis.set_major_locator(MaxNLocator(integer=True))
+
+            # Plot the median
+            # ax[districts.index(district) // 3, districts.index(district) % 3].axvline(df[x_column].median(), color='black', linestyle='--', linewidth=1)
+
+            # Add text close to the boxplot's median
+            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].median(), 0.2,
+                                                                                   f'M={df[x_column].median():.2f}',
+                                                                                   horizontalalignment='left', size='small', color='black')
+
+            # Add text close to the boxplot's min and max
+            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].min(), 0.3,
+                                                                                   f'min={df[x_column].min():.2f}',
+                                                                                   horizontalalignment='left', size='small', color='black')
+            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].max(), 0.4,
+                                                                                   f'max={df[x_column].max():.2f}',
+                                                                                   horizontalalignment='left', size='small', color='black')
+
+            initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
+
+            # Add initial poverty gap as in the legend to the plot
+            if x_column == 'new_poverty_gap':
+                ax[districts.index(district) // 3, districts.index(district) % 3].text(0.025, 0.9,
+                                                                                       f'Poverty gap before disaster={initial_poverty_gap:.2f}',
+                                                                                       horizontalalignment='left', size='small', color='black',
+                                                                                       transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
+
+        # Add a super title
+        fig.suptitle(x_title, fontsize=16)
+        fig.tight_layout()
+        if savefig:
+            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=300, bbox_inches='tight')
 
 
 def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize):
