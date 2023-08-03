@@ -110,6 +110,7 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
                         average_productivity: float, 
                         poverty_line: float, 
                         n_years: int,
+                        add_income_loss: bool,
                         cash_transfer: dict = {},
                         ) -> pd.DataFrame:
     
@@ -150,19 +151,26 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
 
         # Equation is as follows: consumption_loss = expenditure_growth + exponential_multiplier * (savings - asset_damage - income_loss)
 
-        affected_households['c_t'] = (gfac * affected_households['aeexp']  # expenditure growth
-                                      
-                                      + np.e**(-affected_households['recovery_rate']*_t) # exponential multiplier 
-                                      
-                                      * (gfac * affected_households['aesav'] * affected_households['recovery_rate'] # savings
-                                         - gfac * affected_households['v'] * affected_households[['keff', 'recovery_rate']].prod(axis=1))) # asset damage
+        if add_income_loss:
+            affected_households['c_t'] = (expenditure_growth + 
+                                          exponential_multiplier * (savings - asset_damage - income_loss))
+        else:
+            affected_households['c_t'] = (expenditure_growth + 
+                                          exponential_multiplier * (savings - asset_damage))
+        
+        # affected_households['c_t'] = (gfac * affected_households['aeexp']  # expenditure growth
+                                    
+        #                             + np.e**(-affected_households['recovery_rate']*_t) # exponential multiplier 
+                                    
+        #                             * (gfac * affected_households['aesav'] * affected_households['recovery_rate'] # savings
+        #                                 - gfac * affected_households['v'] * affected_households[['keff', 'recovery_rate']].prod(axis=1))) # asset damage
                                         
-                                        # - (1 - affected_households['delta_tax_safety']) # income loss
-                                        #     * average_productivity * affected_households['keff']
-                                        #     * affected_households['v']))
-            
+        #                                 # - (1 - affected_households['delta_tax_safety']) # income loss
+        #                                 #     * average_productivity * affected_households['keff']
+        #                                 #     * affected_households['v']))
+                
         # `c_t_unaffected` is the consumption at time t if the household was not affected by the disaster
-        affected_households['c_t_unaffected'] = affected_households['aeexp']*gfac
+        affected_households['c_t_unaffected'] = gfac * affected_households['aeexp'] 
         
         # TODO: Add a check to see whether the consumption goes below 0
 
