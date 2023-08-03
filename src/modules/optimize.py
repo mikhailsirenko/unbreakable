@@ -141,16 +141,26 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
 
         # `c_t` is the consumption at time t
         # !: It seems that keff remains constant over time
-        affected_households['c_t'] = (affected_households['aeexp'] * gfac
-                                      + np.e**(-affected_households['recovery_rate']*_t)
-                                      * (affected_households['aesav'] * affected_households['recovery_rate']
-                                         - affected_households['v'] * gfac
-                                         * (affected_households['aeexp_house']
-                                            + affected_households[['keff', 'recovery_rate']].prod(axis=1))
-                                         - (1-affected_households['delta_tax_safety'])
-                                         * average_productivity*affected_households['keff']
-                                         * affected_households['v']))
-        
+
+        expenditure_growth = gfac * affected_households['aeexp']
+        exponential_multiplier = np.e**(-affected_households['recovery_rate']*_t)
+        savings = gfac * affected_households['aesav'] * affected_households['recovery_rate']
+        asset_damage = gfac * affected_households['v'] * affected_households[['keff', 'recovery_rate']].prod(axis=1)
+        income_loss = gfac * (1 - affected_households['delta_tax_safety']) * average_productivity * affected_households['keff'] * affected_households['v']
+
+        # Equation is as follows: consumption_loss = expenditure_growth + exponential_multiplier * (savings - asset_damage - income_loss)
+
+        affected_households['c_t'] = (gfac * affected_households['aeexp']  # expenditure growth
+                                      
+                                      + np.e**(-affected_households['recovery_rate']*_t) # exponential multiplier 
+                                      
+                                      * (gfac * affected_households['aesav'] * affected_households['recovery_rate'] # savings
+                                         - gfac * affected_households['v'] * affected_households[['keff', 'recovery_rate']].prod(axis=1))) # asset damage
+                                        
+                                        # - (1 - affected_households['delta_tax_safety']) # income loss
+                                        #     * average_productivity * affected_households['keff']
+                                        #     * affected_households['v']))
+            
         # `c_t_unaffected` is the consumption at time t if the household was not affected by the disaster
         affected_households['c_t_unaffected'] = affected_households['aeexp']*gfac
         
