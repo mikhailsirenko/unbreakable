@@ -48,7 +48,7 @@ if __name__ == "__main__":
         "n_years": 10,  # number of years in optimization algorithm
 
         # Policy constants 
-        "add_income_loss": False,
+        "add_income_loss": True,
 
         # Uncertainties
         "poverty_bias": 1.0,
@@ -83,7 +83,7 @@ if __name__ == "__main__":
             "low": 0,
             "high": 1.0,
             "distribution": "uniform",
-            "delta_pct": 0.0025,
+            "delta_pct": 0.025,
             "num_masks": 2000,
         },
     }
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     results = perform_experiments(
         models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    # with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
+    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
     #     results = evaluator.perform_experiments(
     #         scenarios=n_scenarios, policies=n_policies
     #     )
