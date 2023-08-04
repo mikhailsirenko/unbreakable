@@ -46,6 +46,10 @@ if __name__ == "__main__":
         "min_households": 1493,  # min households we need to have a good enough representation
         "optimization_timestep": 0.01,
         "n_years": 10,  # number of years in optimization algorithm
+
+        # Policy constants 
+        "add_income_loss": False,
+
         # Uncertainties
         "poverty_bias": 1.0,
         "consumption_utility": 1.0,
@@ -102,6 +106,10 @@ if __name__ == "__main__":
         Constant("min_households", kwargs["min_households"]),
         Constant("optimization_timestep", kwargs["optimization_timestep"]),
         Constant("n_years", kwargs["n_years"]),
+
+        # Policy constants
+        Constant("add_income_loss", kwargs["add_income_loss"]),
+
         # Uncertainties
         Constant("poverty_bias", kwargs["poverty_bias"]),
         Constant("consumption_utility", kwargs["consumption_utility"]),
@@ -189,7 +197,7 @@ if __name__ == "__main__":
     #     )
 
     # Save results as tar.gz file
-    delta_pct = kwargs["determine_affected_params"]['delta_pct']
+    add_income_loss = kwargs["add_income_loss"]
     save_results(
-        results, f"../results/scenarios={n_scenarios}, policies={n_policies}, delta_pct={delta_pct}.tar.gz"
+        results, f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
     )

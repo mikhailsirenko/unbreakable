@@ -71,6 +71,8 @@ def run_model(**kwargs):
         # If a policy is not provided, use the default policy
         my_policy = 'all+0'
 
+    add_income_loss = kwargs['add_income_loss']
+
     # Outcomes
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
@@ -130,7 +132,7 @@ def run_model(**kwargs):
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
         affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
-                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, cash_transfer))
+                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, add_income_loss, cash_transfer))
 
         # Add columns of affected households to the original households dataframe
         households = add_columns(households, affected_households)

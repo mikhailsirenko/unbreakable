@@ -130,7 +130,10 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
         outcomes['total_population']).multiply(100))
-
+    
+    # Move years_in_poverty column to the end of the data frame
+    outcomes = outcomes[[c for c in outcomes if c not in ['years_in_poverty']] + ['years_in_poverty']]
+    
     return outcomes
 
 
