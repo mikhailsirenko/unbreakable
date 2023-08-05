@@ -52,7 +52,7 @@ def run_model(**kwargs):
     n_years = kwargs['n_years']  # number of years in optimization algorithm
 
     # Model constants
-    assign_savings_params = kwargs['assign_savings_params']
+    estimate_savings_params = kwargs['estimate_savings_params']
     set_vulnerability_params = kwargs['set_vulnerability_params']
     calculate_exposure_params = kwargs['calculate_exposure_params']
     determine_affected_params = kwargs['determine_affected_params']
@@ -93,7 +93,7 @@ def run_model(**kwargs):
     # 5. Calculate average productivity
     # 6. Adjust assets and expenditure
     # 7. Calculate PML
-    # 8. Assign savings
+    # 8. Estimate savings
     # 9. Set vulnerability
     # 10. Calculate exposure
     # 11. Determine affected
@@ -116,7 +116,7 @@ def run_model(**kwargs):
         # Model the impact of a disaster on households
         households = (adjust_assets_and_expenditure(households, total_asset_stock, poverty_line, indigence_line, print_statistics)
                       .pipe(calculate_pml, expected_loss_fraction, print_statistics)
-                      .pipe(assign_savings, saving_rate, assign_savings_params)
+                      .pipe(estimate_savings, saving_rate, estimate_savings_params)
                       .pipe(set_vulnerability, is_vulnerability_random, set_vulnerability_params)
                       .pipe(calculate_exposure, poverty_bias, calculate_exposure_params, print_statistics)
                       .pipe(determine_affected, determine_affected_params))

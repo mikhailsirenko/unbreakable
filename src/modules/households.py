@@ -153,18 +153,18 @@ def select_district(household_survey: pd.DataFrame, district: str) -> pd.DataFra
     return household_survey[household_survey['district'] == district].copy()
 
 
-def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_params: dict) -> pd.DataFrame:
-    '''Assign savings to households.
+def estimate_savings(households: pd.DataFrame, saving_rate: float, estimate_savings_params: dict) -> pd.DataFrame:
+    '''Estimate savings of households.
 
      We assume that savings are a product of expenditure and saving rate with Gaussian noise.
 
     Args:
         households (pd.DataFrame): Household survey data for a specific district.
         saving_rate (float): Saving rate.
-        assign_savings_params (dict): Parameters for assigning savings function.
+        estimate_savings_params (dict): Parameters for estimating savings function.
 
     Returns:
-        pd.DataFrame: Household survey data with assigned savings.
+        pd.DataFrame: Household survey data with estimated savings.
     '''
     # * Expenditure & savings information for Saint Lucia https://www.ceicdata.com/en/saint-lucia/lending-saving-and-deposit-rates-annual/lc-savings-rate
 
@@ -172,24 +172,24 @@ def assign_savings(households: pd.DataFrame, saving_rate: float, assign_savings_
     x = households.eval(f'aeexp*{saving_rate}')
 
     # Get the mean of the noise with uniform distribution
-    mean_noise_low = assign_savings_params['mean_noise_low']  # default 0
-    mean_noise_high = assign_savings_params['mean_noise_high']  # default 5
+    mean_noise_low = estimate_savings_params['mean_noise_low']  # default 0
+    mean_noise_high = estimate_savings_params['mean_noise_high']  # default 5
 
-    if assign_savings_params['mean_noise_distribution'] == 'uniform':
+    if estimate_savings_params['mean_noise_distribution'] == 'uniform':
         loc = np.random.uniform(mean_noise_low, mean_noise_high)
     else:
         raise ValueError("Only uniform distribution is supported yet.")
 
     # Get the scale
-    scale = assign_savings_params['noise_scale']  # default 2.5
+    scale = estimate_savings_params['noise_scale']  # default 2.5
     size = households.shape[0]
-    clip_min = assign_savings_params['savings_clip_min']  # default 0.1
-    clip_max = assign_savings_params['savings_clip_max']  # default 1.0
+    clip_min = estimate_savings_params['savings_clip_min']  # default 0.1
+    clip_max = estimate_savings_params['savings_clip_max']  # default 1.0
 
     # Calculate savings with normal noise
     # !: aesav can go to 0 and above 1 because of the mean noise and loc
     # !: See `verification.ipynb` for more details
-    if assign_savings_params['noise_distribution'] == 'normal':
+    if estimate_savings_params['noise_distribution'] == 'normal':
         households['aesav'] = x * \
             np.random.normal(loc, scale, size).round(
                 2).clip(min=clip_min, max=clip_max)

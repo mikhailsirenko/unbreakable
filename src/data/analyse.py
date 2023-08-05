@@ -113,10 +113,12 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     # Convert numeric columns to numeric
     if add_policies:
         numeric_columns = outcomes.columns[4:-1].tolist()
-        outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+        outcomes[numeric_columns] = outcomes[numeric_columns].apply(
+            pd.to_numeric)
     else:
         numeric_columns = outcomes.columns[3:-1].tolist()
-        outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+        outcomes[numeric_columns] = outcomes[numeric_columns].apply(
+            pd.to_numeric)
 
     # Rename a district
     outcomes['district'].replace(
@@ -130,10 +132,11 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
         outcomes['total_population']).multiply(100))
-    
+
     # Move years_in_poverty column to the end of the data frame
-    outcomes = outcomes[[c for c in outcomes if c not in ['years_in_poverty']] + ['years_in_poverty']]
-    
+    outcomes = outcomes[[c for c in outcomes if c not in [
+        'years_in_poverty']] + ['years_in_poverty']]
+
     return outcomes
 
 
@@ -181,3 +184,39 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
     gdf = pd.merge(gdf, aggregated, left_on='NAME_1', right_index=True)
     gdf.reset_index(inplace=True, drop=True)
     return gdf
+
+
+def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
+    policy_name_mapper = {'all+0': 'None',
+                          'all+10': '10% to all',
+                          'all+30': '30% to all',
+                          'all+50': '50% to all',
+                          'all+100': '100% to all',
+                          'poor+0': 'None',
+                          'poor+10': '10% to poor',
+                          'poor+30': '30% to poor',
+                          'poor+50': '50% to poor',
+                          'poor+100': '100% to poor',
+                          'poor_near_poor1.25+0': 'None',
+                          'poor_near_poor1.25+10': '10% to poor and near poor (1.25)',
+                          'poor_near_poor1.25+30': '30% to poor and near poor (1.25)',
+                          'poor_near_poor1.25+50': '50% to poor and near poor (1.25)',
+                          'poor_near_poor1.25+100': '100% to poor and near poor (1.25)',
+                          'poor_near_poor2.0+0': 'None',
+                          'poor_near_poor2.0+10': '10% to poor and near poor (2.0)',
+                          'poor_near_poor2.0+30': '30% to poor and near poor (2.0)',
+                          'poor_near_poor2.0+50': '50% to poor and near poor (2.0)',
+                          'poor_near_poor2.0+100': '100% to poor and near poor (2.0)'}
+    df = outcomes.copy()
+    df['my_policy'] = df['my_policy'].replace(policy_name_mapper)
+    df['my_policy'] = pd.Categorical(df['my_policy'], categories=['None', '10% to all', '30% to all', '50% to all', '100% to all',
+                                                                  '10% to poor', '30% to poor', '50% to poor', '100% to poor',
+                                                                  '10% to poor and near poor (1.25)', '30% to poor and near poor (1.25)', '50% to poor and near poor (1.25)', '100% to poor and near poor (1.25)',
+                                                                  '10% to poor and near poor (2.0)', '30% to poor and near poor (2.0)', '50% to poor and near poor (2.0)', '100% to poor and near poor (2.0)'], ordered=True)
+    df.rename(columns={'my_policy': 'Policy',
+                       'district': 'District'}, inplace=True)
+    df.rename(columns={'annual_average_consumption_loss_pct': 'Annual average consumption loss (%)',
+                       'n_new_poor': 'Number of new poor'},
+              inplace=True)
+    df['Policy ID'] = df['Policy'].cat.codes
+    return df

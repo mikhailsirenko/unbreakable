@@ -48,7 +48,7 @@ if __name__ == "__main__":
         "n_years": 10,  # number of years in optimization algorithm
 
         # Policy constants 
-        "add_income_loss": False,
+        "add_income_loss": True,
 
         # Uncertainties
         "poverty_bias": 1.0,
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         "discount_rate": 0.04,
         "income_and_expenditure_growth": 0.01,
         # Model constants
-        "assign_savings_params": {
+        "estimate_savings_params": {
             "mean_noise_low": 0,
             "mean_noise_high": 5,
             "mean_noise_distribution": "uniform",
@@ -83,7 +83,7 @@ if __name__ == "__main__":
             "low": 0,
             "high": 1.0,
             "distribution": "uniform",
-            "delta_pct": 0.0025,
+            "delta_pct": 0.025,
             "num_masks": 2000,
         },
     }
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         Constant(
             "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
         ),
-        Constant("assign_savings_params", kwargs["assign_savings_params"]),
+        Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
         Constant("set_vulnerability_params", kwargs["set_vulnerability_params"]),
         Constant("calculate_exposure_params", kwargs["calculate_exposure_params"]),
         Constant("determine_affected_params", kwargs["determine_affected_params"]),
@@ -191,7 +191,7 @@ if __name__ == "__main__":
     results = perform_experiments(
         models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    # with MultiprocessingEvaluator(my_model, n_processes=10) as evaluator:
+    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
     #     results = evaluator.perform_experiments(
     #         scenarios=n_scenarios, policies=n_policies
     #     )
