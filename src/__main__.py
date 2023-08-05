@@ -56,7 +56,7 @@ if __name__ == "__main__":
         "discount_rate": 0.04,
         "income_and_expenditure_growth": 0.01,
         # Model constants
-        "assign_savings_params": {
+        "estimate_savings_params": {
             "mean_noise_low": 0,
             "mean_noise_high": 5,
             "mean_noise_distribution": "uniform",
@@ -118,7 +118,7 @@ if __name__ == "__main__":
         Constant(
             "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
         ),
-        Constant("assign_savings_params", kwargs["assign_savings_params"]),
+        Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
         Constant("set_vulnerability_params", kwargs["set_vulnerability_params"]),
         Constant("calculate_exposure_params", kwargs["calculate_exposure_params"]),
         Constant("determine_affected_params", kwargs["determine_affected_params"]),
