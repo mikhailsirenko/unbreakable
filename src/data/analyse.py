@@ -172,11 +172,11 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
 
     # Convert numeric columns to numeric
     if add_policies:
-        numeric_columns = outcomes.columns[4:-1].tolist()
+        numeric_columns = outcomes.columns[5:-1].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
     else:
-        numeric_columns = outcomes.columns[3:-1].tolist()
+        numeric_columns = outcomes.columns[4:-1].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
 
@@ -190,15 +190,15 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
 
     # Calculate the percentage of new poor
-    # outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
-    #     outcomes['total_population']).multiply(100))
+    outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
+        outcomes['total_population']).multiply(100))
 
-    outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
-        outcomes['total_population'])
-    outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
-        outcomes['n_poor_initial']).div(outcomes['total_population'])
-    outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
-        outcomes['pct_poor_before'])
+    # outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
+    #     outcomes['total_population'])
+    # outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
+    #     outcomes['n_poor_initial']).div(outcomes['total_population'])
+    # outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
+    #     outcomes['pct_poor_before'])
 
     # Move years_in_poverty column to the end of the data frame
     outcomes = outcomes[[c for c in outcomes if c not in [

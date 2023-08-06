@@ -6,6 +6,7 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import ptitprince as pt
 import seaborn as sns
+from scipy.stats import spearmanr
 from matplotlib.ticker import MaxNLocator
 # import contextily as ctx
 
@@ -18,7 +19,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
     if len(x_columns) == 0:
         x_columns = [
             'n_affected_people',
-            'pct_poor_increase',
+            'n_new_poor_increase_pct',
             'n_new_poor',
             'annual_average_consumption_loss_pct',
             'r',
@@ -37,12 +38,12 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
     
     if len(x_titles) == 0:
         x_titles = [
-            'Affected people (#)',
-            'Disaster-Induced Poverty Increase Ratio (%)',
-            'New poor (#)',
-            'Annual average consumption loss (%)',
-            'Socio-economic resilience',
-            'Poverty gap',
+            'Affected People',
+            'New Poor Increase (%)',
+            'New Poor',
+            'Wt. Ann. Avg. Consump. Loss p.c. (%)',
+            'Socio-Economic Resilience',
+            'Poverty Gap',
             # 'One year in poverty',
             # 'Two years in poverty',
             # 'Three years in poverty',
@@ -147,13 +148,13 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
                                                                                    f'M={df[x_column].median():.2f}',
                                                                                    horizontalalignment='left', size='small', color='black')
 
-            # Add text close to the boxplot's min and max
-            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].min(), 0.3,
-                                                                                   f'min={df[x_column].min():.2f}',
-                                                                                   horizontalalignment='left', size='small', color='black')
-            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].max(), 0.4,
-                                                                                   f'max={df[x_column].max():.2f}',
-                                                                                   horizontalalignment='left', size='small', color='black')
+            # # Add text close to the boxplot's min and max
+            # ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].min(), 0.3,
+            #                                                                        f'min={df[x_column].min():.2f}',
+            #                                                                        horizontalalignment='left', size='small', color='black')
+            # ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].max(), 0.4,
+            #                                                                        f'max={df[x_column].max():.2f}',
+            #                                                                        horizontalalignment='left', size='small', color='black')
 
             initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
 
@@ -168,10 +169,10 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
         # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
         if savefigs:
-            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
 
 
-def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize):
+def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize, return_table):
     fig, ax = plt.subplots(figsize=figsize)
 
     # Bin the data
@@ -255,6 +256,97 @@ def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize)
              fontsize=8)  # annotate y axis
     # plt.savefig('bivariate_choropleth.png', dpi=300)
 
+    if return_table:
+        return data
+
+def nine_quadrants_plot(data, x_name, y_name, scale=True):
+    _, ax = plt.subplots(figsize=(6, 5))
+
+    if scale:
+        scaler = MinMaxScaler()
+        # data[x_name] = scaler.fit_transform(data[x_name].values.reshape(-1, 1))
+        # data[y_name] = scaler.fit_transform(data[y_name].values.reshape(-1, 1))
+        # Scale data between 0 and 1
+        data[x_name] = (data[x_name] - data[x_name].min()) / \
+            (data[x_name].max() - data[x_name].min())
+        data[y_name] = (data[y_name] - data[y_name].min()) / \
+            (data[y_name].max() - data[y_name].min())
+
+    data.plot.scatter(x_name, y_name, s=20, ax=ax, c='black', zorder=2)
+
+    # Iterate over each row and annotate the points
+    for idx, row in data.iterrows():
+        ax.annotate(text=row['NAME_1'], xy=(row[x_name], row[y_name]),
+                    ha='center', fontsize=10, color='black')
+
+    # Annotate with Spearman's rho
+    # rho, p = spearmanr(data[x_name], data[y_name])
+    # ax.text(0.05, 0.95, f'$\\rho$ = {round(rho, 2)}', transform=ax.transAxes,
+    #         verticalalignment='top', fontsize=12, bbox=dict(facecolor='white', edgecolor='black', alpha=1))
+
+    ax.axvline(0.33, color='black', alpha=.33, lw=1)
+    ax.axvline(0.66, color='black', alpha=.33, lw=1)
+    ax.axhline(0.33, color='black', alpha=.33, lw=1)
+    ax.axhline(0.66, color='black', alpha=.33, lw=1)
+
+    alpha = 1
+
+    all_colors = {'1A': '#dddddd',
+                  '1B': '#dd7c8a',
+                  '1C': '#cc0024',
+                  '2A': '#7bb3d1',
+                  '2B': '#8d6c8f',
+                  '2C': '#8a274a',
+                  '3A': '#016eae',
+                  '3B': '#4a4779',
+                  '3C': '#4b264d'}
+
+    # Column 1
+    c = all_colors['1A']
+    ax.axvspan(xmin=0, xmax=0.33, ymin=0 + 0.025,
+               ymax=0.345, alpha=alpha, color=c)
+
+    c = all_colors['1B']
+    ax.axvspan(xmin=0, xmax=0.33, ymin=0.33 + 0.015,
+               ymax=0.66 - 0.015, alpha=alpha,  color=c)
+
+    c = all_colors['1C']
+    ax.axvspan(xmin=0, xmax=0.33, ymin=0.66 - 0.015,
+               ymax=1 - 0.05, alpha=alpha, color=c)
+
+    # Column 2
+    c = all_colors['2A']
+    ax.axvspan(xmin=0.33, xmax=0.66, ymin=0 + 0.025,
+               ymax=0.345, alpha=alpha,  color=c)
+
+    c = all_colors['2B']
+    ax.axvspan(xmin=0.33, xmax=0.66, ymin=0.345,
+               ymax=0.645, alpha=alpha,  color=c)
+
+    c = all_colors['2C']
+    ax.axvspan(xmin=0.33, xmax=0.66, ymin=0.649,
+               ymax=1 - 0.05, alpha=alpha, color=c)
+
+    # Column 3
+    c = all_colors['3A']
+    ax.axvspan(xmin=0.66, xmax=1, ymin=0.025, ymax=0.345, alpha=alpha, color=c)
+
+    c = all_colors['3B']
+    ax.axvspan(xmin=0.66, xmax=1, ymin=0.345,
+               ymax=0.645, alpha=alpha,  color=c)
+
+    c = all_colors['3C']
+    ax.axvspan(xmin=0.66, xmax=1, ymin=0.649,
+               ymax=1 - 0.05, alpha=alpha, color=c)
+
+    ax.set_xlim(-.05, 1.05)
+    ax.set_ylim(-0.05, 1.05)
+
+    # Add regression line
+    # x = data[x_name]
+    # y = data[y_name]
+    # m, b = np.polyfit(x, y, 1)
+    # ax.plot(x, m * x + b, color='black', alpha=0.5, zorder=1)
 
 def get_colors(data):
 
