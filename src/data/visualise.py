@@ -169,7 +169,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
         # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
         if savefigs:
-            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=300, bbox_inches='tight')
+            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
 
 
 def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize, return_table):

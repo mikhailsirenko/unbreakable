@@ -172,11 +172,11 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
 
     # Convert numeric columns to numeric
     if add_policies:
-        numeric_columns = outcomes.columns[4:-1].tolist()
+        numeric_columns = outcomes.columns[5:-1].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
     else:
-        numeric_columns = outcomes.columns[3:-1].tolist()
+        numeric_columns = outcomes.columns[4:-1].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
 
