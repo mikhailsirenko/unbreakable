@@ -221,18 +221,20 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
     if len(affected_households) == 0:
         return np.nan, np.nan
 
-    # SUM(Total consumption loss / number of years * population weight)
+    # Annual consumption loss
     annual_consumption_loss = (
         affected_households['consumption_loss_NPV'].div(n_years).multiply(affected_households['popwgt'])).sum()
-
-    # Annual consumption loss / population weight
+    
+    # Weighted average
     annual_average_consumption_loss = annual_consumption_loss / \
         affected_households['popwgt'].sum()
 
+    # Annual average consumption
     annual_average_consumption = (
         affected_households['aeexp'] * affected_households['popwgt']).sum() / \
         affected_households['popwgt'].sum()
 
+    # Annual average consumption loss as a percentage of average annual consumption
     annual_average_consumption_loss_pct = annual_average_consumption_loss / \
         annual_average_consumption
 

@@ -10,7 +10,7 @@ from matplotlib.ticker import MaxNLocator
 # import contextily as ctx
 
 
-def rainclouds(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
+def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
     colors = sns.color_palette(color_palette, n_colors=len(districts))
@@ -18,7 +18,7 @@ def rainclouds(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_t
     if len(x_columns) == 0:
         x_columns = [
             'n_affected_people',
-            'n_new_poor_increase_pct',
+            'pct_poor_increase',
             'n_new_poor',
             'annual_average_consumption_loss_pct',
             'r',
@@ -38,7 +38,7 @@ def rainclouds(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_t
     if len(x_titles) == 0:
         x_titles = [
             'Affected people (#)',
-            'Increase in new poor (%)',
+            'Disaster-Induced Poverty Increase Ratio (%)',
             'New poor (#)',
             'Annual average consumption loss (%)',
             'Socio-economic resilience',
@@ -165,9 +165,9 @@ def rainclouds(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_t
                                                                                        transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
 
         # Add a super title
-        fig.suptitle(x_title, fontsize=16)
+        # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
-        if savefig:
+        if savefigs:
             plt.savefig(f'../figures/analysis/{x_column}.png', dpi=300, bbox_inches='tight')
 
 

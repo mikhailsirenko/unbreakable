@@ -34,7 +34,7 @@ if __name__ == "__main__":
         "Soufriere",
         "Vieuxfort",
     ]
-    
+
     # Specify the parameters of the model
     kwargs = {
         # Case study constants
@@ -47,14 +47,15 @@ if __name__ == "__main__":
         "optimization_timestep": 0.01,
         "n_years": 10,  # number of years in optimization algorithm
 
-        # Policy constants 
-        "add_income_loss": True,
+        # Policy constants
+        "add_income_loss": False,
 
         # Uncertainties
-        "poverty_bias": 1.0,
-        "consumption_utility": 1.0,
-        "discount_rate": 0.04,
-        "income_and_expenditure_growth": 0.01,
+        # "poverty_bias": 1.0,
+        # "consumption_utility": 1.0,
+        # "discount_rate": 0.04,
+        # "income_and_expenditure_growth": 0.01,
+
         # Model constants
         "estimate_savings_params": {
             "mean_noise_low": 0,
@@ -111,26 +112,30 @@ if __name__ == "__main__":
         Constant("add_income_loss", kwargs["add_income_loss"]),
 
         # Uncertainties
-        Constant("poverty_bias", kwargs["poverty_bias"]),
-        Constant("consumption_utility", kwargs["consumption_utility"]),
-        Constant("discount_rate", kwargs["discount_rate"]),
+        # Constant("poverty_bias", kwargs["poverty_bias"]),
+        # Constant("consumption_utility", kwargs["consumption_utility"]),
+        # Constant("discount_rate", kwargs["discount_rate"]),
+        # Constant(
+        #     "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
+        # ),
+
         # Model constants
-        Constant(
-            "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
-        ),
         Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
-        Constant("set_vulnerability_params", kwargs["set_vulnerability_params"]),
-        Constant("calculate_exposure_params", kwargs["calculate_exposure_params"]),
-        Constant("determine_affected_params", kwargs["determine_affected_params"]),
+        Constant("set_vulnerability_params",
+                 kwargs["set_vulnerability_params"]),
+        Constant("calculate_exposure_params",
+                 kwargs["calculate_exposure_params"]),
+        Constant("determine_affected_params",
+                 kwargs["determine_affected_params"]),
     ]
 
-    # !: What's the impact of it on no policy vs policy runs? 
+    # !: What's the impact of it on no policy vs policy runs?
     my_model.uncertainties = [
         IntegerParameter("random_seed", seed_start, seed_end),
-        #                         RealParameter('poverty_bias', 1.0, 1.5), # 1.0, 1.5
-        #                         RealParameter('consumption_utility', 1.0, 1.5), # 1.0, 1.5
-        #                         RealParameter('discount_rate', 0.04, 0.07), # 0.04, 0.07
-        #                         RealParameter('income_and_expenditure_growth', 0.01, 0.03)] # 0.01, 0.03
+        RealParameter('poverty_bias', 1.0, 1.5),  # 1.0, 1.5
+        RealParameter('consumption_utility', 1.0, 1.5),  # 1.0, 1.5
+        RealParameter('discount_rate', 0.04, 0.07),  # 0.04, 0.07
+        RealParameter('income_and_expenditure_growth', 0.01, 0.03)  # 0.01, 0.03
     ]
 
     # Specify the levers of the model
@@ -183,9 +188,9 @@ if __name__ == "__main__":
     ]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 1
+    n_scenarios = 20000
 
-    # * If the number of policies is equal to the number of specified levers, then all policies are evaluated 
+    # * If the number of policies is equal to the number of specified levers, then all policies are evaluated
     n_policies = 0
 
     results = perform_experiments(

@@ -86,18 +86,20 @@ def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_ut
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
+            
             elif last_dwdlambda > 0 and dwdlambda < 0:
                 optimization_results.loc[(0, 0, 0, round(x, 3), round(average_productivity, 3)), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
             
-            # !: That's why assigning more than 10 years does not work, we need to change 10 to ??
+            # !: That's why assigning more than 10 years does not work, we need to change 10 to `n_years`?
             elif _lambda > 10:
                 optimization_results.loc[(0, 0, 0, round(x, 3), round(average_productivity, 3)), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
+            
             else:
                 last_dwdlambda = dwdlambda
             _lambda += opt_step
@@ -142,7 +144,6 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
 
         # `c_t` is the consumption at time t
         # !: It seems that keff remains constant over time
-
         expenditure_growth = gfac * affected_households['aeexp']
         exponential_multiplier = np.e**(-affected_households['recovery_rate']*_t)
         savings = gfac * affected_households['aesav'] * affected_households['recovery_rate']

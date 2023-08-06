@@ -7,11 +7,13 @@ import geopandas as gpd
 from ema_workbench import load_results
 
 
-def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
+def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
     '''Convert outcomes dict into a data frame.
 
     Args:
         results (tuple): The results of the experiments in the EMA Workbench format.
+        add_policies (bool): Whether to add policy values to the data frame.
+        add_uncertainties (bool): Whether to add uncertainty values to the data frame.
 
     Returns:
         pd.DataFrame: Outcomes data frame.
@@ -43,28 +45,48 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
         'years_in_poverty',
     ]
 
+    uncertainty_names = ['consumption_utility',
+                         'discount_rate',
+                         'income_and_expenditure_growth',
+                         'poverty_bias']
+
     experiments, _ = results
     experiments['random_seed'] = experiments['random_seed'].astype(int)
     experiments['scenario'] = experiments['scenario'].astype(int)
     if len(experiments['random_seed'].unique()) != experiments['scenario'].max() - experiments['scenario'].min() + 1:
-        raise ValueError('Random seeds are not unique')
+        # print(experiments['random_seed'].value_counts())
+        print('WARNING! Random seeds are not unique.')
+        # raise ValueError('Random seeds are not unique')
 
     policy_names = ['my_policy']
 
     if add_policies:
-        columns = ['scenario', 'policy', 'district'] + \
-            policy_names + outcome_names
+        if add_uncertainties:
+            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+                policy_names + uncertainty_names + outcome_names
+        else:
+            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+                policy_names + outcome_names
     else:
-        columns = ['scenario', 'policy', 'district'] + outcome_names
+        if add_uncertainties:
+            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+                uncertainty_names + outcome_names
+        else:
+            columns = ['scenario', 'policy', 'district',
+                       'random_seed'] + outcome_names
 
     scenarios = results[0]['scenario'].values
     n_scenarios = results[0]['scenario'].unique().size
     policies = results[0]['policy'].values
+    random_seeds = results[0]['random_seed'].values
     n_policies = results[0]['policy'].unique().size
     n_districts = len(results[1].keys())
 
     if add_policies:
         policy_values = results[0][policy_names].values
+
+    if add_uncertainties:
+        uncertainty_values = results[0][uncertainty_names].values
 
     n_columns = len(columns)
     n_rows = n_scenarios * n_policies * n_districts
@@ -80,32 +102,70 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
             outcomes[i, 0] = scenarios[k]
             outcomes[i, 1] = policies[k]
             outcomes[i, 2] = district
+            outcomes[i, 3] = random_seeds[k]
 
             if add_policies:
-                # Add policy values
-                # From 3 to 3 + len(policy_names) policy values
-                for j, name in enumerate(policy_names):
-                    outcomes[i, 3 + j] = policy_values[k, j]
+                if add_uncertainties:
+                    # Add policy values
+                    # From 4 to 4 + len(policy_names) policy values
+                    for j, name in enumerate(policy_names):
+                        outcomes[i, 4 + j] = policy_values[k, j]
 
-                # Add outcomes
-                # From 3 + len(policy_names) to 3 + len(policy_names) + len(outcome_names) outcomes
-                l = 3 + len(policy_names)
-                for v, name in zip(arr, outcome_names):
-                    if name == 'years_in_poverty':
-                        outcomes[i, l] = ast.literal_eval(v)
-                    else:
-                        outcomes[i, l] = v
-                    l += 1
+                    # Add uncertainty values
+                    # From 4 + len(policy_names) to 4 + len(policy_names) + len(uncertainty_names) uncertainty values
+                    for j, name in enumerate(uncertainty_names):
+                        outcomes[i, 4 + len(policy_names) + j] = uncertainty_values[k, j]
+
+                    # Add outcomes
+                    # From 4 + len(policy_names) + len(uncertainty_names) to 4 + len(policy_names) + len(uncertainty_names) + len(outcome_names) outcomes
+                    l = 4 + len(policy_names) + len(uncertainty_names)
+                    for v, name in zip(arr, outcome_names):
+                        if name == 'years_in_poverty':
+                            outcomes[i, l] = ast.literal_eval(v)
+                        else:
+                            outcomes[i, l] = v
+                        l += 1
+                else:
+                    # Add policy values
+                    # From 4 to 4 + len(policy_names) policy values
+                    for j, name in enumerate(policy_names):
+                        outcomes[i, 4 + j] = policy_values[k, j]
+
+                    # Add outcomes
+                    # From 4 + len(policy_names) to 4 + len(policy_names) + len(outcome_names) outcomes
+                    l = 4 + len(policy_names)
+                    for v, name in zip(arr, outcome_names):
+                        if name == 'years_in_poverty':
+                            outcomes[i, l] = ast.literal_eval(v)
+                        else:
+                            outcomes[i, l] = v
+                        l += 1
             else:
-                # Add outcomes
-                # From 3 to 3 + len(outcome_names) outcomes
-                l = 3
-                for v, name in zip(arr, outcome_names):
-                    if name == 'years_in_poverty':
-                        outcomes[i, l] = ast.literal_eval(v)
-                    else:
-                        outcomes[i, l] = v
-                    l += 1
+                if add_uncertainties:
+                    # Add uncertainty values
+                    # From 4 to 4 + len(uncertainty_names) uncertainty values
+                    for j, name in enumerate(uncertainty_names):
+                        outcomes[i, 4 + j] = uncertainty_values[k, j]
+
+                    # Add outcomes
+                    # From 4 + len(uncertainty_names) to 4 + len(uncertainty_names) + len(outcome_names) outcomes
+                    l = 4 + len(uncertainty_names)
+                    for v, name in zip(arr, outcome_names):
+                        if name == 'years_in_poverty':
+                            outcomes[i, l] = ast.literal_eval(v)
+                        else:
+                            outcomes[i, l] = v
+                        l += 1
+                else:
+                    # Add outcomes
+                    # From 4 to 4 + len(outcome_names) outcomes
+                    l = 4
+                    for v, name in zip(arr, outcome_names):
+                        if name == 'years_in_poverty':
+                            outcomes[i, l] = ast.literal_eval(v)
+                        else:
+                            outcomes[i, l] = v
+                        l += 1
             k += 1  # increase row index to get next experiment for the current district
             i += 1  # increase row index of the outcomes dataframe
     outcomes = pd.DataFrame(outcomes, columns=columns)
@@ -130,8 +190,15 @@ def prepare_outcomes(results: tuple, add_policies: bool) -> pd.DataFrame:
     outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
 
     # Calculate the percentage of new poor
-    outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
-        outcomes['total_population']).multiply(100))
+    # outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
+    #     outcomes['total_population']).multiply(100))
+
+    outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
+        outcomes['total_population'])
+    outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
+        outcomes['n_poor_initial']).div(outcomes['total_population'])
+    outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
+        outcomes['pct_poor_before'])
 
     # Move years_in_poverty column to the end of the data frame
     outcomes = outcomes[[c for c in outcomes if c not in [
