@@ -15,7 +15,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
     colors = sns.color_palette(color_palette, n_colors=len(districts))
-    
+
     if len(x_columns) == 0:
         x_columns = [
             'n_affected_people',
@@ -35,7 +35,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
             # 'nine_years_in_poverty',
             # 'ten_years_in_poverty'
         ]
-    
+
     if len(x_titles) == 0:
         x_titles = [
             'Affected People',
@@ -60,7 +60,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
 
     for x_column, x_title in zip(x_columns, x_titles):
         fig, ax = plt.subplots(ncols=3, nrows=3, figsize=(
-            5 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
+            4 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
 
         for district in districts:
             df = outcomes[outcomes['district'] == district].copy()
@@ -169,7 +169,8 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
         # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
         if savefigs:
-            plt.savefig(f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
+            plt.savefig(
+                f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
 
 
 def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize, return_table):
@@ -259,6 +260,7 @@ def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize,
     if return_table:
         return data
 
+
 def nine_quadrants_plot(data, x_name, y_name, scale=True):
     _, ax = plt.subplots(figsize=(6, 5))
 
@@ -347,6 +349,7 @@ def nine_quadrants_plot(data, x_name, y_name, scale=True):
     # y = data[y_name]
     # m, b = np.polyfit(x, y, 1)
     # ax.plot(x, m * x + b, color='black', alpha=0.5, zorder=1)
+
 
 def get_colors(data):
 
