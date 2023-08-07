@@ -1,0 +1,11 @@
+ema_workbench==2.4.1
+geopandas==0.12.2
+matplotlib==3.7.1
+numpy==1.24.3
+pandas==1.5.3
+ptitprince==0.2.6
+scikit_learn==1.2.2
+scikit_learn==1.3.0
+scipy==1.10.1
+seaborn==0.11.0
+setuptools==68.0.0
