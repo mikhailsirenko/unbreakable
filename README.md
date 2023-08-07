@@ -1,6 +1,5 @@
-# unbreakable
+# What is Unbreakable?
 Building the Resilience of the Poor in the Face of Natural Disasters.
-
 
 ## Background
 This repository contains a modified version of the code behind Hallegatte et al. (2017).
