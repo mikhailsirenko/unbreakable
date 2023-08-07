@@ -4,10 +4,10 @@ import pandas as pd
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-from data.read import *
-from data.write import *
-from modules.optimize import *
-from modules.households import *
+from src.data.read import *
+from src.data.write import *
+from src.modules.optimize import *
+from src.modules.households import *
 
 
 def initialize_model(country: str, min_households: int) -> tuple:
@@ -109,7 +109,9 @@ def run_model(**kwargs):
         # Read household survey and asset damage files for a specific district
         event_damage, total_asset_stock, expected_loss_fraction = get_asset_damage(
             all_damage, scale, district, return_period, print_statistics)
+
         households = select_district(household_survey, district)
+
         average_productivity = calculate_average_productivity(
             households, print_statistics)
 
@@ -140,7 +142,7 @@ def run_model(**kwargs):
         array_outcomes = np.array(list(get_outcomes(
             households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, n_years).values()))
 
-        # * To check whether we have different households affected in different runs        
+        # * To check whether we have different households affected in different runs
         # if district == 'Castries':
         #     affected_households.to_csv(f'affected_households_{random_seed}.csv')
 

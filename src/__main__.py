@@ -1,6 +1,6 @@
 # The main file of the model. It runs the model with the parameters specified in the kwargs dictionary.
 
-from model import *
+from src.model import *
 from ema_workbench import (
     Model,
     Constant,
@@ -95,120 +95,120 @@ if __name__ == "__main__":
         f.write(str(kwargs))
         f.write("\n\\end{lstlisting}")
 
-    # seed_start = 0
-    # seed_end = 1000000  # to make sure that we have enough unique seeds
+    seed_start = 0
+    seed_end = 1000000  # to make sure that we have enough unique seeds
 
-    # # To run the model with EMA Workbench we need to specify the uncertainties, levers and outcomes in a certain way
-    # my_model.constants = [
-    #     # Case study constants
-    #     Constant("country", country),
-    #     Constant("scale", scale),
-    #     Constant("districts", districts),
-    #     Constant("print_statistics", False),
-    #     Constant("return_period", kwargs["return_period"]),
-    #     Constant("poverty_line", kwargs["poverty_line"]),
-    #     Constant("indigence_line", kwargs["indigence_line"]),
-    #     Constant("saving_rate", kwargs["saving_rate"]),
-    #     Constant("is_vulnerability_random", kwargs["is_vulnerability_random"]),
-    #     Constant("min_households", kwargs["min_households"]),
-    #     Constant("optimization_timestep", kwargs["optimization_timestep"]),
-    #     Constant("n_years", kwargs["n_years"]),
+    # To run the model with EMA Workbench we need to specify the uncertainties, levers and outcomes in a certain way
+    my_model.constants = [
+        # Case study constants
+        Constant("country", country),
+        Constant("scale", scale),
+        Constant("districts", districts),
+        Constant("print_statistics", False),
+        Constant("return_period", kwargs["return_period"]),
+        Constant("poverty_line", kwargs["poverty_line"]),
+        Constant("indigence_line", kwargs["indigence_line"]),
+        Constant("saving_rate", kwargs["saving_rate"]),
+        Constant("is_vulnerability_random", kwargs["is_vulnerability_random"]),
+        Constant("min_households", kwargs["min_households"]),
+        Constant("optimization_timestep", kwargs["optimization_timestep"]),
+        Constant("n_years", kwargs["n_years"]),
 
-    #     # Policy constants
-    #     Constant("add_income_loss", kwargs["add_income_loss"]),
+        # Policy constants
+        Constant("add_income_loss", kwargs["add_income_loss"]),
 
-    #     # Uncertainties
-    #     # Constant("poverty_bias", kwargs["poverty_bias"]),
-    #     # Constant("consumption_utility", kwargs["consumption_utility"]),
-    #     # Constant("discount_rate", kwargs["discount_rate"]),
-    #     # Constant(
-    #     #     "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
-    #     # ),
+        # Uncertainties
+        # Constant("poverty_bias", kwargs["poverty_bias"]),
+        # Constant("consumption_utility", kwargs["consumption_utility"]),
+        # Constant("discount_rate", kwargs["discount_rate"]),
+        # Constant(
+        #     "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
+        # ),
 
-    #     # Model constants
-    #     Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
-    #     Constant("set_vulnerability_params",
-    #              kwargs["set_vulnerability_params"]),
-    #     Constant("calculate_exposure_params",
-    #              kwargs["calculate_exposure_params"]),
-    #     Constant("determine_affected_params",
-    #              kwargs["determine_affected_params"]),
-    # ]
+        # Model constants
+        Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
+        Constant("set_vulnerability_params",
+                 kwargs["set_vulnerability_params"]),
+        Constant("calculate_exposure_params",
+                 kwargs["calculate_exposure_params"]),
+        Constant("determine_affected_params",
+                 kwargs["determine_affected_params"]),
+    ]
 
-    # # !: What's the impact of it on no policy vs policy runs?
-    # my_model.uncertainties = [
-    #     IntegerParameter("random_seed", seed_start, seed_end),
-    #     RealParameter('poverty_bias', 1.0, 1.5),  # 1.0, 1.5
-    #     RealParameter('consumption_utility', 1.0, 1.5),  # 1.0, 1.5
-    #     RealParameter('discount_rate', 0.04, 0.07),  # 0.04, 0.07
-    #     RealParameter('income_and_expenditure_growth', 0.01, 0.03)  # 0.01, 0.03
-    # ]
+    # !: What's the impact of it on no policy vs policy runs?
+    my_model.uncertainties = [
+        IntegerParameter("random_seed", seed_start, seed_end),
+        RealParameter('poverty_bias', 1.0, 1.5),  # 1.0, 1.5
+        RealParameter('consumption_utility', 1.0, 1.5),  # 1.0, 1.5
+        RealParameter('discount_rate', 0.04, 0.07),  # 0.04, 0.07
+        RealParameter('income_and_expenditure_growth', 0.01, 0.03)  # 0.01, 0.03
+    ]
 
-    # # Specify the levers of the model
-    # # The naming convention is: <target group> + <top up percentage>
-    # # The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
-    # # There are no limitations on the top-up percentage
-    # # * Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
-    # # * It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
-    # # * where `v` is the vulnerability of the household and `keff` is the effective capital stock
-    # my_model.levers = [
-    #     CategoricalParameter(
-    #         "my_policy",
-    #         [
-    #             "all+0",
-    #             "all+10",
-    #             "all+30",
-    #             "all+50",
-    #             "all+100",
-    #             "poor+0",
-    #             "poor+10",
-    #             "poor+30",
-    #             "poor+50",
-    #             "poor+100",
-    #             "poor_near_poor1.25+0",
-    #             "poor_near_poor1.25+10",
-    #             "poor_near_poor1.25+30",
-    #             "poor_near_poor1.25+50",
-    #             "poor_near_poor1.25+100",
-    #             "poor_near_poor2.0+0",
-    #             "poor_near_poor2.0+10",
-    #             "poor_near_poor2.0+30",
-    #             "poor_near_poor2.0+50",
-    #             "poor_near_poor2.0+100",
-    #         ],
+    # Specify the levers of the model
+    # The naming convention is: <target group> + <top up percentage>
+    # The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
+    # There are no limitations on the top-up percentage
+    # * Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
+    # * It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
+    # * where `v` is the vulnerability of the household and `keff` is the effective capital stock
+    my_model.levers = [
+        CategoricalParameter(
+            "my_policy",
+            [
+                "all+0",
+                "all+10",
+                "all+30",
+                "all+50",
+                "all+100",
+                "poor+0",
+                "poor+10",
+                "poor+30",
+                "poor+50",
+                "poor+100",
+                "poor_near_poor1.25+0",
+                "poor_near_poor1.25+10",
+                "poor_near_poor1.25+30",
+                "poor_near_poor1.25+50",
+                "poor_near_poor1.25+100",
+                "poor_near_poor2.0+0",
+                "poor_near_poor2.0+10",
+                "poor_near_poor2.0+30",
+                "poor_near_poor2.0+50",
+                "poor_near_poor2.0+100",
+            ],
+        )
+    ]
+
+    # We store the outcomes of interest by district
+    # To see which exact outcomes are stored, check the `get_outcomes` function in `write.py`
+    my_model.outcomes = [
+        ArrayOutcome("AnseLaRayeCanaries"),
+        ArrayOutcome("Castries"),
+        ArrayOutcome("Choiseul"),
+        ArrayOutcome("Dennery"),
+        ArrayOutcome("Gros Islet"),
+        ArrayOutcome("Laborie"),
+        ArrayOutcome("Micoud"),
+        ArrayOutcome("Soufriere"),
+        ArrayOutcome("Vieuxfort"),
+    ]
+
+    # Specify the number of scenarios and policies
+    n_scenarios = 20000
+
+    # * If the number of policies is equal to the number of specified levers, then all policies are evaluated
+    n_policies = 0
+
+    results = perform_experiments(
+        models=my_model, scenarios=n_scenarios, policies=n_policies)
+
+    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
+    #     results = evaluator.perform_experiments(
+    #         scenarios=n_scenarios, policies=n_policies
     #     )
-    # ]
 
-    # # We store the outcomes of interest by district
-    # # To see which exact outcomes are stored, check the `get_outcomes` function in `write.py`
-    # my_model.outcomes = [
-    #     ArrayOutcome("AnseLaRayeCanaries"),
-    #     ArrayOutcome("Castries"),
-    #     ArrayOutcome("Choiseul"),
-    #     ArrayOutcome("Dennery"),
-    #     ArrayOutcome("Gros Islet"),
-    #     ArrayOutcome("Laborie"),
-    #     ArrayOutcome("Micoud"),
-    #     ArrayOutcome("Soufriere"),
-    #     ArrayOutcome("Vieuxfort"),
-    # ]
-
-    # # Specify the number of scenarios and policies
-    # n_scenarios = 20000
-
-    # # * If the number of policies is equal to the number of specified levers, then all policies are evaluated
-    # n_policies = 0
-
-    # results = perform_experiments(
-    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
-
-    # # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
-    # #     results = evaluator.perform_experiments(
-    # #         scenarios=n_scenarios, policies=n_policies
-    # #     )
-
-    # # Save results as tar.gz file
-    # add_income_loss = kwargs["add_income_loss"]
-    # save_results(
-    #     results, f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
-    # )
+    # Save results as tar.gz file
+    add_income_loss = kwargs["add_income_loss"]
+    save_results(
+        results, f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
+    )

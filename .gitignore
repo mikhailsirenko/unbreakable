@@ -98,7 +98,7 @@ target/
 .idea/
 chache/
 *./*./cache
-/docs
+# /docs
 /results
 .kanbn
 notes.md
