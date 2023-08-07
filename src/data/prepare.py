@@ -16,7 +16,7 @@ def prepare_asset_damage(country: str, scale: str, return_period: int = 100) -> 
         if scale == 'district':
             # Load raw data
             df = pd.read_excel(
-                '../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
+                '../../data/raw/asset_damage/Saint Lucia/St Lucia 2015 exposure summary.xlsx', sheet_name='total by parish', skiprows=1)
             # Remove redundant columns
             df.drop(df.columns[0], axis=1, inplace=True)
             # Even though the data is by `parish``, let's call the corresponding column `district``
@@ -36,7 +36,7 @@ def prepare_asset_damage(country: str, scale: str, return_period: int = 100) -> 
                          500: 248310895.20,  # 24,831,089,520.00
                          1000: 377593847.00}  # 37,759,384,700.00
             aal = pd.read_excel(
-                '../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
+                '../../data/processed/asset_damage/Saint Lucia/AAL Results 19022016 StLucia FinalSummary2 adjusted.xlsx', sheet_name='AAL St. Lucia Province')
             aal.set_index('Name', inplace=True)
             aal = aal[['AAL as % of Total AAL']]
             aal.columns = ['pml']
@@ -44,7 +44,7 @@ def prepare_asset_damage(country: str, scale: str, return_period: int = 100) -> 
             pml = aal.multiply(total_pml[return_period])
             df = pd.merge(df, pml, left_on='district', right_index=True)
             df.to_excel(
-                f'../data/processed/asset_damage/{country}/{country}.xlsx', index=False)
+                f'../../data/processed/asset_damage/{country}/{country}.xlsx', index=False)
         else:
             raise ValueError(
                 'Only `district` scale is supported for Saint Lucia.')
@@ -178,7 +178,7 @@ def prepare_household_survey(country: str) -> None:
               )
 
     result.to_csv(
-        f'../data/processed/household_survey/{country}/{country}.csv ')
+        f'../../data/processed/household_survey/{country}/{country}.csv ')
 
 
 def load_data(print_statistics: bool = True) -> pd.DataFrame:
@@ -677,6 +677,6 @@ def linear_regression(data: pd.DataFrame, X_column: str, y_column: str, weights:
 # ---------------------------------------------------------------------------- #
 
 
-prepare_household_survey(country='Saint Lucia')
-prepare_asset_damage(country='Saint Lucia',
-                     scale='district', return_period=100)
+# prepare_household_survey(country='Saint Lucia')
+# prepare_asset_damage(country='Saint Lucia',
+#                      scale='district', return_period=100)
