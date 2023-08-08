@@ -15,7 +15,7 @@ def read_asset_damage(country) -> None:
     return all_damage
 
 
-def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return_period: int, print_statistics: bool) -> tuple:
+def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return_period: int) -> tuple:
     '''Get asset damage for a specific district.
 
     Args:
@@ -23,7 +23,6 @@ def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return
         scale (str): Scale of the analysis. Only `district` is supported.
         district (str): District name.
         return_period (int): Return period.
-        print_statistics (bool): Print the statistics.
 
     Returns:
         tuple: Event damage, total asset stock, expected loss fraction.
@@ -49,13 +48,6 @@ def get_asset_damage(all_damage: pd.DataFrame, scale: str, district: str, return
     if expected_loss_fraction > 1:
         raise ValueError(
             'Expected loss fraction is greater than 1. Check the data.')
-
-    if print_statistics:
-        print('Event damage = ' + str('{:,}'.format(round(event_damage))))
-        print('Total asset stock = ' +
-              str('{:,}'.format(round(total_asset_stock))))
-        print('Expected loss fraction = ' +
-              str(np.round(expected_loss_fraction, 3)))
 
     return event_damage, total_asset_stock, expected_loss_fraction
 

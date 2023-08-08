@@ -31,8 +31,10 @@ def load_data(country: str, min_households: int) -> tuple:
     return household_survey, all_damage
 
 
-def run_model(**kwargs):
+def run_model(**kwargs) -> dict:
     '''Run the model.'''
+    # TODO: Find the way to document the function input
+    # TODO: Find the more concise way to read the model parameters
     # ------------------------- Read the model parameters ------------------------ #
     country = kwargs['country']
     scale = kwargs['scale']
