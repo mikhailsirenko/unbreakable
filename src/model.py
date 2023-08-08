@@ -10,39 +10,17 @@ from src.modules.optimize import *
 from src.modules.households import *
 
 
-def load_data(country: str, min_households: int) -> tuple:
-    '''Read household survey and asset damage data.
-
-    Args:
-        country (str): Country name.
-        min_households (int): Minimum number of households that we need to have in a sample to it be representative.
-
-    Returns:
-        tuple: Household survey and asset damage files.
-    '''
-
-    # Read household survey and asset damage files
-    household_survey = read_household_survey(country)
-    all_damage = read_asset_damage(country)
-
-    # Duplicate households to have at least `min_households` households
-    household_survey = duplicate_households(household_survey, min_households)
-
-    return household_survey, all_damage
-
-
 def run_model(**kwargs) -> dict:
     '''Run the model.'''
-    # TODO: Find the way to document the function input
-    # TODO: Find the more concise way to read the model parameters
     # ------------------------- Read the model parameters ------------------------ #
+    # Case study parameters
     country = kwargs['country']
     scale = kwargs['scale']
     districts = kwargs['districts']
     min_households = kwargs['min_households']
 
     # Read household survey and asset damage files
-    household_survey, all_damage = load_data(
+    household_survey, all_damage = read_data(
         country, min_households)
 
     # Case study constants
@@ -73,6 +51,7 @@ def run_model(**kwargs) -> dict:
         # If a policy is not provided, use the default policy
         my_policy = 'all+0'
 
+    # Add income loss to consumption loss calculation?
     add_income_loss = kwargs['add_income_loss']
 
     # Outcomes
@@ -83,24 +62,6 @@ def run_model(**kwargs) -> dict:
     random_seed = kwargs['random_seed']
     random.seed(random_seed)
     np.random.seed(random_seed)
-
-    # PIPELINE:
-    # 1. Load all damage
-    # 2. Load household survey
-    # 3. Select district
-    # 4. Get event damage, total asset stock, expected loss fraction
-    # 5. Calculate average productivity
-    # 6. Adjust assets and expenditure
-    # 7. Calculate PML
-    # 8. Estimate savings
-    # 9. Set vulnerability
-    # 10. Calculate exposure
-    # 11. Determine affected
-    # 12. Apply individual policy
-    # 13. Run optimization
-    # 14. Integrate wellbeing
-    # 15. Prepare outcomes
-    # 16. Get outcomes
 
     # ---------------------- Run the model for each district --------------------- #
 
@@ -131,9 +92,11 @@ def run_model(**kwargs) -> dict:
         # Calculate the impact and recovery
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
-        affected_households = calculate_recovery_rate(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
-        affected_households = integrate_wellbeing(affected_households, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, add_income_loss, cash_transfer)
-        
+        affected_households = calculate_recovery_rate(
+            affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
+        affected_households = integrate_wellbeing(affected_households, consumption_utility, discount_rate,
+                                                  income_and_expenditure_growth, average_productivity, poverty_line, n_years, add_income_loss, cash_transfer)
+
         # Add columns of affected households to the original households dataframe
         households = add_columns(households, affected_households)
 
