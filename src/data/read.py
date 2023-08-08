@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 import json
+from src.modules.households import duplicate_households
 
 
 def read_asset_damage(country) -> None:
@@ -60,7 +61,7 @@ def read_household_survey(country: str) -> pd.DataFrame:
 
     Returns:
         pd.DataFrame: Household survey data.
-    
+
     Raises:
         ValueError: If the country is not `Saint Lucia`.
     '''
@@ -71,3 +72,24 @@ def read_household_survey(country: str) -> pd.DataFrame:
         raise ValueError('Only `Saint Lucia` is supported.')
 
     return household_survey
+
+
+def read_data(country: str, min_households: int) -> tuple:
+    '''Read household survey and asset damage data.
+
+    Args:
+        country (str): Country name.
+        min_households (int): Minimum number of households that we need to have in a sample to it be representative.
+
+    Returns:
+        tuple: Household survey and asset damage files.
+    '''
+
+    # Read household survey and asset damage files
+    household_survey = read_household_survey(country)
+    all_damage = read_asset_damage(country)
+
+    # Duplicate households to have at least `min_households` households
+    household_survey = duplicate_households(household_survey, min_households)
+
+    return household_survey, all_damage
