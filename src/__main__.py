@@ -46,16 +46,13 @@ if __name__ == "__main__":
         "min_households": 1493,  # min households we need to have a good enough representation
         "optimization_timestep": 0.01,
         "n_years": 10,  # number of years in optimization algorithm
-
         # Policy constants
         "add_income_loss": False,
-
         # Uncertainties
         # "poverty_bias": 1.0,
         # "consumption_utility": 1.0,
         # "discount_rate": 0.04,
         # "income_and_expenditure_growth": 0.01,
-
         # Model constants
         "estimate_savings_params": {
             "mean_noise_low": 0,
@@ -90,10 +87,10 @@ if __name__ == "__main__":
     }
 
     # Save kwargs as a tex file with code
-    with open("kwargs.tex", "w") as f:
-        f.write("\\begin{lstlisting}\n")
-        f.write(str(kwargs))
-        f.write("\n\\end{lstlisting}")
+    # with open("../reports/kwargs.tex", "w") as f:
+    #     f.write("\\begin{lstlisting}\n")
+    #     f.write(str(kwargs))
+    #     f.write("\n\\end{lstlisting}")
 
     seed_start = 0
     seed_end = 1000000  # to make sure that we have enough unique seeds
@@ -104,7 +101,6 @@ if __name__ == "__main__":
         Constant("country", country),
         Constant("scale", scale),
         Constant("districts", districts),
-        Constant("print_statistics", False),
         Constant("return_period", kwargs["return_period"]),
         Constant("poverty_line", kwargs["poverty_line"]),
         Constant("indigence_line", kwargs["indigence_line"]),
@@ -113,10 +109,8 @@ if __name__ == "__main__":
         Constant("min_households", kwargs["min_households"]),
         Constant("optimization_timestep", kwargs["optimization_timestep"]),
         Constant("n_years", kwargs["n_years"]),
-
         # Policy constants
         Constant("add_income_loss", kwargs["add_income_loss"]),
-
         # Uncertainties
         # Constant("poverty_bias", kwargs["poverty_bias"]),
         # Constant("consumption_utility", kwargs["consumption_utility"]),
@@ -124,24 +118,20 @@ if __name__ == "__main__":
         # Constant(
         #     "income_and_expenditure_growth", kwargs["income_and_expenditure_growth"]
         # ),
-
         # Model constants
         Constant("estimate_savings_params", kwargs["estimate_savings_params"]),
-        Constant("set_vulnerability_params",
-                 kwargs["set_vulnerability_params"]),
-        Constant("calculate_exposure_params",
-                 kwargs["calculate_exposure_params"]),
-        Constant("determine_affected_params",
-                 kwargs["determine_affected_params"]),
+        Constant("set_vulnerability_params", kwargs["set_vulnerability_params"]),
+        Constant("calculate_exposure_params", kwargs["calculate_exposure_params"]),
+        Constant("determine_affected_params", kwargs["determine_affected_params"]),
     ]
 
     # !: What's the impact of it on no policy vs policy runs?
     my_model.uncertainties = [
         IntegerParameter("random_seed", seed_start, seed_end),
-        RealParameter('poverty_bias', 1.0, 1.5),  # 1.0, 1.5
-        RealParameter('consumption_utility', 1.0, 1.5),  # 1.0, 1.5
-        RealParameter('discount_rate', 0.04, 0.07),  # 0.04, 0.07
-        RealParameter('income_and_expenditure_growth', 0.01, 0.03)  # 0.01, 0.03
+        RealParameter("poverty_bias", 1.0, 1.5),  # 1.0, 1.5
+        RealParameter("consumption_utility", 1.0, 1.5),  # 1.0, 1.5
+        RealParameter("discount_rate", 0.04, 0.07),  # 0.04, 0.07
+        RealParameter("income_and_expenditure_growth", 0.01, 0.03),  # 0.01, 0.03
     ]
 
     # Specify the levers of the model
@@ -200,7 +190,8 @@ if __name__ == "__main__":
     n_policies = 0
 
     results = perform_experiments(
-        models=my_model, scenarios=n_scenarios, policies=n_policies)
+        models=my_model, scenarios=n_scenarios, policies=n_policies
+    )
 
     # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
     #     results = evaluator.perform_experiments(
@@ -210,5 +201,6 @@ if __name__ == "__main__":
     # Save results as tar.gz file
     add_income_loss = kwargs["add_income_loss"]
     save_results(
-        results, f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
+        results,
+        f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz",
     )

@@ -10,12 +10,12 @@ from src.modules.optimize import *
 from src.modules.households import *
 
 
-def initialize_model(country: str, min_households: int) -> tuple:
-    '''Initialize the model by reading household survey and asset damage files.
+def load_data(country: str, min_households: int) -> tuple:
+    '''Read household survey and asset damage data.
 
     Args:
         country (str): Country name.
-        min_households (int): Minimum number of households that we need to have in a sample to be representative.
+        min_households (int): Minimum number of households that we need to have in a sample to it be representative.
 
     Returns:
         tuple: Household survey and asset damage files.
@@ -40,7 +40,7 @@ def run_model(**kwargs):
     min_households = kwargs['min_households']
 
     # Read household survey and asset damage files
-    household_survey, all_damage = initialize_model(
+    household_survey, all_damage = load_data(
         country, min_households)
 
     # Case study constants
@@ -77,9 +77,6 @@ def run_model(**kwargs):
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
-    # Print statistics for debugging
-    print_statistics = kwargs['print_statistics']
-
     # Fix random seed for reproducibility
     random_seed = kwargs['random_seed']
     random.seed(random_seed)
@@ -108,19 +105,18 @@ def run_model(**kwargs):
     for district in districts:
         # Read household survey and asset damage files for a specific district
         event_damage, total_asset_stock, expected_loss_fraction = get_asset_damage(
-            all_damage, scale, district, return_period, print_statistics)
+            all_damage, scale, district, return_period)
 
         households = select_district(household_survey, district)
 
-        average_productivity = calculate_average_productivity(
-            households, print_statistics)
+        average_productivity = calculate_average_productivity(households)
 
         # Model the impact of a disaster on households
-        households = (adjust_assets_and_expenditure(households, total_asset_stock, poverty_line, indigence_line, print_statistics)
-                      .pipe(calculate_pml, expected_loss_fraction, print_statistics)
+        households = (adjust_assets_and_expenditure(households, total_asset_stock, poverty_line, indigence_line)
+                      .pipe(calculate_pml, expected_loss_fraction)
                       .pipe(estimate_savings, saving_rate, estimate_savings_params)
                       .pipe(set_vulnerability, is_vulnerability_random, set_vulnerability_params)
-                      .pipe(calculate_exposure, poverty_bias, calculate_exposure_params, print_statistics)
+                      .pipe(calculate_exposure, poverty_bias, calculate_exposure_params)
                       .pipe(determine_affected, determine_affected_params))
 
         # households['aesav'].hist()
@@ -133,11 +129,12 @@ def run_model(**kwargs):
         # Calculate the impact and recovery
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
-        affected_households = (run_optimization(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
-                               .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, add_income_loss, cash_transfer))
-
+        affected_households = calculate_recovery_rate(affected_households, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years)
+        affected_households = integrate_wellbeing(affected_households, consumption_utility, discount_rate, income_and_expenditure_growth, average_productivity, poverty_line, n_years, add_income_loss, cash_transfer)
+        
         # Add columns of affected households to the original households dataframe
         households = add_columns(households, affected_households)
+
         # Get outcomes
         array_outcomes = np.array(list(get_outcomes(
             households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, n_years).values()))

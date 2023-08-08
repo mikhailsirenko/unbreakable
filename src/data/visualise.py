@@ -8,6 +8,7 @@ import ptitprince as pt
 import seaborn as sns
 from scipy.stats import spearmanr
 from matplotlib.ticker import MaxNLocator
+import mapclassify as mc
 # import contextily as ctx
 
 
@@ -173,11 +174,11 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
                 f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
 
 
-def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scale, figsize, return_table):
+def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scheme, figsize, return_table):
     fig, ax = plt.subplots(figsize=figsize)
 
     # Bin the data
-    data = bin_data(data, x_name, y_name, scale, print_statistics=False)
+    data = bin_data(data, x_name, y_name, scheme, print_statistics=False)
 
     # Get colors
     all_colors, available_colors = get_colors(data)
@@ -390,39 +391,30 @@ def get_colors(data):
     return list(all_colors.values()), available_colors
 
 
-def bin_data(data, x_name, y_name, scale, print_statistics=True):
-    if scale:
-        # Scale the data to be between 0 and 1
-        # data[x_name] = (data[x_name] - data[x_name].min()) / \
-        #     (data[x_name].max() - data[x_name].min())
-        # data[y_name] = (data[y_name] - data[y_name].min()) / \
-        #     (data[y_name].max() - data[y_name].min())
-        # Scale the data with MinMaxScaler
-        scaler = MinMaxScaler()
-        data[x_name] = scaler.fit_transform(data[x_name].values.reshape(-1, 1))
-        data[y_name] = scaler.fit_transform(data[y_name].values.reshape(-1, 1))
+def bin_data(data, x_name, y_name, scheme:'fisher_jenks', print_statistics=True):
+    if scheme == 'fisher_jenks':
+        x_classifier = mc.FisherJenks(data[x_name], k=3)
+        # x_bin_edges = x_classifier.bins
+        x_bin_labels = x_classifier.yb
 
-    # Define the bins
-    bins = [0, 0.33, 0.66, 1]
+        y_classifier = mc.FisherJenks(data[y_name], k=3)
+        # y_bin_edges = y_classifier.bins
+        y_bin_labels = y_classifier.yb
 
     # Bin the first variable - x
-    data['Var1_Class'] = pd.cut(data[x_name], bins=bins, include_lowest=True)
+    data['Var1_Class'] = x_bin_labels
     data['Var1_Class'] = data['Var1_Class'].astype('str')
 
     # Bin the second variable - y
-    data['Var2_Class'] = pd.cut(data[y_name], bins=bins, include_lowest=True)
+    data['Var2_Class'] = y_bin_labels
     data['Var2_Class'] = data['Var2_Class'].astype('str')
 
     # Code created x bins to 1, 2, 3
-    x_class_codes = np.arange(1, len(bins))
-    d = dict(
-        zip(data['Var1_Class'].value_counts().sort_index().index, x_class_codes))
+    d = {'0' : '1', '1': '2', '2': '3'}
     data['Var1_Class'] = data['Var1_Class'].replace(d)
 
     # Code created y bins to A, B, C
-    y_class_codes = ['A', 'B', 'C']
-    d = dict(
-        zip(data['Var2_Class'].value_counts().sort_index().index, y_class_codes))
+    d = {'0' : 'A', '1': 'B', '2': 'C'}
     data['Var2_Class'] = data['Var2_Class'].replace(d)
 
     # Combine x and y codes to create Bi_Class

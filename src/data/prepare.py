@@ -574,7 +574,7 @@ def check_columns(data: pd.DataFrame) -> pd.DataFrame:
         'hhweight',
         'state',
         'hhexp',
-        'inc_safetynet_frac',
+        '   ',
         'houses_owned',
         'percentile',
         'decile',

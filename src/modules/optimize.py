@@ -3,7 +3,7 @@ import pandas as pd
 import pickle
 
 
-def run_optimization(affected_households: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> pd.DataFrame:
+def calculate_recovery_rate(affected_households: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> pd.DataFrame:
     '''This function calculates the recovery rate for each affected household.
 
     Args:

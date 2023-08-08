@@ -56,12 +56,11 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
         return household_survey
 
 
-def calculate_average_productivity(households: pd.DataFrame, print_statistics: bool) -> float:
+def calculate_average_productivity(households: pd.DataFrame) -> float:
     '''Calculate average productivity as aeinc \ k_house_ae.
 
     Args:
         households (pd.DataFrame): Household survey data.
-        print_statistics (bool, optional): Whether to print the average productivity. Defaults to False.
 
     Returns:
         float: Average productivity.
@@ -72,13 +71,10 @@ def calculate_average_productivity(households: pd.DataFrame, print_statistics: b
     # ?: What's happening here?
     # average_productivity = average_productivity.iloc[0]
     average_productivity = np.nanmedian(average_productivity)
-    if print_statistics:
-        print('Average productivity of capital = ' +
-              str(np.round(average_productivity, 3)))
     return average_productivity
 
 
-def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float, print_statistics: bool) -> pd.DataFrame:
+def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float) -> pd.DataFrame:
     '''Adjust assets and expenditure of household to match data of asset damage file.
 
     There can be a mismatch between the data in the household survey and the of the asset damage.
@@ -89,7 +85,6 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
         total_asset_stock (float): Total asset stock.
         poverty_line (float): Poverty line.
         indigence_line (float): Indigence line.
-        print_statistics (bool, optional): Whether to print the statistics. Defaults to False.
 
     Returns:
         pd.DataFrame: Household survey data with adjusted assets and expenditure.
@@ -115,23 +110,15 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     households['poverty_line_adjusted'] = poverty_line * scaling_factor
     households['indigence_line_adjusted'] = indigence_line * scaling_factor
 
-    if print_statistics:
-        print('Total asset in survey =', '{:,}'.format(
-            round(total_asset_in_survey)))
-        print('Total asset in asset damage file =',
-              '{:,}'.format(round(total_asset_stock)))
-        print('Scaling factor =', round(scaling_factor, 3))
-
     return households
 
 
-def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print_statistics: bool) -> pd.DataFrame:
+def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float) -> pd.DataFrame:
     '''Calculate probable maximum loss as a product of population weight, effective capital stock and expected loss fraction.
 
     Args:
         households (pd.DataFrame): Household survey data.
         expected_loss_fraction (float): Expected loss fraction.
-        print_statistics (bool, optional): Whether to print the statistics. Defaults to False.
 
     Returns:
         pd.DataFrame: Household survey data with probable maximum loss.
@@ -143,8 +130,6 @@ def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float, print
     pml = households[['popwgt', 'keff']].prod(
         axis=1).sum() * expected_loss_fraction
     households['pml'] = pml
-    if print_statistics:
-        print('Probable maximum loss (total) : ', '{:,}'.format(round(pml)))
     return households
 
 
@@ -251,7 +236,7 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
         return households
 
 
-def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_exposure_params: dict, print_statistics: bool) -> pd.DataFrame:
+def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_exposure_params: dict) -> pd.DataFrame:
     '''Calculate exposure of households.
 
     Exposure is a function of poverty bias, effective capital stock, 
@@ -261,7 +246,6 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
         households (pd.DataFrame): Household survey data for a specific district.
         poverty_bias (float): Poverty bias.
         calculate_exposure_params (dict): Parameters for calculating exposure function.
-        print_statistics (bool): If True, print statistics.
 
     Returns:
         pd.DataFrame: Household survey data with calculated exposure.
@@ -293,12 +277,6 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
 
     # ?: fa - fraction affected?
     fa0 = pml / delimiter
-
-    # Print delimiter and fa0 with commas for thousands
-    if print_statistics:
-        print('PML: ', '{:,}'.format(round(pml, 2)))
-        print('Delimiter: ', '{:,}'.format(round(delimiter, 2)))
-        print('f0: ', '{:,}'.format(round(fa0, 2)))
 
     households['fa'] = fa0 * households[['poverty_bias']]
     households.drop('poverty_bias', axis=1, inplace=True)
