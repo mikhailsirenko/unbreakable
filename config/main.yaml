@@ -1,0 +1,97 @@
+# --------------------------------- Constants -------------------------------- #
+constants:
+  add_income_loss: false
+  calculate_exposure_params:
+    poverty_bias_random_distribution: uniform
+    poverty_bias_random_high: 1.5
+    poverty_bias_random_low: 0.5
+  consumption_utility: 1.0
+  country: Saint Lucia
+  determine_affected_params:
+    delta_pct: 0.025
+    distribution: uniform
+    high: 1.0
+    low: 0
+    num_masks: 2000
+  discount_rate: 0.04
+  districts:
+  - AnseLaRayeCanaries
+  - Castries
+  - Choiseul
+  - Dennery
+  - Gros Islet
+  - Laborie
+  - Micoud
+  - Soufriere
+  - Vieuxfort
+  estimate_savings_params:
+    mean_noise_distribution: uniform
+    mean_noise_high: 5
+    mean_noise_low: 0
+    noise_distribution: normal
+    noise_scale: 2.5
+    savings_clip_max: 1.0
+    savings_clip_min: 0.1
+  income_and_expenditure_growth: 0.01
+  indigence_line: 2123
+  is_vulnerability_random: false
+  min_households: 1493
+  n_years: 10
+  optimization_timestep: 0.01
+  poverty_bias: 1.0
+  poverty_line: 6443
+  return_period: 100
+  saving_rate: 0.02385
+  scale: district
+  set_vulnerability_params:
+    vulnerability_initial_distribution: uniform
+    vulnerability_initial_high: 1.4
+    vulnerability_initial_low: 0.6
+    vulnerability_initial_threshold: 0.95
+    vulnerability_random_distribution: uniform
+    vulnerability_random_high: 0.9
+    vulnerability_random_low: 0.01
+
+# ------------------------------- Policy levers ------------------------------ #
+# The naming convention is: <target group> + <top up percentage>
+# The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
+# There are no limitations on the top-up percentage
+# Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
+# It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
+# where `v` is the vulnerability of the household and `keff` is the effective capital stock
+policies:
+  0: all+0
+  1: all+10
+  2: all+30
+  3: all+50
+  4: all+100
+  5: poor+0
+  6: poor+10
+  7: poor+30
+  8: poor+50
+  9: poor+100
+  10: poor_near_poor1.25+0
+  11: poor_near_poor1.25+10
+  12: poor_near_poor1.25+30
+  13: poor_near_poor1.25+50
+  14: poor_near_poor1.25+100
+  15: poor_near_poor2.0+0
+  16: poor_near_poor2.0+10
+  17: poor_near_poor2.0+30
+  18: poor_near_poor2.0+50
+  19: poor_near_poor2.0+100
+
+# ------------------------------- Uncertainties ------------------------------ #
+uncertainties:
+  consumption_utility:
+  - 1.0
+  - 1.5
+  discount_rate:
+  - 0.04
+  - 0.07
+  income_and_expenditure_growth:
+  - 0.01
+  - 0.03
+  poverty_line:
+  - 1.0
+  - 1.5
