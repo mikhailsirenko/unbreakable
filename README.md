@@ -1,4 +1,5 @@
-# unbreakable
+# What is unbreakable?
+Unbreakable is a stochastic simulation model for assessing the resilience of households to natural disasters. It is based on the [Unbreakable report](http://hdl.handle.net/10986/25335) by Hallegatte et al. (2017).
 
 ## Introduction
 

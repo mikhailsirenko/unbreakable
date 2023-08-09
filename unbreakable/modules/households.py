@@ -2,12 +2,12 @@ import pandas as pd
 import numpy as np
 
 
-def duplicate_households(household_survey: pd.DataFrame, min_households: int) -> pd.DataFrame:
+def duplicate_households(household_survey: pd.DataFrame, min_representative_households: int) -> pd.DataFrame:
     '''Duplicates households if the number of households is less than `min_households` threshold.
 
     Args:
         household_survey (pd.DataFrame): Household survey data.
-        min_households (int): Minimum number of households.
+        min_representative_households (int): Minimum number of households for the sample to be representative.
 
     Returns:
         pd.DataFrame: Household survey data with duplicated households.
@@ -16,9 +16,9 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
         ValueError: If the total weights after duplication is not equal to the initial total weights.
     '''
 
-    if len(household_survey) < min_households:
+    if len(household_survey) < min_representative_households:
         print(
-            f'Number of households = {len(household_survey)} is less than the threshold = {min_households}')
+            f'Number of households = {len(household_survey)} is less than the threshold = {min_representative_households}')
 
         initial_total_weights = household_survey['popwgt'].sum()
 
@@ -27,7 +27,7 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
 
         # Get random ids from the household data to be duplicated
         ids = np.random.choice(
-            household_survey.index, min_households - len(household_survey), replace=True)
+            household_survey.index, min_representative_households - len(household_survey), replace=True)
         n_duplicates = pd.Series(ids).value_counts() + 1
         duplicates = household_survey.loc[ids]
 
@@ -58,10 +58,11 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
 
 def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
     """Calculate the median productivity as a function of aeinc to k_house_ae, 
-    
+
     where:
     - aeinc is the adult equivalent income (total)
-    - k_house_ae is the domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
+    - k_house_ae is the domicile value divided by 
+    the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
       k_house_ae = domicile_value / (hhexp / aeexp)
 
     Args:
@@ -78,12 +79,20 @@ def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
     """
     if not all(column in households.columns for column in ['aeinc', 'k_house_ae']):
         raise ValueError(
-            f'Input DataFrame does not contain the required columns: {required_columns}')
+            f'Input DataFrame does not contain the required columns: ["aeinc", "k_house_ae"]')
 
-    households['median_productivity'] = households['aeinc'] / households['k_house_ae']
+    households['median_productivity'] = households['aeinc'] / \
+        households['k_house_ae']
     return households
 
 
+def test_median_productivity():
+    household_survey = read_household_survey('Saint Lucia')
+    for district in household_survey['district'].unique():
+        households = household_survey[household_survey['district'] == district]
+        households = calculate_median_productivity(households)
+        median_productivity = households['median_productivity'].iloc[0]
+        assert median_productivity > 0
 
 
 def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float) -> pd.DataFrame:
@@ -102,7 +111,7 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
         pd.DataFrame: Household survey data with adjusted assets and expenditure.
     '''
     # TODO: Finish documentation
-    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita) 
+    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita)
     # k_house_ae = data['domicile_value'] / (data['hhexp'] / data['aeexp'])
     # aeexp is adult equivalent expenditure (per capita)
     # aeexp_house is data['hhexp_house'] (annual rent) / data['hhsize_ae']
@@ -127,9 +136,9 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     return households
 
 
-def calculate_household_probable_maximum_loss(households: pd.DataFrame, expected_loss_fraction: float) -> pd.DataFrame:
+def calculate_household_pml(households: pd.DataFrame, expected_loss_fraction: float) -> pd.DataFrame:
     '''Calculate probable maximum loss (PML) at the household level.
-    
+
     PML here function of population weight, effective capital stock and expected loss fraction.
 
     Args:
@@ -139,15 +148,17 @@ def calculate_household_probable_maximum_loss(households: pd.DataFrame, expected
     Returns:
         pd.DataFrame: Household survey data with probable maximum loss.
     '''
-    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita) 
+    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita)
     # k_house_ae = data['domicile_value'] / (data['hhexp'] / data['aeexp'])
 
     households['keff'] = households['k_house_ae'].copy()
 
     # TODO: Is it actually PML or something else?
-    pml = households[['popwgt', 'keff']].prod(axis=1).sum() * expected_loss_fraction
+    pml = households[['popwgt', 'keff']].prod(
+        axis=1).sum() * expected_loss_fraction
     households['pml'] = pml
     return households
+
 
 def estimate_savings(households: pd.DataFrame, saving_rate: float, estimate_savings_params: dict) -> pd.DataFrame:
     '''Estimate savings of households.
