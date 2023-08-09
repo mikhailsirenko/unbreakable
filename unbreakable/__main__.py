@@ -33,17 +33,17 @@ if __name__ == "__main__":
     my_model.outcomes = [ArrayOutcome(district) for district in constants['districts']]
 
     # Specify the number of scenarios & policies
-    n_scenarios = 1
+    n_scenarios = 12
     n_policies = 0
 
     # Run the model on a single core
-    results = perform_experiments(models=my_model, scenarios=n_scenarios, policies=n_policies)
+    # results = perform_experiments(models=my_model, scenarios=n_scenarios, policies=n_policies)
 
     # Run the model on multiple cores
-    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
-    #     results = evaluator.perform_experiments(scenarios=n_scenarios, policies=n_policies)
+    with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
+        results = evaluator.perform_experiments(scenarios=n_scenarios, policies=n_policies)
 
     # Save results as tar.gz file
     add_income_loss = constants["add_income_loss"]
-    f = f"../results/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
+    f = f"../experiments/scenarios={n_scenarios}, policies={n_policies}, income_loss={add_income_loss}.tar.gz"
     save_results(results, f)

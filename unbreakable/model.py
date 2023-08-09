@@ -23,8 +23,8 @@ def run_model(**params) -> dict:
     country = params['country']
     districts = params['districts']
 
-    # TODO: Do something with duplicate_households function
-    min_households = params['min_households']
+    # TODO: Do something with `duplicate_households` function
+    min_representative_households = params['min_representative_households']
 
     # Read household survey and asset damage files
 
@@ -87,13 +87,12 @@ def run_model(**params) -> dict:
         # Model the impact of a disaster on households
         # TODO: Rename `n_years` to something more meaningful
 
-        # Calculate the impact and recovery
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
 
         households = (households.pipe(calculate_median_productivity)
                                 .pipe(adjust_assets_and_expenditure, total_exposed_asset_stock, poverty_line, indigence_line)
-                                .pipe(calculate_household_probable_maximum_loss, expected_loss_fraction)
+                                .pipe(calculate_household_pml, expected_loss_fraction)
                                 .pipe(estimate_savings, saving_rate, estimate_savings_params)
                                 .pipe(assign_vulnerability, is_vulnerability_random, assign_vulnerability_params)
                                 .pipe(calculate_exposure, poverty_bias, calculate_exposure_params)

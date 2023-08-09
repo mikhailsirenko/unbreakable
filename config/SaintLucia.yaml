@@ -35,7 +35,7 @@ constants:
   income_and_expenditure_growth: 0.01
   indigence_line: 2123
   is_vulnerability_random: false
-  min_households: 1493
+  min_representative_households: 1493
   n_years: 10
   optimization_timestep: 0.01
   poverty_bias: 1.0
