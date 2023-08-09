@@ -3,20 +3,20 @@
 import yaml
 from ema_workbench import (Model, Constant, CategoricalParameter, IntegerParameter, RealParameter,
                            ArrayOutcome, MultiprocessingEvaluator, ema_logging, perform_experiments, save_results)
-from src.model import *
+from unbreakable.model import *
 ema_logging.log_to_stderr(ema_logging.INFO)
 
 my_model = Model(name="model", function=run_model)
 
 if __name__ == "__main__":
     # Load config from yaml file
-    with open("../config/main.yaml", "r") as f:
+    with open("../config/SaintLucia.yaml", "r") as f:
         config = yaml.safe_load(f)
 
     # Each of the parameters is a dict
     constants = config["constants"]
     uncertainties = config["uncertainties"]
-    policies = config["policies"]
+    levers = config["levers"]
 
     # Specify the EMA Workbench model
     my_model.constants = [Constant(key, values) for key, values in constants.items()]
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     my_model.uncertainties = [IntegerParameter("random_seed", seed_start, seed_end)]\
         #   + [RealParameter(key, values[0], values[1]) for key, values in uncertainties.items()]
 
-    my_model.levers = [CategoricalParameter("my_policy", [value for key, value in policies.items()])]
+    my_model.levers = [CategoricalParameter("my_policy", [value for key, value in levers.items()])]
 
     # We store the outcomes of interest by district. To see which exact outcomes are stored, check the `get_outcomes` function in `write.py`
     my_model.outcomes = [ArrayOutcome(district) for district in constants['districts']]

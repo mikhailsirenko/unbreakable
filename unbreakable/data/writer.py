@@ -23,15 +23,14 @@ def add_columns(households: pd.DataFrame, affected_households: pd.DataFrame) -> 
     return households
 
 
-def get_outcomes(households, event_damage, total_asset_stock, expected_loss_fraction, average_productivity, n_years) -> dict:
+def get_outcomes(households, total_exposed_asset_stock, expected_loss_fraction, n_years) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
         households (pd.DataFrame): Households data frame.
-        event_damage (float): Event damage.
-        total_asset_stock (float): Total asset stock.
+        total_exposed_asset_stock (float): Total exposed asset stock.
         expected_loss_fraction (float): Expected loss fraction.
-        average_productivity (float): Average productivity.
+        median_productivity (float): Median productivity.
         n_years (float): Number of years to consider for calculations (same as for optimization algorithm).
 
     Returns:
@@ -39,6 +38,7 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
     '''
     # Save some outcomes for verification
     total_population = households['popwgt'].sum()
+    median_productivity = households['median_productivity'].iloc[0]
     total_asset_in_survey = households['total_asset_in_survey'].iloc[0]
 
     # Actual outcomes of interest
@@ -91,9 +91,8 @@ def get_outcomes(households, event_damage, total_asset_stock, expected_loss_frac
         'total_population': total_population,
         'total_asset_loss': total_asset_loss,
         'total_consumption_loss': total_consumption_loss,
-        'event_damage': event_damage,
-        'total_asset_stock': total_asset_stock,
-        'average_productivity': average_productivity,
+        'total_asset_stock': total_exposed_asset_stock,
+        'median_productivity': median_productivity,
         'total_asset_in_survey': total_asset_in_survey,
         'expected_loss_fraction': expected_loss_fraction,
         'n_affected_people': n_affected_people,
