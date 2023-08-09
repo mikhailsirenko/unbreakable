@@ -1,56 +1,50 @@
-# What is Unbreakable?
-Building the Resilience of the Poor in the Face of Natural Disasters.
+# unbreakable
 
-## Background
-This repository contains a modified version of the code behind Hallegatte et al. (2017).
+## Introduction
+
+## Features
+
+## Getting Started
+
+### Prerequisites
+The model is developed in Python 3.9 and relies on standard packages. The easiest way to install them is to use [Anaconda](https://www.anaconda.com/products/individual) with the `requirements.txt` file:
+```bash
+conda create --name unbreakable --file requirements.txt
+```
+
+### Installation
+Clone the repository from GitHub using the following:
+```bash
+git clone https://github.com/mikhailsirenko/unbreakable
+```
+
+### Usage
+You run the model from the command line with the default parameters using:
+```bash
+python unbreakable/__main__.py
+```
+
+### Examples
 
 ## Documentation
-Read the documentation [here](https://mikhailsirenko.github.io/unbreakable/src.html).
+Detailed model documentation, including function descriptions and usage examples, is available [here](https://mikhailsirenko.github.io/unbreakable/src.html).
 
-## How to use this repository
-You can run the code in this repository by cloning the repository and installing it by running the following command in the terminal:
+## Repository Structure
+```
+unbreakable
 
 ```
-pip install -e .
-```
 
-Note that you may need to install some dependencies from the environment.yml. To do that, run the following command in the terminal:
-
-```
-conda env create -f environment.yml
-```
-
-Additionally, the repository does not contain the data to replicate the results. However, you may request the data.
-
-## Repo structure
-This repository has the following structure:
-    
-``` 
-├── data
-│   ├── external       <- Data from third party sources.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
-├── docs               <- pdoc generated documentation of the model (src module).
-├── notebooks          <- Jupyter notebooks for analysis.
-├── results            <- Experiment results.
-├── src                <- Source code for use in this project.
-│   ├── __main__.py    <- Runs the simulation model.
-│   ├── model.py       <- The simulation model.
-│   ├── data           <- Functions to prepare, read and write data (outcomes of the simulation model)
-│   └── modules        <- Functions to run the simulation model.
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment.
-├── README.md          <- The top-level README for using this project.
-├── setup.py           <- Makes project pip installable (pip install -e .) so src can be imported.
-```
+## Contributing
 
 ## Authors
-*Mikhail Sirenko*, *Bramka Arga Jafino* and *Brian Walsh*. 
+*Mikhail Sirenko* and *Bramka Arga Jafino*.
 
 ## License
-CC BY 3.0 IGO
+The project license is CC BY 3.0 IGO.
 
-## Acknowledgements
+## Contact
+For inquiries or collaboration, feel free to reach out to [Mikhail Sirenko](https://twitter.com/mikhailsirenko).
 
 ## References
-* Hallegatte, Stephane; Vogt-Schilb, Adrien; Bangalore, Mook; Rozenberg, Julie. 2017. Unbreakable: Building the Resilience of the Poor in the Face of Natural Disasters. Climate Change and Development; © Washington, DC: World Bank. http://hdl.handle.net/10986/25335 License: CC BY 3.0 IGO.
+Hallegatte, S., Vogt-Schilb, A., Bangalore, M., & Rozenberg, J. (2017). *Unbreakable: Building the Resilience of the Poor in the Face of Natural Disasters*. Climate Change and Development. Washington, DC: World Bank. [http://hdl.handle.net/10986/25335](http://hdl.handle.net/10986/25335)

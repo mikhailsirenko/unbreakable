@@ -98,9 +98,6 @@ target/
 .idea/
 chache/
 *./*./cache
-# /docs
-/results
-.kanbn
-notes.md
+/experiments
 /reports
-/tables
+NOTES.md

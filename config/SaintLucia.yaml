@@ -7,7 +7,7 @@ constants:
     poverty_bias_random_low: 0.5
   consumption_utility: 1.0
   country: Saint Lucia
-  determine_affected_params:
+  identify_affected_params:
     delta_pct: 0.025
     distribution: uniform
     high: 1.0
@@ -42,8 +42,7 @@ constants:
   poverty_line: 6443
   return_period: 100
   saving_rate: 0.02385
-  scale: district
-  set_vulnerability_params:
+  assign_vulnerability_params:
     vulnerability_initial_distribution: uniform
     vulnerability_initial_high: 1.4
     vulnerability_initial_low: 0.6
@@ -59,7 +58,7 @@ constants:
 # Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
 # It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
 # where `v` is the vulnerability of the household and `keff` is the effective capital stock
-policies:
+levers:
   0: all+0
   1: all+10
   2: all+30
