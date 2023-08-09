@@ -3,20 +3,14 @@ import pandas as pd
 import pickle
 
 
-def calculate_recovery_rate(affected_households: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> pd.DataFrame:
-    '''This function calculates the recovery rate for each affected household.
+def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float, discount_rate: float, optimization_timestep: float, n_years: int) -> pd.DataFrame:
+    '''Calculates the recovery rate for each affected household.'''
+    
+    # Get the median productivity. It is the same for all households in a district.
+    median_productivity = households['median_productivity'].values[0]
 
-    Args:
-        affected_households (pd.DataFrame): A data frame containing the affected households.
-        consumption_utility (float): The coefficient of relative risk aversion.
-        discount_rate (float): The discount rate.
-        average_productivity (float): The average productivity.
-        optimization_timestep (float): The timestep for the optimization.
-        n_years (int): The number of years in the optimization algorithm.
-
-    Returns:
-        pd.DataFrame: A data frame containing the affected households with the recovery rate.
-    '''
+    # Subset households that are affected by the disaster
+    affected_households = households[households['is_affected'] == True].copy()
 
     # Set effective capital stock to zero for renters
     affected_households.loc[affected_households['own_rent']
@@ -40,19 +34,22 @@ def calculate_recovery_rate(affected_households: pd.DataFrame, consumption_utili
 
     # Calculate the recovery rate for each affected household
     affected_households['recovery_rate'] = affected_households['v'].apply(
-        lambda x: optimize_recovery_rate(x, optimization_results, consumption_utility, discount_rate, average_productivity, optimization_timestep, n_years))
+        lambda x: optimize_recovery_rate(x, optimization_results, consumption_utility, discount_rate, median_productivity, optimization_timestep, n_years))
+    
+    # Set recovery rate to zero for unaffected households
+    households['recovery_rate'] = 0
 
-    # TODO: Check whether this has any impact on anything
-    # optimization_results = optimization_results.sort_index()
+    # Update the recovery rate in the households data frame for affected households
+    households.loc[households['is_affected'] == True, 'recovery_rate'] = affected_households['recovery_rate']
 
-    return affected_households
+    return households
 
 
-def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, optimization_timestep: float, n_years: int) -> float:
+def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_utility: float, discount_rate: float, median_productivity: float, optimization_timestep: float, n_years: int) -> float:
     try:
         # Look for the existing solution
         solution = optimization_results.loc[(
-            0, 0, 0, round(x, 3), round(average_productivity, 3)), 'solution']
+            0, 0, 0, round(x, 3), round(median_productivity, 3)), 'solution']
         return solution
     except:
         # No existing solution found, so we need to optimize
@@ -70,11 +67,11 @@ def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_ut
 
             for _t in np.linspace(0, t_max_linspace, nsteps_linspace):
 
-                part1 = average_productivity - \
-                    (average_productivity+_lambda)*x*np.e**(-_lambda*_t)
+                part1 = median_productivity - \
+                    (median_productivity+_lambda)*x*np.e**(-_lambda*_t)
                 part1 = part1**(-consumption_utility)
 
-                part2 = _t * (average_productivity+_lambda) - 1
+                part2 = _t * (median_productivity+_lambda) - 1
 
                 part3 = np.e**(-_t*(discount_rate+_lambda))
 
@@ -82,20 +79,20 @@ def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_ut
 
             # !: All these do the same
             if last_dwdlambda < 0 and dwdlambda > 0:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(average_productivity, 3)), [
+                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
 
             elif last_dwdlambda > 0 and dwdlambda < 0:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(average_productivity, 3)), [
+                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
 
             # !: That's why assigning more than 10 years does not work, we need to change 10 to `n_years`?
             elif _lambda > 10:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(average_productivity, 3)), [
+                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 optimization_results = optimization_results.sort_index()
                 return _lambda
@@ -105,20 +102,25 @@ def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_ut
             _lambda += opt_step
 
 
-def integrate_wellbeing(affected_households: pd.DataFrame,
+def integrate_wellbeing(households: pd.DataFrame,
                         consumption_utility: float,
                         discount_rate: float,
                         income_and_expenditure_growth: float,
-                        average_productivity: float,
                         poverty_line: float,
                         n_years: int,
                         add_income_loss: bool,
                         cash_transfer: dict = {},
                         ) -> pd.DataFrame:
+    # Get the median productivity. It is the same for all households in a district.
+    median_productivity = households['median_productivity'].values[0]
 
+    # Subset households that are affected by the disaster
+    affected_households = households[households['is_affected'] == True].copy()
+    
     # We need to reset some columns to zero to start the integration
     columns = ['consumption_loss', 'consumption_loss_NPV', 'net_consumption_loss',
                'net_consumption_loss_NPV', 'c_t', 'w_final', 'weeks_pov', 'w_final2']
+    households.loc[households['is_affected'] == False, columns] = 0
     affected_households[columns] = [0., 0., 0., 0., 0., 0., 0., 0.]
 
     # Define the number of weeks given the number of years
@@ -157,7 +159,7 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
         
         # TODO: Make sure that `delta_tax_safety` is not 0
         income_loss = gfac * (1 - affected_households['delta_tax_safety']) * \
-            average_productivity * \
+            median_productivity * \
             affected_households['keff'] * affected_households['v']
 
         # Equation is as follows: consumption_loss = expenditure_growth + exponential_multiplier * (savings - asset_damage - income_loss)
@@ -177,7 +179,7 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
         #                                 - gfac * affected_households['v'] * affected_households[['keff', 'recovery_rate']].prod(axis=1))) # asset damage
 
         #                                 # - (1 - affected_households['delta_tax_safety']) # income loss
-        #                                 #     * average_productivity * affected_households['keff']
+        #                                 #     * median_productivity * affected_households['keff']
         #                                 #     * affected_households['v']))
 
         # `c_t_unaffected` is the consumption at time t if the household was not affected by the disaster
@@ -230,8 +232,11 @@ def integrate_wellbeing(affected_households: pd.DataFrame,
         # Save consumption recovery value at the time _t
         # consumption_recovery[_t] = affected_households['c_t']
 
-    # Save consumption recovery as pickle file
+    # * Save consumption recovery as pickle file
     # with open('consumption_recovery.pickle', 'wb') as handle:
     #     pickle.dump(consumption_recovery, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    return affected_households
+    # Save the content of the columns for affected_households into households data frame
+    households.loc[affected_households.index, columns] = affected_households[columns]
+
+    return households

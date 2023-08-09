@@ -24,9 +24,8 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'total_population',
         'total_asset_loss',
         'total_consumption_loss',
-        'event_damage',
         'total_asset_stock',
-        'average_productivity',
+        'median_productivity',
         'total_asset_in_survey',
         'expected_loss_fraction',
         'n_affected_people',
@@ -208,8 +207,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
 
 
 def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = [], country: str = 'Saint Lucia', aggregation: str = 'mean') -> gpd.GeoDataFrame:
-    # Load country shapefile
-    country = 'Saint Lucia'
     gdf = gpd.read_file(
         f'../data/raw/shapefiles/{country}/gadm36_LCA_shp/gadm36_LCA_1.shp')
 

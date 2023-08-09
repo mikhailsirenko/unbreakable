@@ -56,22 +56,34 @@ def duplicate_households(household_survey: pd.DataFrame, min_households: int) ->
         return household_survey
 
 
-def calculate_average_productivity(households: pd.DataFrame) -> float:
-    '''Calculate average productivity as aeinc \ k_house_ae.
+def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
+    """Calculate the median productivity as a function of aeinc to k_house_ae, 
+    
+    where:
+    - aeinc is the adult equivalent income (total)
+    - k_house_ae is the domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
+      k_house_ae = domicile_value / (hhexp / aeexp)
 
     Args:
-        households (pd.DataFrame): Household survey data.
+        households (pd.DataFrame): A households DataFrame containing the columns 'aeinc' and 'k_house_ae'.
 
     Returns:
-        float: Average productivity.
-    '''
-    # DEFF: aeinc - some type of income
-    average_productivity = households['aeinc'] / households['k_house_ae']
+        float: Median productivity.
 
-    # ?: What's happening here?
-    # average_productivity = average_productivity.iloc[0]
-    average_productivity = np.nanmedian(average_productivity)
-    return average_productivity
+    Raises:
+        ValueError: If the input DataFrame does not contain the required columns.
+
+    Note:
+        The function ignores NaN values in the calculation of the median.
+    """
+    if not all(column in households.columns for column in ['aeinc', 'k_house_ae']):
+        raise ValueError(
+            f'Input DataFrame does not contain the required columns: {required_columns}')
+
+    households['median_productivity'] = households['aeinc'] / households['k_house_ae']
+    return households
+
+
 
 
 def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: float, poverty_line: float, indigence_line: float) -> pd.DataFrame:
@@ -89,9 +101,11 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     Returns:
         pd.DataFrame: Household survey data with adjusted assets and expenditure.
     '''
-    # k_house_ae - effective capital stock of the household
-    # aeexp - adult equivalent expenditure of a household (total)
-    # aeexp_house - data['hhexp_house'] (annual rent) / data['hhsize_ae']
+    # TODO: Finish documentation
+    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita) 
+    # k_house_ae = data['domicile_value'] / (data['hhexp'] / data['aeexp'])
+    # aeexp is adult equivalent expenditure (per capita)
+    # aeexp_house is data['hhexp_house'] (annual rent) / data['hhsize_ae']
     included_variables = ['k_house_ae', 'aeexp', 'aeexp_house']
 
     # Save the initial values
@@ -113,30 +127,27 @@ def adjust_assets_and_expenditure(households: pd.DataFrame, total_asset_stock: f
     return households
 
 
-def calculate_pml(households: pd.DataFrame, expected_loss_fraction: float) -> pd.DataFrame:
-    '''Calculate probable maximum loss as a product of population weight, effective capital stock and expected loss fraction.
+def calculate_household_probable_maximum_loss(households: pd.DataFrame, expected_loss_fraction: float) -> pd.DataFrame:
+    '''Calculate probable maximum loss (PML) at the household level.
+    
+    PML here function of population weight, effective capital stock and expected loss fraction.
 
     Args:
-        households (pd.DataFrame): Household survey data.
+        households (pd.DataFrame): Households.
         expected_loss_fraction (float): Expected loss fraction.
 
     Returns:
         pd.DataFrame: Household survey data with probable maximum loss.
     '''
-    # DEF: keff - effective capital stock
-    # DEF: pml - probable maximum loss
-    # DEF: popwgt - population weight of each household
+    # k_house_ae is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita) 
+    # k_house_ae = data['domicile_value'] / (data['hhexp'] / data['aeexp'])
+
     households['keff'] = households['k_house_ae'].copy()
-    pml = households[['popwgt', 'keff']].prod(
-        axis=1).sum() * expected_loss_fraction
+
+    # TODO: Is it actually PML or something else?
+    pml = households[['popwgt', 'keff']].prod(axis=1).sum() * expected_loss_fraction
     households['pml'] = pml
     return households
-
-
-def select_district(household_survey: pd.DataFrame, district: str) -> pd.DataFrame:
-    '''Select households for a specific district.'''
-    return household_survey[household_survey['district'] == district].copy()
-
 
 def estimate_savings(households: pd.DataFrame, saving_rate: float, estimate_savings_params: dict) -> pd.DataFrame:
     '''Estimate savings of households.
@@ -184,7 +195,7 @@ def estimate_savings(households: pd.DataFrame, saving_rate: float, estimate_savi
     return households
 
 
-def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, set_vulnerability_params: dict) -> pd.DataFrame:
+def assign_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, assign_vulnerability_params: dict) -> pd.DataFrame:
     '''Set vulnerability of households.
 
     Vulnerability can be random or based on `v_init` with uniform noise.
@@ -203,10 +214,10 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     # If vulnerability is random, then draw from the uniform distribution
     if is_vulnerability_random:
         # default 0.01
-        low = set_vulnerability_params['vulnerability_random_low']
+        low = assign_vulnerability_params['vulnerability_random_low']
         # default 0.90
-        high = set_vulnerability_params['vulnerability_random_high']
-        if set_vulnerability_params['vulnerability_random_distribution'] == 'uniform':
+        high = assign_vulnerability_params['vulnerability_random_high']
+        if assign_vulnerability_params['vulnerability_random_distribution'] == 'uniform':
             households['v'] = np.random.uniform(low, high, households.shape[0])
         else:
             raise ValueError("Only uniform distribution is supported yet.")
@@ -215,19 +226,19 @@ def set_vulnerability(households: pd.DataFrame, is_vulnerability_random: bool, s
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
         # default 0.6
-        low = set_vulnerability_params['vulnerability_initial_low']
+        low = assign_vulnerability_params['vulnerability_initial_low']
         # default 1.4
-        high = set_vulnerability_params['vulnerability_initial_high']
+        high = assign_vulnerability_params['vulnerability_initial_high']
         # v - actual vulnerability
         # v_init - initial vulnerability
-        if set_vulnerability_params['vulnerability_initial_distribution'] == 'uniform':
+        if assign_vulnerability_params['vulnerability_initial_distribution'] == 'uniform':
             households['v'] = households['v_init'] * \
                 np.random.uniform(low, high, households.shape[0])
         else:
             raise ValueError("Only uniform distribution is supported yet.")
 
         # default 0.95
-        vulnerability_threshold = set_vulnerability_params['vulnerability_initial_threshold']
+        vulnerability_threshold = assign_vulnerability_params['vulnerability_initial_threshold']
 
         # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
         households.loc[households['v'] >
@@ -283,7 +294,7 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calculate_
     return households
 
 
-def determine_affected(households: pd.DataFrame, determine_affected_params: dict) -> tuple:
+def identify_affected(households: pd.DataFrame, identify_affected_params: dict) -> tuple:
     '''Determines affected households.
 
     We assume that all households have the same probability of being affected, 
@@ -304,7 +315,7 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     pml = households['pml'].iloc[0]
 
     # Allow for a relatively small error
-    delta = pml * determine_affected_params['delta_pct']  # default 0.025
+    delta = pml * identify_affected_params['delta_pct']  # default 0.025
 
     # Check if total asset is less than PML
     total_asset = households[['keff', 'popwgt']].prod(axis=1).sum()
@@ -312,11 +323,11 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
         raise ValueError(
             'Total asset is less than PML.')
 
-    low = determine_affected_params['low']  # default 0
-    high = determine_affected_params['high']  # default 1
+    low = identify_affected_params['low']  # default 0
+    high = identify_affected_params['high']  # default 1
 
     # Generate multiple boolean masks at once
-    num_masks = determine_affected_params['num_masks']  # default 2000
+    num_masks = identify_affected_params['num_masks']  # default 2000
     masks = np.random.uniform(
         low, high, (num_masks, households.shape[0])) <= households['fa'].values
 
@@ -351,27 +362,24 @@ def determine_affected(households: pd.DataFrame, determine_affected_params: dict
     return households
 
 
-def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
+def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
     '''Apply a policy to a specific target group.
 
     Args:
-        households (pd.DataFrame): Household survey data for a specific district.
-        my_policy (str): Policy to apply. The structure of the policy is `target_group`+`top_up` in a single string. `target_group` can be `all`, `poor`, `poor_near_poor1.25`, `poor_near_poor2.0`, and the `top_up` 0, 10, 30 or 50.
-
+        households (pd.DataFrame): Households.
+        my_policy (str): Policy to apply. Format: <target_group>+<top_up>. Example: "poor+100".
     Returns:
-        tuple: Household survey data with applied policy and affected households.
+        pd.DataFrame: Households with applied policy.
     '''
-
+    # * Note that we adjusted the poverty line in `adjust_assets_and_expenditure`
     poverty_line_adjusted = households['poverty_line_adjusted'].iloc[0]
 
     target_group, top_up = my_policy.split('+')
     top_up = float(top_up)
 
-    # Select a target group
     if target_group == 'all':
         beneficiaries = households['is_affected'] == True
 
-    # * If the target group is poor, the policy won't decrease the number of new poor
     elif target_group == 'poor':
         beneficiaries = (households['is_affected'] == True) & (
             households['is_poor'] == True)
@@ -390,13 +398,7 @@ def apply_individual_policy(households: pd.DataFrame, my_policy: str) -> tuple:
             households['is_poor'] == False) & (households['aeexp'] < 2 * poverty_line_adjusted)
         beneficiaries = poor_affected | near_poor_affected
 
-    # * Here we have to decide to what to add to aeexp or aesav
     households.loc[beneficiaries,
                    'aesav'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
 
-    # Select columns of interest
-    columns_of_interest = ['hhid', 'popwgt', 'own_rent', 'quintile', 'aeexp',
-                           'aeexp_house', 'keff', 'v', 'aesav', 'aesoc', 'delta_tax_safety']
-    affected_households = households.loc[households['is_affected'],
-                                         columns_of_interest].copy()
-    return households, affected_households
+    return households
