@@ -26,8 +26,7 @@ def run_model(**params) -> dict:
     # TODO: Do something with `duplicate_households` function
     min_representative_households = params['min_representative_households']
 
-    # Read household survey and asset damage files
-
+    # Read household survey and damage files
     all_households = read_household_survey(country)
     
     # TODO: Check what do we actually read here
@@ -39,6 +38,8 @@ def run_model(**params) -> dict:
     indigence_line = params['indigence_line']
     saving_rate = params['saving_rate']
     is_vulnerability_random = params['is_vulnerability_random']
+    
+    # TODO: Rename `n_years` to something more meaningful
     n_years = params['n_years']
 
     # Model constants
@@ -84,12 +85,8 @@ def run_model(**params) -> dict:
         households = all_households[all_households['district'] == district].copy(
         )
 
-        # Model the impact of a disaster on households
-        # TODO: Rename `n_years` to something more meaningful
-
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
-
         households = (households.pipe(calculate_median_productivity)
                                 .pipe(adjust_assets_and_expenditure, total_exposed_asset_stock, poverty_line, indigence_line)
                                 .pipe(calculate_household_pml, expected_loss_fraction)
@@ -99,7 +96,7 @@ def run_model(**params) -> dict:
                                 .pipe(identify_affected, identify_affected_params)
                                 .pipe(apply_policy, my_policy)
                                 .pipe(calculate_recovery_rate, consumption_utility, discount_rate, optimization_timestep, n_years)
-                                .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, poverty_line, n_years, add_income_loss, cash_transfer))
+                                .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, n_years, add_income_loss, cash_transfer))
 
         # Get outcomes
         array_outcomes = np.array(list(get_outcomes(

@@ -106,13 +106,13 @@ def integrate_wellbeing(households: pd.DataFrame,
                         consumption_utility: float,
                         discount_rate: float,
                         income_and_expenditure_growth: float,
-                        poverty_line: float,
                         n_years: int,
                         add_income_loss: bool,
                         cash_transfer: dict = {},
                         ) -> pd.DataFrame:
     # Get the median productivity. It is the same for all households in a district.
     median_productivity = households['median_productivity'].values[0]
+    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
 
     # Subset households that are affected by the disaster
     affected_households = households[households['is_affected'] == True].copy()
@@ -218,7 +218,7 @@ def integrate_wellbeing(households: pd.DataFrame,
 
         # Increase the number of weeks in poverty
         affected_households.loc[affected_households['c_t']
-                                < poverty_line, 'weeks_pov'] += 1
+                                < poverty_line_adjusted, 'weeks_pov'] += 1
 
         # Integrated wellbeing
         affected_households['w_final'] += dt*(affected_households['c_t'])**(1-consumption_utility) * \
