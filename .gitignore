@@ -100,4 +100,8 @@ chache/
 *./*./cache
 /experiments
 /reports
+/scripts
 NOTES.md
+TODO.md
+/unbreakable/*.csv
+/debugging

@@ -12,7 +12,7 @@ import mapclassify as mc
 # import contextily as ctx
 
 
-def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
+def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
     colors = sns.color_palette(color_palette, n_colors=len(districts))
@@ -20,7 +20,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
     if len(x_columns) == 0:
         x_columns = [
             'n_affected_people',
-            'n_new_poor_increase_pct',
+            'n_new_poor_increase_pp',
             'n_new_poor',
             'annual_average_consumption_loss_pct',
             'r',
@@ -40,7 +40,7 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
     if len(x_titles) == 0:
         x_titles = [
             'Affected People',
-            'New Poor Increase (%)',
+            'New Poor Increase (p.p.)',
             'New Poor',
             'Wt. Ann. Avg. Consump. Loss p.c. (%)',
             'Socio-Economic Resilience',
@@ -169,14 +169,15 @@ def rainclouds(outcomes: pd.DataFrame, savefigs: bool,  x_columns: list = [], x_
         # Add a super title
         # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
-        if savefigs:
+        if savefig:
             plt.savefig(
-                f'../figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
+                f'../reeports/figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
 
 
 def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scheme, figsize, return_table):
     fig, ax = plt.subplots(figsize=figsize)
 
+    # TODO: Allow for 5 classes
     # Bin the data
     data = bin_data(data, x_name, y_name, scheme, print_statistics=False)
 

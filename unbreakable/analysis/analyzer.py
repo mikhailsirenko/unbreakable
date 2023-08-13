@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import ast
 import geopandas as gpd
-from ema_workbench import load_results
 
 
 def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
@@ -40,7 +39,9 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'annual_average_consumption_loss',
         'annual_average_consumption_loss_pct',
         'r',
-        'recovery_rate',
+        'mean_recovery_rate',
+        'total_consumption_loss_manual',
+        'total_asset_damage_manual',
         'years_in_poverty',
     ]
 
@@ -113,7 +114,8 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                     # Add uncertainty values
                     # From 4 + len(policy_names) to 4 + len(policy_names) + len(uncertainty_names) uncertainty values
                     for j, name in enumerate(uncertainty_names):
-                        outcomes[i, 4 + len(policy_names) + j] = uncertainty_values[k, j]
+                        outcomes[i, 4 + len(policy_names) +
+                                 j] = uncertainty_values[k, j]
 
                     # Add outcomes
                     # From 4 + len(policy_names) + len(uncertainty_names) to 4 + len(policy_names) + len(uncertainty_names) + len(outcome_names) outcomes
@@ -189,7 +191,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
 
     # Calculate the percentage of new poor
-    outcomes = outcomes.assign(n_new_poor_increase_pct=outcomes['n_new_poor'].div(
+    outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
         outcomes['total_population']).multiply(100))
 
     # outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
