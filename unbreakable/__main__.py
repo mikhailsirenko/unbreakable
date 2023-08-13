@@ -26,7 +26,7 @@ if __name__ == "__main__":
     my_model.levers = [CategoricalParameter("my_policy", [value for key, value in levers.items()])]
     my_model.outcomes = [ArrayOutcome(district) for district in constants['districts']]
 
-    n_scenarios = 36
+    n_scenarios = 100
     n_policies = 0
     
     # results = perform_experiments(models=my_model, scenarios=n_scenarios, policies=n_policies)

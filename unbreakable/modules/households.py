@@ -93,7 +93,7 @@ def duplicate_households(households: pd.DataFrame, min_representative_households
         if not np.isclose(duplicated_households['popwgt'].sum(), initial_total_weights, atol=1e-6):
             raise ValueError(
                 'Total weights after duplication is not equal to the initial total weights')
-
+        
         return duplicated_households.reset_index(drop=True)
     else:
         return households
@@ -149,7 +149,7 @@ def match_assets_and_expenditure(households: pd.DataFrame, tot_exposed_asset: fl
         # Check the result of the adjustment
         tot_asset_surv_adjusted = households[['popwgt', 'k_house_ae']].prod(
             axis=1).sum()
-        
+
         if not np.isclose(tot_exposed_asset, tot_asset_surv_adjusted, atol=1e1):
             raise ValueError(
                 'Total exposed asset stock is not equal to the total asset stock in the survey after adjustment')
@@ -377,11 +377,17 @@ def identify_affected(households: pd.DataFrame, ident_affected_params: dict) -> 
             f'Cannot find affected households in {num_masks} iterations.')
     else:
         try:
+            # Select the first mask that satisfies the condition
             mask_index = mask_index[0][0]
         except:
             print('mask_index: ', mask_index)
 
     chosen_mask = masks[mask_index]
+
+    # Raise an error if no mask was found
+    if len(chosen_mask) == 0:
+        raise ValueError(
+            f'Cannot find affected households in {num_masks} iterations.')
 
     # Assign the chosen mask to the 'is_affected' column of the DataFrame
     households['is_affected'] = chosen_mask
@@ -395,7 +401,7 @@ def identify_affected(households: pd.DataFrame, ident_affected_params: dict) -> 
     tot_asset_loss = households['asset_loss'].sum()
     if (tot_asset_loss < district_pml - delta) or (tot_asset_loss > district_pml + delta):
         raise ValueError(
-            f'Total asset loss ({tot_asset_loss}) is not within the desired range.') 
+            f'Total asset loss ({tot_asset_loss}) is not within the desired range.')
 
     return households
 

@@ -134,8 +134,8 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
 
     # Calculate consumption recovery-related variables on the household level
     # For debugging
-    household_1 = {}
-    household_2 = {}
+    # household_1 = {}
+    # household_2 = {}
     for _t in np.linspace(0, years_to_recover, tot_weeks):
         # Add an extra condition about to whom the transfer is given
         # # A "dynamic policy"
@@ -199,38 +199,38 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
                 affected_households['c_t'])*np.e**(-discount_rate*_t)
 
         # Collect consumption recovery-related variables for debugging
-        try:
-            idx1 = affected_households.index[0]
-            idx2 = affected_households.index[1]
-            district = affected_households['district'].values[0]
-            district_pml = affected_households['district_pml'].values[0]
+        # try:
+        #     idx1 = affected_households.index[0]
+        #     idx2 = affected_households.index[1]
+        #     district = affected_households['district'].values[0]
+        #     district_pml = affected_households['district_pml'].values[0]
 
-            household_1[_t] = {'district': district,
-                    'district_pml': district_pml,
-                    'expend_growth': expenditure_growth[idx1],
-                    'exp_mult': exponential_multiplier[idx1],
-                    'sav': savings[idx1],
-                    'asset_loss': asset_loss[idx1],
-                    'inc_loss': income_loss[idx1],
-                    'c_t': affected_households['c_t'][idx1],
-                    'c_t_unaffected': affected_households['c_t_unaffected'][idx1],
-                    'cons_loss': affected_households['consumption_loss'][idx1],
-                    'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx1]}
+        #     household_1[_t] = {'district': district,
+        #             'district_pml': district_pml,
+        #             'expend_growth': expenditure_growth[idx1],
+        #             'exp_mult': exponential_multiplier[idx1],
+        #             'sav': savings[idx1],
+        #             'asset_loss': asset_loss[idx1],
+        #             'inc_loss': income_loss[idx1],
+        #             'c_t': affected_households['c_t'][idx1],
+        #             'c_t_unaffected': affected_households['c_t_unaffected'][idx1],
+        #             'cons_loss': affected_households['consumption_loss'][idx1],
+        #             'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx1]}
 
-            household_2[_t] = {'district': district,
-                               'district_pml': district_pml,
-                               'expend_growth': expenditure_growth[idx2],
-                               'exp_mult': exponential_multiplier[idx2],
-                               'sav': savings[idx2],
-                               'asset_loss': asset_loss[idx2],
-                               'inc_loss': income_loss[idx2],
-                               'c_t': affected_households['c_t'][idx2],
-                               'c_t_unaffected': affected_households['c_t_unaffected'][idx2],
-                               'cons_loss': affected_households['consumption_loss'][idx2],
-                               'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx2]}
+        #     household_2[_t] = {'district': district,
+        #                        'district_pml': district_pml,
+        #                        'expend_growth': expenditure_growth[idx2],
+        #                        'exp_mult': exponential_multiplier[idx2],
+        #                        'sav': savings[idx2],
+        #                        'asset_loss': asset_loss[idx2],
+        #                        'inc_loss': income_loss[idx2],
+        #                        'c_t': affected_households['c_t'][idx2],
+        #                        'c_t_unaffected': affected_households['c_t_unaffected'][idx2],
+        #                        'cons_loss': affected_households['consumption_loss'][idx2],
+        #                        'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx2]}
 
-        except:
-            pass
+        # except:
+        #     pass
 
         affected_households['net_consumption_loss'] += dt * \
             np.e**(-affected_households['recovery_rate']*_t) * \
@@ -261,33 +261,34 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
     # with open('consumption_recovery.pickle', 'wb') as handle:
     #     pickle.dump(consumption_recovery, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-    affected_households['asset_loss_manual'] = asset_loss
+    affected_households['asset_loss_manual'] = asset_loss * dt
 
-    total_consumption_loss = (affected_households['consumption_loss_NPV'] * affected_households['popwgt']).sum()
-    total_asset_loss = (affected_households['asset_loss_manual'] * affected_households['popwgt']).sum()
+    # total_consumption_loss = (affected_households['consumption_loss_NPV'] * affected_households['popwgt']).sum()
+    # total_asset_loss = (affected_households['asset_loss_manual'] * affected_households['popwgt']).sum()
 
-    r = total_asset_loss / total_consumption_loss
+    # r = total_asset_loss / total_consumption_loss
 
-    if r > 4:
-        try:
-            household_1 = pd.DataFrame(household_1).T
-            household_1.to_csv('../debugging/household_1_r4.csv', index=False)
-            household_2 = pd.DataFrame(household_2).T
-            household_2.to_csv('../debugging/household_2_r4.csv', index=False)
-        except:
-            pass
-    elif r < 1:
-        try:
-            household_1 = pd.DataFrame(household_1).T
-            household_1.to_csv('../debugging/household_1_r1.csv', index=False)
-            household_2 = pd.DataFrame(household_2).T
-            household_2.to_csv('../debugging/household_2_r1.csv', index=False)
-        except:
-            pass
-    else:
-        pass
+    # if r > 4:
+    #     try:
+    #         household_1 = pd.DataFrame(household_1).T
+    #         household_1.to_csv('../debugging/household_1_r4.csv', index=False)
+    #         household_2 = pd.DataFrame(household_2).T
+    #         household_2.to_csv('../debugging/household_2_r4.csv', index=False)
+    #     except:
+    #         pass
+    # elif r < 1:
+    #     try:
+    #         household_1 = pd.DataFrame(household_1).T
+    #         household_1.to_csv('../debugging/household_1_r1.csv', index=False)
+    #         household_2 = pd.DataFrame(household_2).T
+    #         household_2.to_csv('../debugging/household_2_r1.csv', index=False)
+    #     except:
+    #         pass
+    # else:
+    #     pass
 
     # Save the content of the columns for affected_households into households data frame
-    households.loc[affected_households.index, columns] = affected_households[columns]
+    households.loc[affected_households.index,
+                   columns] = affected_households[columns]
 
     return households
