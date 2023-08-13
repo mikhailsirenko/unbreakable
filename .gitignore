@@ -103,6 +103,8 @@ chache/
 .kanbn
 notes.md
 /reports
-/tables
-/experiments
+/scripts
 NOTES.md
+TODO.md
+/unbreakable/*.csv
+/debugging

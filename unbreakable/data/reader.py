@@ -3,8 +3,9 @@ import os
 import numpy as np
 import json
 
-# TODO: Check whether it is asset damage or PML
-
+# TODO: Check whether necessary columns are present in the dataframes
+# TODO: Create dummy data
+# TODO: Restructure input data folders
 
 def read_asset_damage(country) -> None:
     '''Read asset damage data from an Excel file.'''
