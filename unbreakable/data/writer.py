@@ -29,23 +29,10 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
 
     # Recovery rate must be calculated only for the affected households only
     mean_recovery_rate = affected_households['recovery_rate'].mean()
-    total_asset_loss = affected_households[['keff', 'v', 'popwgt']].prod(axis=1).sum()
-    total_consumption_loss = affected_households[['consumption_loss_NPV', 'popwgt']].prod(axis=1).sum()
-
-    # TODO: Decided what to do with these runs
-    # Run statistics
-    # no_affected_households = 0
-    # zero_consumption_loss = 0
-
-    # Some runs give no affected households and we will skip these
-    # if len(affected_households) == 0:
-    #     no_affected_households += 1
-    #     pass
-
-    # Sometimes households are affected but they have no consumption loss
-    # if affected_households['consumption_loss_NPV'].sum() == 0:
-    #     zero_consumption_loss += 1
-    #     pass
+    total_asset_loss = affected_households[[
+        'keff', 'v', 'popwgt']].prod(axis=1).sum()
+    total_consumption_loss = affected_households[[
+        'consumption_loss_NPV', 'popwgt']].prod(axis=1).sum()
 
     # Poverty line adjusted (see `match_assets_and_expenditures` function in `households.py`)
     # Poverty line ois the same for all households
@@ -66,8 +53,6 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
 
     # PML is the same for all households in a district
     district_pml = households['district_pml'].iloc[0]
-
-    total_asset_loss_manual = (affected_households['asset_loss_manual'] * affected_households['popwgt']).sum()
 
     return {
         'total_population': total_population,
@@ -90,9 +75,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
         'mean_recovery_rate': mean_recovery_rate,
-        'total_asset_loss_manual' : total_asset_loss_manual,
         'years_in_poverty': years_in_poverty
-        # 'n_resilience_more_than_1' : n_resilience_more_than_1
     }
 
 
@@ -165,26 +148,26 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         Exception: If the poverty gap is greater than 1
     '''
     # First we need to calculate the poverty gap at the beginning of the simulation
-    
+
     # Get the weighted average expenditure
     average_expenditure_poor_initial = (
         poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
-    
+
     # Calculate the poverty gap at the beginning of the simulation
     initial_poverty_gap = (
         poverty_line - average_expenditure_poor_initial) / poverty_line
-    
+
     # Combine the poor at the beginning of the simulation and the new poor at the end of the simulation
     all_poor = pd.concat([poor_initial, new_poor])
 
     # Expenditure of both were affected by the disaster
     all_poor = all_poor.assign(
-        aeexp = all_poor['aeexp'] - all_poor['consumption_loss_NPV'] / years_to_recover)
+        aeexp=all_poor['aeexp'] - all_poor['consumption_loss_NPV'] / years_to_recover)
 
     # Now, get the average expenditure of the poor at the end of the simulation
     average_expenditure_poor_new = (
         all_poor['aeexp'] * all_poor['popwgt']).sum() / all_poor['popwgt'].sum()
-   
+
     # Calculate the poverty gap at the end of the simulation
     new_poverty_gap = (
         poverty_line - average_expenditure_poor_new) / poverty_line
@@ -194,6 +177,8 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         raise Exception('Poverty gap is greater than 1')
 
     return initial_poverty_gap, new_poverty_gap
+
+# TODO: Fix naming to weighted average
 
 
 def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame, years_to_recover: int) -> tuple:
@@ -247,31 +232,17 @@ def calculate_resilience(affected_households: pd.DataFrame) -> float:
 
     Returns:
         float: Socio-economic resilience
-    '''    
-    # total_consumption_loss = (
-    #     affected_households['consumption_loss_NPV'] * affected_households['popwgt']).sum()
-
-    # * Alternative calculation, going to give slightly higher total_consumption_loss
-    # average_consumption_loss = affected_households['consumption_loss_NPV'].mean()
-    # total_consumption_loss = (affected_households['popwgt'] * average_consumption_loss).sum()
-
-    # `asset_loss` here is approximately equal to the district PML
-    # For more details see `identify_affected` function
-    # `asset_loss` was already multiplied by `popwgt` in `identify_affected` function
-    
-    # total_asset_loss = affected_households['asset_loss'].sum()
-
+    '''
     total_consumption_loss = (
-        affected_households['consumption_loss_NPV'] * affected_households['popwgt']).sum()
-    total_asset_damage = (affected_households['asset_loss_manual'] * affected_households['popwgt']).sum()
+        affected_households[['consumption_loss_NPV', 'popwgt']].prod(axis=1)).sum()
+
+    total_asset_damage = (
+        affected_households[['keff', 'v', 'popwgt']].prod(axis=1)).sum()
 
     if total_consumption_loss == 0:
         r = np.nan
-    
+
     else:
         r = total_asset_damage / total_consumption_loss
 
-    if r > 4:
-        affected_households.to_csv('../debugging/affected_households_r4.csv')
-    
     return r

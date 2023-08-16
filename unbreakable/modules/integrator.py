@@ -3,8 +3,22 @@ import pandas as pd
 import pickle
 
 
-def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float, discount_rate: float, optimization_timestep: float, years_to_recover: int) -> pd.DataFrame:
-    '''Calculates the recovery rate for each affected household.'''
+def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int) -> pd.DataFrame:
+    '''Calculates the recovery rate for each affected household.
+
+    Recovery rate is a function of the household vulnerability (v), 
+    consumption utility, discount rate, median productivity and years to recover.    
+
+    Args:
+        households (pd.DataFrame): Households data frame.
+        consumption_utility (float): Consumption utility.
+        discount_rate (float): Discount rate.
+        lambda_increment (float): Lambda increment for the integration.
+        years_to_recover (int): Number of years to recover.
+
+    Returns:
+        pd.DataFrame: Households data frame with the recovery rate for each affected household.
+    '''
 
     # Get the median productivity. It is the same for all households in a district.
     median_productivity = households['median_productivity'].values[0]
@@ -16,17 +30,16 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
     affected_households.loc[affected_households['own_rent']
                             == 'rent', 'keff'] = 0
 
-    # Prepare a data frame to store optimization results
+    # Prepare a data frame to store integration results
     data = {'aeexp': -1, 'aeexp_house': -1, 'keff': -1, 'v': -
             1, 'aesav': -1, 'solution': None, 'bankrupt': None}
-    optimization_results = pd.DataFrame(data, index=[0])
+    results = pd.DataFrame(data, index=[0])
     index = ['aeexp', 'aeexp_house', 'keff', 'v', 'aesav']
-    optimization_results = optimization_results.reset_index(
-        drop=True).set_index(index)
+    results = results.reset_index(drop=True).set_index(index)
 
     # Calculate the recovery rate for each affected household
-    affected_households['recovery_rate'] = affected_households['v'].apply(
-        lambda x: optimize_recovery_rate(x, optimization_results, consumption_utility, discount_rate, median_productivity, optimization_timestep, years_to_recover))
+    affected_households['recovery_rate'] = affected_households['v'].apply(lambda x: integrate_and_find_recovery_rate(
+        x, results, consumption_utility, discount_rate, median_productivity, lambda_increment, years_to_recover))
 
     # Set recovery rate to zero for unaffected households
     households['recovery_rate'] = 0
@@ -38,64 +51,75 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
     return households
 
 
-def optimize_recovery_rate(x, optimization_results: pd.DataFrame, consumption_utility: float, discount_rate: float, median_productivity: float, optimization_timestep: float, years_to_recover: int) -> float:
+def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumption_utility: float, discount_rate: float, median_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
+    '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
+
+    Args:
+        v (float): Household vulnerability.
+        results (pd.DataFrame): Data frame to store integration results.
+        consumption_utility (float): Consumption utility.
+        discount_rate (float): Discount rate.
+        median_productivity (float): Median productivity.
+        lambda_increment (float): Lambda increment for the integration.
+        years_to_recover (int): Number of years to recover.
+
+    Returns:
+        float: Recovery rate (lambda).
+    '''
+    rounded_v = round(v, 3)
+    rounded_median_productivity = round(median_productivity, 3)
+
     try:
         # Look for the existing solution
-        solution = optimization_results.loc[(
-            0, 0, 0, round(x, 3), round(median_productivity, 3)), 'solution']
+        solution = results.loc[(
+            0, 0, 0, rounded_v, rounded_median_productivity), 'solution']
         return solution
-    except:
+
+    except KeyError:
         # No existing solution found, so we need to optimize
-        t_max_linspace = years_to_recover  # years
-        nsteps_linspace = 52 * t_max_linspace  # total weeks
-        dt = t_max_linspace / nsteps_linspace
+        tot_weeks = 52 * years_to_recover
+        dt = years_to_recover / tot_weeks
 
         _lambda = 0
-        opt_step = optimization_timestep
         last_dwdlambda = 0
 
         while True:
-
             dwdlambda = 0
-
-            for _t in np.linspace(0, t_max_linspace, nsteps_linspace):
-
+            for _t in np.linspace(0, years_to_recover, tot_weeks):
+                factor = median_productivity + _lambda
                 part1 = median_productivity - \
-                    (median_productivity+_lambda)*x*np.e**(-_lambda*_t)
+                    factor * v * np.e**(-_lambda * _t)
                 part1 = part1**(-consumption_utility)
-
-                part2 = _t * (median_productivity+_lambda) - 1
-
-                part3 = np.e**(-_t*(discount_rate+_lambda))
-
+                part2 = _t * factor - 1
+                part3 = np.e**(-_t * (discount_rate + _lambda))
                 dwdlambda += part1 * part2 * part3 * dt
 
-            # !: All these do the same
-            if last_dwdlambda < 0 and dwdlambda > 0:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
+            if (last_dwdlambda < 0 and dwdlambda > 0) or (last_dwdlambda > 0 and dwdlambda < 0) or _lambda > 10:
+                results.loc[(0, 0, 0, rounded_v, rounded_median_productivity), [
                     'solution', 'bankrupt']] = [_lambda, False]
-                optimization_results = optimization_results.sort_index()
+                results = results.sort_index()
                 return _lambda
 
-            elif last_dwdlambda > 0 and dwdlambda < 0:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
-                    'solution', 'bankrupt']] = [_lambda, False]
-                optimization_results = optimization_results.sort_index()
-                return _lambda
-
-            # !: That's why assigning more than 10 years does not work, we need to change 10 to `years_to_recover`?
-            elif _lambda > 10:
-                optimization_results.loc[(0, 0, 0, round(x, 3), round(median_productivity, 3)), [
-                    'solution', 'bankrupt']] = [_lambda, False]
-                optimization_results = optimization_results.sort_index()
-                return _lambda
-
-            else:
-                last_dwdlambda = dwdlambda
-            _lambda += opt_step
+            last_dwdlambda = dwdlambda
+            _lambda += lambda_increment
 
 
-def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, discount_rate: float, income_and_expenditure_growth: float, years_to_recover: int, add_income_loss: bool, cash_transfer: dict = {}) -> pd.DataFrame:
+def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, discount_rate: float, income_and_expenditure_growth: float, years_to_recover: int, add_income_loss: bool, cash_transfer: dict = {}) -> pd.DataFrame:
+    '''Calculates consumption loss and well-being for each affected household.
+
+    Args:
+        households (pd.DataFrame): Households data frame.
+        consumption_utility (float): Consumption utility.
+        discount_rate (float): Discount rate.
+        income_and_expenditure_growth (float): Income and expenditure growth.
+        years_to_recover (int): Number of years to recover.
+        add_income_loss (bool): Whether to add income loss or not.
+        cash_transfer (dict, optional): Cash transfer. Defaults to {}, where key is the week number and value is the amount.
+
+    Returns:
+        pd.DataFrame: Households data frame with consumption loss and well-being for each affected household.
+    '''
+
     # Get the median productivity and poverty line. They are the same for all households in a district.
     median_productivity = households['median_productivity'].values[0]
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
@@ -109,8 +133,7 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
                'c_t_unaffected',
                'w_final',
                'weeks_pov',
-               'w_final2',
-               'asset_loss_manual']
+               'w_final2']
 
     # Set values to zero
     households[columns] = 0
@@ -132,15 +155,12 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
     else:
         cash_transfer_transformed = {}
 
-    # Calculate consumption recovery-related variables on the household level
-    # For debugging
-    # household_1 = {}
-    # household_2 = {}
+    # Integrate consumption loss and well-being
     for _t in np.linspace(0, years_to_recover, tot_weeks):
-        # Add an extra condition about to whom the transfer is given
-        # # A "dynamic policy"
-        # if _t in list(cash_transfer_transformed.keys()):
-        #     affected_households['aesav'] += cash_transfer_transformed[_t]
+        # TODO: Add an extra condition about to whom the transfer is given
+        # A "dynamic policy"
+        if _t in list(cash_transfer_transformed.keys()):
+            affected_households['aesav'] += cash_transfer_transformed[_t]
 
         gfac = (1 + income_and_expenditure_growth)**_t
 
@@ -189,7 +209,7 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
             affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'],
                                     'c_t'] = affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'], 'c_t_unaffected']
 
-        # Total (integrated) consumption loss
+        # Total consumption loss
         affected_households['consumption_loss'] += dt * \
             (affected_households['c_t_unaffected'] -
                 affected_households['c_t'])
@@ -198,40 +218,7 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
             (affected_households['c_t_unaffected'] -
                 affected_households['c_t'])*np.e**(-discount_rate*_t)
 
-        # Collect consumption recovery-related variables for debugging
-        # try:
-        #     idx1 = affected_households.index[0]
-        #     idx2 = affected_households.index[1]
-        #     district = affected_households['district'].values[0]
-        #     district_pml = affected_households['district_pml'].values[0]
-
-        #     household_1[_t] = {'district': district,
-        #             'district_pml': district_pml,
-        #             'expend_growth': expenditure_growth[idx1],
-        #             'exp_mult': exponential_multiplier[idx1],
-        #             'sav': savings[idx1],
-        #             'asset_loss': asset_loss[idx1],
-        #             'inc_loss': income_loss[idx1],
-        #             'c_t': affected_households['c_t'][idx1],
-        #             'c_t_unaffected': affected_households['c_t_unaffected'][idx1],
-        #             'cons_loss': affected_households['consumption_loss'][idx1],
-        #             'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx1]}
-
-        #     household_2[_t] = {'district': district,
-        #                        'district_pml': district_pml,
-        #                        'expend_growth': expenditure_growth[idx2],
-        #                        'exp_mult': exponential_multiplier[idx2],
-        #                        'sav': savings[idx2],
-        #                        'asset_loss': asset_loss[idx2],
-        #                        'inc_loss': income_loss[idx2],
-        #                        'c_t': affected_households['c_t'][idx2],
-        #                        'c_t_unaffected': affected_households['c_t_unaffected'][idx2],
-        #                        'cons_loss': affected_households['consumption_loss'][idx2],
-        #                        'cons_loss_NPV': affected_households['consumption_loss_NPV'][idx2]}
-
-        # except:
-        #     pass
-
+        # Net consumption loss
         affected_households['net_consumption_loss'] += dt * \
             np.e**(-affected_households['recovery_rate']*_t) * \
             affected_households['v']*gfac * \
@@ -247,8 +234,9 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
                                 < poverty_line_adjusted, 'weeks_pov'] += 1
 
         # Integrate wellbeing
-        affected_households['w_final'] += dt*(affected_households['c_t'])**(1-consumption_utility) * \
-            np.e**(-discount_rate*_t)/(1-consumption_utility)
+        # TODO: Fix wellbeing integration, currently it is nan
+        affected_households['w_final'] += dt * (affected_households['c_t'])**(1 - consumption_utility) * \
+            np.e**(-discount_rate * _t) / (1 - consumption_utility)
 
         affected_households['w_final2'] += affected_households['c_t_unaffected']**(1-consumption_utility)/(1-consumption_utility)*dt*(
             (1-((affected_households['c_t_unaffected'] - affected_households['c_t'])/affected_households['c_t_unaffected'])*np.e**(-affected_households['recovery_rate']*_t))**(1-consumption_utility)-1)*np.e**(-discount_rate*_t)
@@ -260,32 +248,6 @@ def integrate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
     # Save consumption recovery as pickle file
     # with open('consumption_recovery.pickle', 'wb') as handle:
     #     pickle.dump(consumption_recovery, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    affected_households['asset_loss_manual'] = asset_loss * dt
-
-    # total_consumption_loss = (affected_households['consumption_loss_NPV'] * affected_households['popwgt']).sum()
-    # total_asset_loss = (affected_households['asset_loss_manual'] * affected_households['popwgt']).sum()
-
-    # r = total_asset_loss / total_consumption_loss
-
-    # if r > 4:
-    #     try:
-    #         household_1 = pd.DataFrame(household_1).T
-    #         household_1.to_csv('../debugging/household_1_r4.csv', index=False)
-    #         household_2 = pd.DataFrame(household_2).T
-    #         household_2.to_csv('../debugging/household_2_r4.csv', index=False)
-    #     except:
-    #         pass
-    # elif r < 1:
-    #     try:
-    #         household_1 = pd.DataFrame(household_1).T
-    #         household_1.to_csv('../debugging/household_1_r1.csv', index=False)
-    #         household_2 = pd.DataFrame(household_2).T
-    #         household_2.to_csv('../debugging/household_2_r1.csv', index=False)
-    #     except:
-    #         pass
-    # else:
-    #     pass
 
     # Save the content of the columns for affected_households into households data frame
     households.loc[affected_households.index,

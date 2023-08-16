@@ -5,6 +5,8 @@ import numpy as np
 import ast
 import geopandas as gpd
 
+# TODO: Fix the names of the outcomes, e.g. weighted etc.
+
 
 def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
     '''Convert outcomes dict into a data frame.
@@ -40,7 +42,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'annual_average_consumption_loss_pct',
         'r',
         'mean_recovery_rate',
-        'total_asset_loss_manual',
         'years_in_poverty',
     ]
 

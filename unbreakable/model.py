@@ -5,7 +5,7 @@ import random
 from pathlib import Path
 from unbreakable.data.reader import *
 from unbreakable.data.writer import *
-from unbreakable.modules.optimizer import *
+from unbreakable.modules.integrator import *
 from unbreakable.modules.households import *
 
 
@@ -42,13 +42,14 @@ def run_model(**params) -> dict:
     calc_exposure_params = params['calc_exposure_params']
     ident_affected_params = params['ident_affected_params']
     save_households = params['save_households']
-    atol = params['atol'] # Abs tolerance for matching asset stock of damage and household survey data sets
+    # Abs tolerance for matching asset stock of damage and household survey data sets
+    atol = params['atol']
 
     # Uncertainties
     poverty_bias = params['poverty_bias']
     consumption_utility = params['consumption_utility']
     discount_rate = params['discount_rate']
-    optimization_timestep = params['optimization_timestep']
+    lambda_increment = params['lambda_increment']
     income_and_expenditure_growth = params['income_and_expenditure_growth']
 
     # Policy levers
@@ -95,8 +96,8 @@ def run_model(**params) -> dict:
                                 .pipe(calculate_exposure, poverty_bias, calc_exposure_params)
                                 .pipe(identify_affected, ident_affected_params)
                                 .pipe(apply_policy, my_policy)
-                                .pipe(calculate_recovery_rate, consumption_utility, discount_rate, optimization_timestep, years_to_recover)
-                                .pipe(integrate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, years_to_recover, add_income_loss, cash_transfer))
+                                .pipe(calculate_recovery_rate, consumption_utility, discount_rate, lambda_increment, years_to_recover)
+                                .pipe(calculate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, years_to_recover, add_income_loss, cash_transfer))
 
         if save_households:
             Path(f'../experiments/households/').mkdir(parents=True, exist_ok=True)
@@ -115,35 +116,42 @@ def run_model(**params) -> dict:
     return outcomes
 
 
-def initialize_model(country:str, scale:str):
+def initialize_model(country: str, scale: str):
     # First check whether all necessary folders exist
     Path(f'../experiments/').mkdir(parents=True, exist_ok=True)
     Path(f'../experiments/households/').mkdir(parents=True, exist_ok=True)
-    
+
     # Check whether the data folder exists
     if not Path(f'../data/processed/').exists():
         raise Exception('The "../data/processed/" folder does not exist.')
-    
+
     else:
         if not Path(f'../data/processed/asset_damage/{country}.xlsx').exists():
-            raise Exception(f'The "../data/processed/asset_damage/{country}.xlsx" file does not exist.')
-        
+            raise Exception(
+                f'The "../data/processed/asset_damage/{country}.xlsx" file does not exist.')
+
         if not Path(f'../data/processed/household_survey/{country}.xlsx').exists():
-            raise Exception(f'The "../data/processed/household_survey/{country}.xlsx" file does not exist.')
-        
+            raise Exception(
+                f'The "../data/processed/household_survey/{country}.xlsx" file does not exist.')
+
     # Check whether data files have necessary columns
-    columns = ['rp', 'district', 'total_exposed_asset_stock', 'probable_maximum_loss']
+    columns = ['rp', 'district',
+               'total_exposed_asset_stock', 'probable_maximum_loss']
     df = pd.read_excel(f'../data/processed/asset_damage/{country}.xlsx')
     if not all([column in df.columns for column in columns]):
-        raise Exception(f'The "../data/processed/asset_damage/{country}.xlsx" file does not have all necessary columns.')
-    
+        raise Exception(
+            f'The "../data/processed/asset_damage/{country}.xlsx" file does not have all necessary columns.')
+
     columns = []
+
 
 def check_folders():
     pass
 
+
 def check_files():
     pass
+
 
 def check_columns():
     pass

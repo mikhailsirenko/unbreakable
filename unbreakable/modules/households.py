@@ -93,7 +93,7 @@ def duplicate_households(households: pd.DataFrame, min_representative_households
         if not np.isclose(duplicated_households['popwgt'].sum(), initial_total_weights, atol=1e-6):
             raise ValueError(
                 'Total weights after duplication is not equal to the initial total weights')
-        
+
         return duplicated_households.reset_index(drop=True)
     else:
         return households

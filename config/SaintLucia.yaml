@@ -12,7 +12,7 @@ constants:
     distr: uniform
     high: 1.0
     low: 0
-    num_masks: 4000
+    num_masks: 8000
   discount_rate: 0.04
   districts:
   - AnseLaRayeCanaries
@@ -38,7 +38,7 @@ constants:
   atol: 100000 # Abs tolerance for matching asset stock of damage and household survey data sets
   min_representative_households: 400
   years_to_recover: 10
-  optimization_timestep: 0.01
+  lambda_increment: 0.01
   poverty_bias: 1.0
   poverty_line: 6443
   return_period: 100
