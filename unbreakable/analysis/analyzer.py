@@ -210,6 +210,18 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
 
 
 def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = [], country: str = 'Saint Lucia', aggregation: str = 'mean') -> gpd.GeoDataFrame:
+    '''Connect outcomes of interest with the shapefile.
+
+    Args:
+        outcomes (pd.DataFrame): Outcomes data frame.
+        outcomes_of_interest (list, optional): Outcomes of interest. Defaults to [].
+        country (str, optional): Country name. Defaults to 'Saint Lucia'.
+        aggregation (str, optional): Aggregation method. Defaults to 'mean'.
+
+    Returns:
+        gpd.GeoDataFrame: Spatial outcomes data frame.
+    '''
+
     gdf = gpd.read_file(
         f'../data/raw/shapefiles/{country}/gadm36_LCA_shp/gadm36_LCA_1.shp')
 
@@ -254,6 +266,18 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
 
 
 def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
+    '''Get the policy effectiveness table.
+
+    Effectiveness here is how effective the policy is in respect to:
+    - reducing the number of new poor;
+    - reducing the average consumption loss.
+
+    Args:
+        outcomes (pd.DataFrame): Outcomes data frame.
+
+    Returns:
+        pd.DataFrame: Policy effectiveness table.
+    '''
     policy_name_mapper = {'all+0': 'None',
                           'all+10': '10% to all',
                           'all+30': '30% to all',
