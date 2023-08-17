@@ -300,7 +300,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
         pd.DataFrame: Average number of weeks in poverty for each district.
     '''
     # Specify the columns
-    columns = [str(i) for i in range(1, max_years+1)]
+    columns = [str(i) for i in range(0, max_years+1)]
     columns[-1] = '>' + columns[-1]
 
     # Specify the index
@@ -326,7 +326,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
             # Go over each year
             for key, values in x.items():
                 if key == max_years:
-                    key_value = '>' + columns[-1]
+                    key_value = columns[-1]
                 else:
                     key_value = str(key)
                 years_in_poverty.loc[index, key_value] = int(values)
