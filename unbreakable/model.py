@@ -22,7 +22,6 @@ def run_model(**params) -> dict:
     # Case study parameters
     country = params['country']
     districts = params['districts']
-
     min_representative_households = params['min_representative_households']
 
     # Read household survey and damage files
@@ -89,7 +88,7 @@ def run_model(**params) -> dict:
         cash_transfer = {}
 
         households = (households.pipe(calculate_median_productivity)
-                                .pipe(duplicate_households, min_representative_households)
+                                .pipe(duplicate_households, min_representative_households, random_seed)
                                 .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol)
                                 .pipe(calculate_district_pml, expected_loss_frac)
                                 .pipe(estimate_savings, saving_rate, est_sav_params)

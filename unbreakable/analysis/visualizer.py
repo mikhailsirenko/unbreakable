@@ -14,6 +14,21 @@ from mycolorpy import colorlist as mcp
 
 
 def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
+    '''Visualize the outcomes using a raincloud plot.
+
+    Args:
+        outcomes (pd.DataFrame): The outcomes dataframe.
+        savefig (bool): Whether to save the figure or not.
+        x_columns (list, optional): The columns to plot. Defaults to [].
+        x_titles (list, optional): The titles of the columns to plot. Defaults to [].
+        plot_years_in_poverty (bool, optional): Whether to plot the years in poverty or not. Defaults to False.
+        color_palette (str, optional): The color palette to use. Defaults to 'Set2'.
+        sharex (bool, optional): Whether to share the x-axis or not. Defaults to True.
+
+    Returns:
+        None
+    '''
+
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
     colors = sns.color_palette(color_palette, n_colors=len(districts))
@@ -177,7 +192,23 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             #     f'../reports/figures/analysis/{x_column}.pgf', bbox_inches='tight')
 
 
-def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scheme, figsize, return_table):
+def bivariate_choropleth(data: gpd.GeoDataFrame, x_name: str, y_name: str, x_label: str, y_label: str, scheme: str, figsize: tuple, return_table: bool) -> None:
+    '''Create a bivariate choropleth map.
+
+    Args:
+        data (gpd.GeoDataFrame): Outcomes data frame.
+        x_name (str): The name of the first variable.
+        y_name (str): The name of the second variable.
+        x_label (str): The label of the first variable.
+        y_label (str): The label of the second variable.
+        scheme (str): The scheme to use for binning the data.
+        figsize (tuple): The size of the figure.
+        return_table (bool): Whether to return the data frame or not.
+
+    Returns:
+        None
+    '''
+
     fig, ax = plt.subplots(figsize=figsize)
 
     # TODO: Allow for 5 classes
@@ -266,18 +297,24 @@ def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scheme, figsize
         return data
 
 
-def nine_quadrants_plot(data, x_name, y_name, scale=True):
+def nine_quadrants_plot(data, x_name, y_name, scale=True) -> None:
+    '''Create a nine quadrants plot.
+
+    Args:
+        data (pd.DataFrame): Outcomes data frame.
+        x_name (str): The name of the first variable.
+        y_name (str): The name of the second variable.
+        scale (bool, optional): Whether to scale the data or not. Defaults to True.
+
+    Returns: 
+        None
+    '''
     _, ax = plt.subplots(figsize=(6, 5))
 
     if scale:
         scaler = MinMaxScaler()
-        # data[x_name] = scaler.fit_transform(data[x_name].values.reshape(-1, 1))
-        # data[y_name] = scaler.fit_transform(data[y_name].values.reshape(-1, 1))
-        # Scale data between 0 and 1
-        data[x_name] = (data[x_name] - data[x_name].min()) / \
-            (data[x_name].max() - data[x_name].min())
-        data[y_name] = (data[y_name] - data[y_name].min()) / \
-            (data[y_name].max() - data[y_name].min())
+        data[x_name] = scaler.fit_transform(data[x_name].values.reshape(-1, 1))
+        data[y_name] = scaler.fit_transform(data[y_name].values.reshape(-1, 1))
 
     data.plot.scatter(x_name, y_name, s=20, ax=ax, c='black', zorder=2)
 
@@ -356,7 +393,8 @@ def nine_quadrants_plot(data, x_name, y_name, scale=True):
     # ax.plot(x, m * x + b, color='black', alpha=0.5, zorder=1)
 
 
-def get_colors(data):
+def get_colors(data) -> list:
+    '''Get colors for the bivariate choropleth map.'''
 
     # colors = ['#e8e8e8', # 1A
     #           '#b0d5df', # 1B
@@ -395,7 +433,19 @@ def get_colors(data):
     return list(all_colors.values()), available_colors
 
 
-def bin_data(data, x_name, y_name, scheme: 'fisher_jenks', print_statistics=True):
+def bin_data(data: gpd.GeoDataFrame, x_name: str, y_name: str, scheme: str = 'fisher_jenks', print_statistics: bool = True) -> gpd.GeoDataFrame:
+    '''Bin the data for the bivariate choropleth map.
+
+    Args:
+        data (gpd.GeoDataFrame): Outcomes data frame.
+        x_name (str): The name of the first variable.
+        y_name (str): The name of the second variable.
+        scheme (str): The scheme to use for binning the data.
+        print_statistics (bool, optional): Whether to print statistics or not. Defaults to True.
+
+    Returns:
+        data (gpd.GeoDataFrame): The outcomes data frame with the binned data.
+    '''
     if scheme == 'fisher_jenks':
         x_classifier = mc.FisherJenks(data[x_name], k=3)
         # x_bin_edges = x_classifier.bins
@@ -479,7 +529,19 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
                     dpi=300, bbox_inches='tight')
 
 
-def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4) -> None:
+def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd") -> None:
+    '''Make colored density plots for each district. Color here matches the color of the choropleth map.
+
+    Args:
+        outcomes (pd.DataFrame): The outcomes dataframe.
+        savefig (bool): Whether to save the figure or not.
+        scheme (str, optional): The scheme to use for binning the data. Defaults to 'equal_intervals'.
+        k (int, optional): The number of bins. Defaults to 4.
+        cmap (str, optional): The name of the colormap to use. Defaults to "OrRd".
+
+    Returns:
+        None
+    '''
     # Let's make colors of density plots match the colors of the choropleth map
 
     # Choropleth map uses median values to classify the districts, we're going to do the same
@@ -503,8 +565,8 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
     district_to_label_mapper = dict(zip(median_outcomes.index, bin_labels))
 
     # Map the bin label to a color
-    colors = mcp.gen_color(cmap="OrRd", n=4)
-    label_color_mapper = dict(zip(np.arange(0, 4), colors))
+    colors = mcp.gen_color(cmap=cmap, n=k)
+    label_color_mapper = dict(zip(np.arange(0, k), colors))
 
     districts = outcomes['district'].unique().tolist()
     fig, ax = plt.subplots()

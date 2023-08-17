@@ -32,7 +32,7 @@ def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
     return households
 
 
-def duplicate_households(households: pd.DataFrame, min_representative_households: int) -> pd.DataFrame:
+def duplicate_households(households: pd.DataFrame, min_representative_households: int, random_state: int) -> pd.DataFrame:
     '''Duplicates households if the number of households is less than `min_households` threshold.
 
     Args:
@@ -60,7 +60,8 @@ def duplicate_households(households: pd.DataFrame, min_representative_households
         if delta == 1:
             delta = 2
 
-        sample = households.sample(n=delta, replace=True)
+        sample = households.sample(
+            n=delta, replace=True, random_state=random_state)
 
         # Keep how many duplicates by index
         duplicates = sample.index.value_counts()
