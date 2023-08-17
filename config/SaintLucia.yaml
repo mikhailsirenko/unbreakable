@@ -8,11 +8,11 @@ constants:
   consumption_utility: 1.0
   country: Saint Lucia
   ident_affected_params:
-    delta_pct: 0.025
+    delta_pct: 0.05
     distr: uniform
     high: 1.0
     low: 0
-    num_masks: 8000
+    num_masks: 10000
   discount_rate: 0.04
   districts:
   - AnseLaRayeCanaries

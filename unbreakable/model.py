@@ -3,6 +3,7 @@
 import numpy as np
 import random
 from pathlib import Path
+import pandas as pd
 from unbreakable.data.reader import *
 from unbreakable.data.writer import *
 from unbreakable.modules.integrator import *
@@ -143,6 +144,8 @@ def initialize_model(country: str, scale: str):
             f'The "../data/processed/asset_damage/{country}.xlsx" file does not have all necessary columns.')
 
     columns = []
+
+    # Check whether config file exists
 
 
 def check_folders():

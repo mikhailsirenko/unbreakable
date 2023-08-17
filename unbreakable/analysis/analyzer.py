@@ -4,8 +4,9 @@ import pandas as pd
 import numpy as np
 import ast
 import geopandas as gpd
+from tqdm import tqdm
 
-# TODO: Fix the names of the outcomes, e.g. weighted etc.
+# TODO: Adjust the outcome names
 
 
 def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
@@ -233,7 +234,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
                                 'new_poverty_gap',
                                 'annual_average_consumption_loss',
                                 'annual_average_consumption_loss_pct',
-                                'n_new_poor_increase_pct',
+                                'n_new_poor_increase_pp',
                                 'r']
 
     # Aggregate outcomes
@@ -286,3 +287,52 @@ def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
               inplace=True)
     df['Policy ID'] = df['Policy'].cat.codes
     return df
+
+
+def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.DataFrame:
+    '''Get the average across scenarios number of weeks in poverty for each district.
+
+    Args:
+        outcomes (pd.DataFrame): Outcomes data frame.
+        max_years (int, optional): Maximum number of years to consider. Defaults to 10.
+
+    Returns:
+        pd.DataFrame: Average number of weeks in poverty for each district.
+    '''
+    # Specify the columns
+    columns = [str(i) for i in range(1, max_years+1)]
+    columns[-1] = '>' + columns[-1]
+
+    # Specify the index
+    index = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul', 'Dennery',
+             'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+
+    # Prepare the data frame
+    average_years_in_poverty = pd.DataFrame(columns=columns, index=index)
+    average_years_in_poverty = average_years_in_poverty.fillna(0)
+    n_scenarios = outcomes['scenario'].unique().size
+
+    # Go over each scenario
+    for scenario in tqdm(outcomes['scenario'].unique()):
+        # Subset the scenario
+        df = outcomes[outcomes['scenario'] == scenario]
+        df.set_index('district', inplace=True)
+        years_in_poverty = pd.DataFrame(columns=columns)
+
+        # Go over each district
+        for index, row in df.iterrows():
+            x = row['years_in_poverty']
+
+            # Go over each year
+            for key, values in x.items():
+                if key == max_years:
+                    key_value = '>' + columns[-1]
+                else:
+                    key_value = str(key)
+                years_in_poverty.loc[index, key_value] = int(values)
+        # Add the years in poverty for the current scenario to the average
+        average_years_in_poverty += years_in_poverty
+
+    # Calculate the average over n_scenarios
+    average_years_in_poverty = average_years_in_poverty / n_scenarios
+    return average_years_in_poverty

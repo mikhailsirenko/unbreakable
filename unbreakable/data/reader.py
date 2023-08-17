@@ -7,11 +7,12 @@ import json
 # TODO: Create dummy data
 # TODO: Restructure input data folders
 
+
 def read_asset_damage(country) -> None:
     '''Read asset damage data from an Excel file.'''
     if country == 'Saint Lucia':
         all_damage = pd.read_excel(
-            f"../data/processed/asset_damage/{country}/{country}.xlsx", index_col=None, header=0)
+            f"../data/processed/asset_damage/{country}.xlsx", index_col=None, header=0)
     else:
         raise ValueError('Only `Saint Lucia` is supported.')
 
@@ -80,7 +81,7 @@ def read_household_survey(country: str) -> pd.DataFrame:
     '''
     if country == 'Saint Lucia':
         household_survey = pd.read_csv(
-            f"../data/processed/household_survey/{country}/{country}.csv")
+            f"../data/processed/household_survey/{country}.csv")
     else:
         raise ValueError('Only `Saint Lucia` is supported.')
 

@@ -9,6 +9,7 @@ import seaborn as sns
 from scipy.stats import spearmanr
 from matplotlib.ticker import MaxNLocator
 import mapclassify as mc
+from mycolorpy import colorlist as mcp
 # import contextily as ctx
 
 
@@ -171,7 +172,9 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
         fig.tight_layout()
         if savefig:
             plt.savefig(
-                f'../reeports/figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
+                f'../reports/figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
+            # plt.savefig(
+            #     f'../reports/figures/analysis/{x_column}.pgf', bbox_inches='tight')
 
 
 def bivariate_choropleth(data, x_name, y_name, x_label, y_label, scheme, figsize, return_table):
@@ -392,7 +395,7 @@ def get_colors(data):
     return list(all_colors.values()), available_colors
 
 
-def bin_data(data, x_name, y_name, scheme:'fisher_jenks', print_statistics=True):
+def bin_data(data, x_name, y_name, scheme: 'fisher_jenks', print_statistics=True):
     if scheme == 'fisher_jenks':
         x_classifier = mc.FisherJenks(data[x_name], k=3)
         # x_bin_edges = x_classifier.bins
@@ -411,11 +414,11 @@ def bin_data(data, x_name, y_name, scheme:'fisher_jenks', print_statistics=True)
     data['Var2_Class'] = data['Var2_Class'].astype('str')
 
     # Code created x bins to 1, 2, 3
-    d = {'0' : '1', '1': '2', '2': '3'}
+    d = {'0': '1', '1': '2', '2': '3'}
     data['Var1_Class'] = data['Var1_Class'].replace(d)
 
     # Code created y bins to A, B, C
-    d = {'0' : 'A', '1': 'B', '2': 'C'}
+    d = {'0': 'A', '1': 'B', '2': 'C'}
     data['Var2_Class'] = data['Var2_Class'].replace(d)
 
     # Combine x and y codes to create Bi_Class
@@ -429,3 +432,114 @@ def bin_data(data, x_name, y_name, scheme:'fisher_jenks', print_statistics=True)
         print('Number of unique elements in Bi_Class =',
               len(data['Bi_Class'].unique()))
     return data
+
+
+def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
+    '''Plot a histogram with annotations for the median, min, and max values.
+
+    Args:
+        outcomes (pd.DataFrame): The outcomes dataframe.
+        savefig (bool): Whether to save the figure or not.
+
+    Returns:
+        None
+    '''
+    sns.histplot(outcomes['annual_average_consumption_loss_pct'])
+    plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+    plt.ylabel('Run count')
+    plt.xlim(0, 100)
+    plt.axvline(outcomes['annual_average_consumption_loss_pct'].min(
+    ), color='red', linestyle='dashed', linewidth=1)
+    plt.axvline(outcomes['annual_average_consumption_loss_pct'].max(
+    ), color='red', linestyle='dashed', linewidth=1)
+    plt.axvline(outcomes['annual_average_consumption_loss_pct'].median(
+    ), color='black', linestyle='dashed', linewidth=1)
+    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].min():.2f}%",
+                 xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
+                 xytext=(
+                     outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
+                 arrowprops=dict(facecolor='black', shrink=0.05),
+                 horizontalalignment='right', verticalalignment='top')
+    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].max():.2f}%",
+                 xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
+                 xytext=(
+                     outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
+                 arrowprops=dict(facecolor='black', shrink=0.05),
+                 horizontalalignment='left', verticalalignment='top')
+    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].median():.2f}%",
+                 xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
+                 xytext=(
+                     outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
+                 arrowprops=dict(facecolor='black', shrink=0.05),
+                 horizontalalignment='left', verticalalignment='top')
+    plt.tight_layout()
+    if savefig:
+        # plt.savefig('../reports/figures/analysis/WAACLP.pgf', bbox_inches='tight')
+        plt.savefig('../reports/figures/analysis/WAACLP.png',
+                    dpi=300, bbox_inches='tight')
+
+
+def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4) -> None:
+    # Let's make colors of density plots match the colors of the choropleth map
+
+    # Choropleth map uses median values to classify the districts, we're going to do the same
+    median_outcomes = outcomes.groupby('district').median(numeric_only=True)[
+        ['annual_average_consumption_loss_pct']]
+
+    # The map used equalinterval scheme, but it would be beneficial to allow for other schemes
+    if scheme == 'equal_intervals':
+        classifier = mc.EqualInterval(median_outcomes.values, k=k)
+    elif scheme == 'fisher_jenks':
+        classifier = mc.FisherJenks(median_outcomes.values, k=k)
+    else:
+        raise ValueError(
+            'Invalid scheme. Please use `equal_intervals` or `fisher_jenks`')
+
+    # Get the bin edges and labels
+    bin_edges = classifier.bins
+    bin_labels = classifier.yb
+
+    # Map the district to the bin label
+    district_to_label_mapper = dict(zip(median_outcomes.index, bin_labels))
+
+    # Map the bin label to a color
+    colors = mcp.gen_color(cmap="OrRd", n=4)
+    label_color_mapper = dict(zip(np.arange(0, 4), colors))
+
+    districts = outcomes['district'].unique().tolist()
+    fig, ax = plt.subplots()
+
+    # Get districts with min and max values
+    descr = outcomes.iloc[:, 2:-1].groupby('district').describe()[
+        ['annual_average_consumption_loss_pct']]
+    min_distr = descr['annual_average_consumption_loss_pct']['50%'].idxmin()
+    max_distr = descr['annual_average_consumption_loss_pct']['50%'].idxmax()
+
+    # Now make the density plots
+    for district in districts:
+        df = outcomes[outcomes['district'] == district]
+        district_label = district_to_label_mapper[district]
+        label_color = label_color_mapper[district_label]
+        color = label_color
+
+        # Make the line thicker for districts with min and max values
+        if district in [min_distr, max_distr]:
+            linewidth = 5
+        else:
+            linewidth = 1
+        sns.kdeplot(data=df, x='annual_average_consumption_loss_pct',
+                    ax=ax, color=color, linewidth=linewidth, alpha=1)
+        ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+        ax.set_ylabel('Run density')
+        ax.spines['right'].set_visible(False)
+        ax.spines['top'].set_visible(False)
+        ax.spines['left'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.set_facecolor('lightgray')
+    ax.set_xlim(0, 100)
+    ax.legend(districts, title='District', frameon=False)
+    fig.tight_layout()
+
+    if savefig:
+        plt.savefig('../reports/figures/analysis/WAACLP_districts.png',
+                    dpi=300, bbox_inches='tight')

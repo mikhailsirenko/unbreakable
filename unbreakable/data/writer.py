@@ -3,6 +3,8 @@
 import pandas as pd
 import numpy as np
 
+# TODO: Adjust the outcome names
+
 
 def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_recover) -> dict:
     '''Calculate outcomes of interest from the simulation model.
