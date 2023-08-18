@@ -1,11 +1,6 @@
 # What is unbreakable?
 Unbreakable is a stochastic simulation model for assessing the resilience of households to natural disasters. 
 
-Resilience here is an ability of a household to bounce back to the consumption level it had before the disaster.
-
-The model is disaster-agnostic
-
-
 ## Introduction
 
 ## Features
