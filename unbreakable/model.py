@@ -1,6 +1,6 @@
-"""This is the simulation model.
-It initializes the model, loads the data and defines the model pipeline. 
-Then pipeline is then called by the EMA Workbench in `__main__.py`"""
+"""This module contains the simulation model.
+It initializes it, loads the data and defines the pipeline. 
+The pipeline is then called/ran by the EMA Workbench in `main.py`"""
 
 import numpy as np
 import random
@@ -12,8 +12,8 @@ from unbreakable.modules.integrator import *
 from unbreakable.modules.households import *
 
 
-def run_model(**params) -> dict:
-    '''Run the simulation model.
+def model(**params) -> dict:
+    '''Simulation model.
 
     Args:
         params (dict): A dictionary of parameters. For a complete list of parameters, see `config/SaintLucia.yaml`.

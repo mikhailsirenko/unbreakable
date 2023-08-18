@@ -299,7 +299,7 @@ def bivariate_choropleth(data: gpd.GeoDataFrame, x_name: str, y_name: str, x_lab
         return data
 
 
-def nine_quadrants_plot(data, x_name, y_name, scale=True) -> None:
+def nine_quadrants_plot(data: pd.DataFrame, x_name: str, y_name: str, scale: bool = True) -> None:
     '''Create a nine quadrants plot.
 
     Args:
@@ -395,7 +395,7 @@ def nine_quadrants_plot(data, x_name, y_name, scale=True) -> None:
     # ax.plot(x, m * x + b, color='black', alpha=0.5, zorder=1)
 
 
-def get_colors(data) -> list:
+def get_colors(data: pd.DataFrame) -> list:
     '''Get colors for the bivariate choropleth map.'''
 
     # colors = ['#e8e8e8', # 1A

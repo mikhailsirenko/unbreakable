@@ -1,4 +1,4 @@
-"""The main file. It runs the model with the parameters specified from the config yaml file.
+"""This module runs the model with the parameters specified from the config yaml file.
 We run the model using the Python package EMA Workbench.
 In a nutshell, EMA Workbench provides a convenient way to run a model with many scenarios and policies.
 It also allows running multiple models in parallel, which is very useful for computationally expensive models.
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     levers = config["levers"]
 
     # Initialize the EMA Workbench model
-    my_model = Model(name="model", function=run_model)
+    my_model = Model(name="model", function=model)
     # my_model = ReplicatorModel(name="model", function=run_model)
 
     seed_start = 0
