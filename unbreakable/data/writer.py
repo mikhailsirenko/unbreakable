@@ -3,14 +3,14 @@
 import pandas as pd
 import numpy as np
 
-# TODO: Adjust the outcome names
+# TODO: Adjust outcome names
 
 
 def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_recover) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
-        households (pd.DataFrame): Households data frame.
+        households (pd.DataFrame): Households.
         tot_exposed_asset (float): Total exposed asset stock.
         expected_loss_fraction (float): Expected loss fraction.
         median_productivity (float): Median productivity.
@@ -85,9 +85,9 @@ def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: i
     '''Get the poor at the beginning of the simulation and the poor at the end of the simulation
 
     Args:
-        households (pd.DataFrame): Household dataframe
-        poverty_line (float): Poverty line
-        years_to_recover (int): Number of years cut-off parameter when calculating consumption loss
+        households (pd.DataFrame): Households.
+        poverty_line (float): Poverty line.
+        years_to_recover (int): Number of years cut-off parameter when calculating consumption loss.
 
     Returns:
         tuple: Number of poor at the beginning of the simulation, number of new poor at the end of the simulation, and the new poor dataframe
@@ -110,25 +110,25 @@ def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: i
     return n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor
 
 
-def get_people_by_years_in_poverty(new_poor: pd.DataFrame) -> dict:
+def get_people_by_years_in_poverty(affected_households: pd.DataFrame) -> dict:
     '''Get the number of people in poverty for each year in poverty.
 
     Args:
-        new_poor (pd.DataFrame): New poor dataframe
+        affected_households (pd.DataFrame): Affected households
 
     Returns:
         dict: Number of people in poverty for each year in poverty
     '''
-    new_poor = new_poor.assign(
-        years_in_poverty=new_poor['weeks_pov'] // 52)
+    affected_households = affected_households.assign(
+        years_in_poverty=affected_households['weeks_pov'] // 52)
     d = {}
     # !: This cannot be higher > years_to_recover
     longest_years_in_poverty = 10
     for i in range(longest_years_in_poverty):
-        d[i] = round(new_poor[new_poor['years_in_poverty'] == i]
+        d[i] = round(affected_households[affected_households['years_in_poverty'] == i]
                      ['popwgt'].sum())
     d[longest_years_in_poverty] = round(
-        new_poor[new_poor['years_in_poverty'] >= longest_years_in_poverty]['popwgt'].sum())
+        affected_households[affected_households['years_in_poverty'] >= longest_years_in_poverty]['popwgt'].sum())
 
     return d
 
@@ -187,7 +187,7 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
     '''Get the average annual consumption loss and the average annual consumption loss as a percentage of average annual consumption.
 
     Args:
-        affected_households (pd.DataFrame): Affected households dataframe
+        affected_households (pd.DataFrame): Affected households.
         years_to_recover (int): Number of years cut-off parameter when calculating consumption loss. Default is 10. 
 
     Returns:
@@ -248,3 +248,8 @@ def calculate_resilience(affected_households: pd.DataFrame) -> float:
         r = total_asset_damage / total_consumption_loss
 
     return r
+
+
+def get_weighed_vuln(affected_households: pd.DataFrame):
+    '''Calculate vulnerability of affected households.'''
+    pass
