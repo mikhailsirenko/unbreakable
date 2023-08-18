@@ -22,7 +22,7 @@ git clone https://github.com/mikhailsirenko/unbreakable
 ### Usage
 You run the model from the command line with the default parameters using:
 ```bash
-python unbreakable/__main__.py
+python unbreakable/run.py
 ```
 
 ### Examples
