@@ -1,6 +1,6 @@
 """This module contains the simulation model.
 It initializes it, loads the data and defines the pipeline. 
-The pipeline is then called/ran by the EMA Workbench in `main.py`"""
+The pipeline is then called/ran by the EMA Workbench in `run.py`"""
 
 import numpy as np
 import random
@@ -66,7 +66,6 @@ def model(**params) -> dict:
 
     # Fix random seed for reproducibility
     random_seed = params['random_seed']
-    # Retrieve the current random state
     random.seed(random_seed)
     np.random.seed(random_seed)
 
@@ -76,9 +75,9 @@ def model(**params) -> dict:
 
     for district in districts:
         # Get total exposed asset stock and expected loss fraction for a specific district and return period
-        tot_exposed_asset = get_total_exposed_asset_stock(
+        tot_exposed_asset = get_tot_exposed_asset_stock(
             all_damage, district, return_period)
-        expected_loss_frac = get_expected_loss_fraction(
+        expected_loss_frac = get_expected_loss_frac(
             all_damage, district, return_period)
 
         # Select households in a specific district

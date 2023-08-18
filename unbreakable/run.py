@@ -33,23 +33,23 @@ if __name__ == "__main__":
     my_model.constants = [Constant(key, values)
                           for key, values in constants.items()]
     my_model.levers = [CategoricalParameter(
-        "my_policy", [value for key, value in levers.items()])]
+        "my_policy", [value for _, value in levers.items()])]
 
     # Specify the outcomes. Each outcome is an array for a single district.
     my_model.outcomes = [ArrayOutcome(district)
                          for district in constants['districts']]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 1
+    n_scenarios = 24
     n_policies = 0
 
-    results = perform_experiments(
-        models=my_model, scenarios=n_scenarios, policies=n_policies)
+    # results = perform_experiments(
+    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
 
     # Perform the experiments
-    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
-    #     results = evaluator.perform_experiments(
-    #         scenarios=n_scenarios, policies=n_policies)
+    with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
+        results = evaluator.perform_experiments(
+            scenarios=n_scenarios, policies=n_policies)
 
     # Save the results
     Path(f'../experiments/').mkdir(parents=True, exist_ok=True)
