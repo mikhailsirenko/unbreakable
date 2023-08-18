@@ -99,13 +99,10 @@ target/
 chache/
 *./*./cache
 # /docs
-/results
-.kanbn
-notes.md
-/reports
-/scripts
-NOTES.md
-TODO.md
-/unbreakable/*.csv
 /debugging
 /experiments
+/reports
+/scripts
+/wip
+NOTES.md
+TODO.md
