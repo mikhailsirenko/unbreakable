@@ -1,9 +1,8 @@
-# Specify which outcomes to store in each run of the simulation model
+"""This module contains functions to calculate outcomes of interest.
+It has the main function `get_outcomes` which uses other functions to calculate individual outcomes."""
 
 import pandas as pd
 import numpy as np
-
-# TODO: Adjust outcome names
 
 
 def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_recover) -> dict:
@@ -179,8 +178,6 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         raise Exception('Poverty gap is greater than 1')
 
     return initial_poverty_gap, new_poverty_gap
-
-# TODO: Fix naming to weighted average
 
 
 def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame, years_to_recover: int) -> tuple:

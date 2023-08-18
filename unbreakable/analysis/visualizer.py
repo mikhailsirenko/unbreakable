@@ -1,3 +1,5 @@
+"""This module contains functions to visualize outcomes of the simulation model."""
+
 import geopandas as gpd
 import matplotlib
 import matplotlib.pyplot as plt

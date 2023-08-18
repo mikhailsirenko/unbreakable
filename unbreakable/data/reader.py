@@ -1,11 +1,11 @@
+"""This module contains functions to read data from files.
+It reads two types of data: asset damage and household survey."""
+
+
 import pandas as pd
 import os
 import numpy as np
 import json
-
-# TODO: Check whether necessary columns are present in the dataframes
-# TODO: Create dummy data
-# TODO: Restructure input data folders
 
 
 def read_asset_damage(country) -> None:

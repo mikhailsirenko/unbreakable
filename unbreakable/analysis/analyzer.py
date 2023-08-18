@@ -1,4 +1,4 @@
-# Prepare the results of the experiments for the analysis.
+"""This module contains functions to prepare the results of the experiments for analysis."""
 
 import pandas as pd
 import numpy as np
@@ -6,19 +6,17 @@ import ast
 import geopandas as gpd
 from tqdm import tqdm
 
-# TODO: Adjust the outcome names
-
 
 def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
-    '''Convert outcomes dict into a data frame.
+    '''Convert outcomes dict in (EMA Workbench format) into a pd.DataFrame.
 
     Args:
         results (tuple): The results of the experiments in the EMA Workbench format.
-        add_policies (bool): Whether to add policy values to the data frame.
-        add_uncertainties (bool): Whether to add uncertainty values to the data frame.
+        add_policies (bool): Whether to add policy values.
+        add_uncertainties (bool): Whether to add uncertainty values.
 
     Returns:
-        pd.DataFrame: Outcomes data frame.
+        pd.DataFrame: Outcomes.
     '''
     # * Note that we specify all outcomes in `get_outcomes` function in `write.py`
     # * Here we just read them in the same sequence that they are written
@@ -213,13 +211,13 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
     '''Connect outcomes of interest with the shapefile.
 
     Args:
-        outcomes (pd.DataFrame): Outcomes data frame.
+        outcomes (pd.DataFrame): Outcomes.
         outcomes_of_interest (list, optional): Outcomes of interest. Defaults to [].
         country (str, optional): Country name. Defaults to 'Saint Lucia'.
         aggregation (str, optional): Aggregation method. Defaults to 'mean'.
 
     Returns:
-        gpd.GeoDataFrame: Spatial outcomes data frame.
+        gpd.GeoDataFrame: Spatial outcomes.
     '''
 
     gdf = gpd.read_file(
@@ -273,7 +271,7 @@ def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
     - reducing the average consumption loss.
 
     Args:
-        outcomes (pd.DataFrame): Outcomes data frame.
+        outcomes (pd.DataFrame): Outcomes.
 
     Returns:
         pd.DataFrame: Policy effectiveness table.
@@ -317,7 +315,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
     '''Get the average across scenarios number of weeks in poverty for each district.
 
     Args:
-        outcomes (pd.DataFrame): Outcomes data frame.
+        outcomes (pd.DataFrame): Outcomes.
         max_years (int, optional): Maximum number of years to consider. Defaults to 10.
 
     Returns:

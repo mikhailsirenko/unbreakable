@@ -1,3 +1,7 @@
+"""This module is the core of the model. 
+It contains a set of functions that are used to calculate the impact of a disaster on households."""
+
+
 import pandas as pd
 import numpy as np
 

@@ -1,3 +1,6 @@
+"""This module is used to calculate the recovery rate, consumption and well-being losses of affected households.
+The calculation are done on the household level which we later aggregate to the district level."""
+
 import numpy as np
 import pandas as pd
 import pickle
@@ -234,7 +237,7 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
                                 < poverty_line_adjusted, 'weeks_pov'] += 1
 
         # Integrate wellbeing
-        # TODO: Fix wellbeing integration, currently it is nan
+        # !!!: Fix wellbeing integration, currently it is nan
         affected_households['w_final'] += dt * (affected_households['c_t'])**(1 - consumption_utility) * \
             np.e**(-discount_rate * _t) / (1 - consumption_utility)
 

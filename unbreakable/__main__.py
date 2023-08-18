@@ -1,8 +1,9 @@
-# The main file. It runs the model with the parameters specified from the config yaml file.
-# We run the model using the Python package EMA Workbench.
-# In a nutshell, EMA Workbench provides a convenient way to run a model with many scenarios and policies.
-# It also allows running multiple models in parallel, which is very useful for computationally expensive models.
-# To get to know more about running a model with EMA Workbench, visit https://emaworkbench.readthedocs.io/en/latest/ema_documentation/index.html
+"""The main file. It runs the model with the parameters specified from the config yaml file.
+We run the model using the Python package EMA Workbench.
+In a nutshell, EMA Workbench provides a convenient way to run a model with many scenarios and policies.
+It also allows running multiple models in parallel, which is very useful for computationally expensive models.
+To get to know more about running a model with EMA Workbench, visit https://emaworkbench.readthedocs.io/en/latest/ema_documentation/index.html"""
+
 import yaml
 from pathlib import Path
 from ema_workbench import (ReplicatorModel, Model, Constant, CategoricalParameter, IntegerParameter, RealParameter,
@@ -39,16 +40,16 @@ if __name__ == "__main__":
                          for district in constants['districts']]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 24
+    n_scenarios = 1
     n_policies = 0
 
-    # results = perform_experiments(
-    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
+    results = perform_experiments(
+        models=my_model, scenarios=n_scenarios, policies=n_policies)
 
     # Perform the experiments
-    with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
-        results = evaluator.perform_experiments(
-            scenarios=n_scenarios, policies=n_policies)
+    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
+    #     results = evaluator.perform_experiments(
+    #         scenarios=n_scenarios, policies=n_policies)
 
     # Save the results
     Path(f'../experiments/').mkdir(parents=True, exist_ok=True)
