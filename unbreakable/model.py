@@ -1,4 +1,6 @@
-# The model function pipeline, which is called by the ema_workbench in `__main__.py`.
+"""This is the simulation model.
+It initializes the model, loads the data and defines the model pipeline. 
+Then pipeline is then called by the EMA Workbench in `__main__.py`"""
 
 import numpy as np
 import random
