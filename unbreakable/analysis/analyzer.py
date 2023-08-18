@@ -41,6 +41,8 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'annual_average_consumption_loss_pct',
         'r',
         'mean_recovery_rate',
+        'weighted_vuln_quint',
+        'weighted_vuln_dec',
         'years_in_poverty',
     ]
 
@@ -120,7 +122,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                     # From 4 + len(policy_names) + len(uncertainty_names) to 4 + len(policy_names) + len(uncertainty_names) + len(outcome_names) outcomes
                     l = 4 + len(policy_names) + len(uncertainty_names)
                     for v, name in zip(arr, outcome_names):
-                        if name == 'years_in_poverty':
+                        if name in ['weighted_vuln_quint', 'weighted_vuln_dec', 'years_in_poverty']:
                             outcomes[i, l] = ast.literal_eval(v)
                         else:
                             outcomes[i, l] = v
@@ -135,7 +137,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                     # From 4 + len(policy_names) to 4 + len(policy_names) + len(outcome_names) outcomes
                     l = 4 + len(policy_names)
                     for v, name in zip(arr, outcome_names):
-                        if name == 'years_in_poverty':
+                        if name in ['weighted_vuln_quint', 'weighted_vuln_dec', 'years_in_poverty']:
                             outcomes[i, l] = ast.literal_eval(v)
                         else:
                             outcomes[i, l] = v
@@ -151,7 +153,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                     # From 4 + len(uncertainty_names) to 4 + len(uncertainty_names) + len(outcome_names) outcomes
                     l = 4 + len(uncertainty_names)
                     for v, name in zip(arr, outcome_names):
-                        if name == 'years_in_poverty':
+                        if name in ['weighted_vuln_quint', 'weighted_vuln_dec', 'years_in_poverty']:
                             outcomes[i, l] = ast.literal_eval(v)
                         else:
                             outcomes[i, l] = v
@@ -161,7 +163,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                     # From 4 to 4 + len(outcome_names) outcomes
                     l = 4
                     for v, name in zip(arr, outcome_names):
-                        if name == 'years_in_poverty':
+                        if name in ['weighted_vuln_quint', 'weighted_vuln_dec', 'years_in_poverty']:
                             outcomes[i, l] = ast.literal_eval(v)
                         else:
                             outcomes[i, l] = v
@@ -172,11 +174,11 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
 
     # Convert numeric columns to numeric
     if add_policies:
-        numeric_columns = outcomes.columns[5:-1].tolist()
+        numeric_columns = outcomes.columns[5:-4].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
     else:
-        numeric_columns = outcomes.columns[4:-1].tolist()
+        numeric_columns = outcomes.columns[4:-4].tolist()
         outcomes[numeric_columns] = outcomes[numeric_columns].apply(
             pd.to_numeric)
 
@@ -193,12 +195,12 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
         outcomes['total_population']).multiply(100))
 
-    # outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
-    #     outcomes['total_population'])
-    # outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
-    #     outcomes['n_poor_initial']).div(outcomes['total_population'])
-    # outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
-    #     outcomes['pct_poor_before'])
+    outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
+        outcomes['total_population'])
+    outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
+        outcomes['n_poor_initial']).div(outcomes['total_population'])
+    outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
+        outcomes['pct_poor_before'])
 
     # Move years_in_poverty column to the end of the data frame
     outcomes = outcomes[[c for c in outcomes if c not in [
@@ -321,6 +323,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
     Returns:
         pd.DataFrame: Average number of weeks in poverty for each district.
     '''
+    # TODO: Rewrite as `get_average_weighted_vulnerability` to speed up
     # Specify the columns
     columns = [str(i) for i in range(0, max_years+1)]
     columns[-1] = '>' + columns[-1]
@@ -358,3 +361,65 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
     # Calculate the average over n_scenarios
     average_years_in_poverty = average_years_in_poverty / n_scenarios
     return average_years_in_poverty
+
+
+def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -> pd.DataFrame:
+    '''Get the average weighted vulnerability for each district.
+
+    Args:
+        outcomes (pd.DataFrame): Outcomes.
+        quintile (bool): Whether to calculate the average weighted vulnerability by quintile or decile.
+
+    Returns:
+        pd.DataFrame: Average weighted vulnerability for each district.
+    '''
+    # Specify the districts
+    districts = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
+                 'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+
+    # Keep track of the averages
+    district_average = {}
+
+    # Get the number of scenarios
+    n_scenarios = outcomes['scenario'].unique().size
+
+    if quintile:
+        column_name = 'weighted_vuln_quint'
+        all_keys = [1, 2, 3, 4, 5]
+    else:
+        column_name = 'weighted_vuln_dec'
+        all_keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+    # Iterate through the districts
+    for district in districts:
+        # Subset the outcomes for a specific district
+        df = outcomes[outcomes['district'] == district]
+
+        # Get the dictionaries from the column
+        dicts = df[column_name].tolist()
+
+        # Initialize the sums
+        sums = dict(zip(all_keys, [0] * len(all_keys)))
+
+        # Iterate through the dictionaries and update the sums
+        for d in dicts:
+            for key in all_keys:
+                if key in d:
+                    sums[key] += d[key]
+                else:
+                    sums[key] += 0
+
+        # Calculate the average
+        district_average[district] = {
+            key: sums[key] / n_scenarios for key in all_keys}
+
+    # Convert the dictionary to a dataframe
+    result = pd.DataFrame(district_average).T
+
+    # Rename the index and columns
+    result.index.name = 'District'
+    if quintile:
+        result.columns.name = 'Quintile'
+    else:
+        result.columns.name = 'Decile'
+    return result

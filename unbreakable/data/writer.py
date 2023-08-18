@@ -55,6 +55,9 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
     # PML is the same for all households in a district
     district_pml = households['district_pml'].iloc[0]
 
+    weighted_vuln_quint = get_weighted_vuln(affected_households, quintile=True)
+    weighted_vuln_dec = get_weighted_vuln(affected_households, quintile=False)
+
     return {
         'total_population': total_population,
         'total_asset_loss': total_asset_loss,
@@ -76,6 +79,8 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
         'mean_recovery_rate': mean_recovery_rate,
+        'weighted_vuln_quint': weighted_vuln_quint,
+        'weighted_vuln_dec': weighted_vuln_dec,
         'years_in_poverty': years_in_poverty
     }
 
@@ -247,6 +252,28 @@ def calculate_resilience(affected_households: pd.DataFrame) -> float:
     return r
 
 
-def get_weighed_vuln(affected_households: pd.DataFrame):
-    '''Calculate vulnerability of affected households.'''
-    pass
+def get_weighted_vuln(affected_households: pd.DataFrame, quintile: bool) -> dict:
+    '''Calculate weighted average vulnerability of affected households by consumption quintile or decile.
+
+    Args:
+        affected_households (pd.DataFrame): Affected households.
+        quintile (bool): Whether to calculate by quintile.
+
+    Returns:
+        dict: Weighted average vulnerability by consumption quintile or decile.
+    '''
+    df = affected_households.copy()
+    if quintile:
+        df['v_weighted'] = df['v'].multiply(df['popwgt'])
+        v_weighted_by_q = df.groupby('quintile').sum(
+            numeric_only=True)[['v_weighted']]
+        pop_by_q = df.groupby('quintile').sum(numeric_only=True)[['popwgt']]
+        average_v_by_q = v_weighted_by_q['v_weighted'].div(pop_by_q['popwgt'])
+        return average_v_by_q.to_dict()
+    else:
+        df['v_weighted'] = df['v'].multiply(df['popwgt'])
+        v_weighted_by_d = df.groupby('decile').sum(
+            numeric_only=True)[['v_weighted']]
+        pop_by_d = df.groupby('decile').sum(numeric_only=True)[['popwgt']]
+        average_v_by_d = v_weighted_by_d['v_weighted'].div(pop_by_d['popwgt'])
+        return average_v_by_d.to_dict()

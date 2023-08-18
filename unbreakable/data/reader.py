@@ -19,7 +19,7 @@ def read_asset_damage(country) -> None:
     return all_damage
 
 
-def get_expected_loss_fraction(all_damage: pd.DataFrame, district: str, return_period: int) -> float:
+def get_expected_loss_frac(all_damage: pd.DataFrame, district: str, return_period: int) -> float:
     '''Get expected loss fraction for a district and return period.
 
     Args:
@@ -50,7 +50,7 @@ def get_expected_loss_fraction(all_damage: pd.DataFrame, district: str, return_p
     return expected_loss_fraction
 
 
-def get_total_exposed_asset_stock(all_damage: pd.DataFrame, district: str, return_period: int) -> float:
+def get_tot_exposed_asset_stock(all_damage: pd.DataFrame, district: str, return_period: int) -> float:
     '''Get total exposed asset stock for a district and return period.
 
     Args:
