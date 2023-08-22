@@ -1,11 +1,13 @@
 # --------------------------------- Constants -------------------------------- #
 constants:
+# TODO: Rename to average_productivity
+  median_productivity: 0.238 # This value is taken from Penn World Table 
   add_income_loss: false
   calc_exposure_params:
     pov_bias_rnd_distr: uniform
     pov_bias_rnd_high: 1.5
     pov_bias_rnd_low: 0.5
-  consumption_utility: 1.0
+  consumption_utility: 1.5
   country: Saint Lucia
   ident_affected_params:
     delta_pct: 0.05
