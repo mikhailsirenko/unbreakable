@@ -47,8 +47,8 @@ constants:
   scale: district
   assign_vuln_params:
     vuln_init_distr: uniform
-    vuln_init_low: 1.4
-    vuln_init_high: 0.6
+    vuln_init_low: 1.15 # default 1.4
+    vuln_init_high: 0.85 # default 0.6
     vuln_init_thresh: 0.95
     vuln_rnd_distr: uniform
     vuln_rnd_high: 0.9
