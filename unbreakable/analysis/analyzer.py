@@ -36,7 +36,8 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'n_poor_affected',
         'n_new_poor',
         'initial_poverty_gap',
-        'new_poverty_gap',
+        'new_poverty_gap_initial',
+        'new_poverty_gap_all',
         'annual_average_consumption_loss',
         'annual_average_consumption_loss_pct',
         'r',
@@ -189,7 +190,9 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     # Convert pct columns to percentage
     outcomes['annual_average_consumption_loss_pct'] = outcomes['annual_average_consumption_loss_pct'] * 100
     outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
-    outcomes['new_poverty_gap'] = outcomes['new_poverty_gap'] * 100
+    outcomes['new_poverty_gap_all'] = outcomes['new_poverty_gap_all'] * 100
+    outcomes['new_poverty_gap_initial'] = outcomes['new_poverty_gap_initial'] * 100
+
 
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
