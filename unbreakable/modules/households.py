@@ -265,9 +265,9 @@ def assign_vulnerability(households: pd.DataFrame, is_vuln_random: bool, assign_
     # If vulnerability is not random, use v_init as a starting point and add some noise
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
-        # default 0.6
+        # default 0.85
         low = assign_vuln_params['vuln_init_low']
-        # default 1.4
+        # default 1.15
         high = assign_vuln_params['vuln_init_high']
         # v - actual vulnerability
         # v_init - initial vulnerability
@@ -277,7 +277,7 @@ def assign_vulnerability(households: pd.DataFrame, is_vuln_random: bool, assign_
         else:
             raise ValueError("Only uniform distribution is supported yet.")
 
-        # default 0.95
+        # default 0.99
         vulnerability_threshold = assign_vuln_params['vuln_init_thresh']
 
         # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
