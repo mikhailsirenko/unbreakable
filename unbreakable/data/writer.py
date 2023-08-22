@@ -216,8 +216,14 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
         affected_households['popwgt'].sum()
 
     # Annual average consumption loss as a percentage of average annual consumption
-    annual_average_consumption_loss_pct = annual_average_consumption_loss / \
-        annual_average_consumption
+    # annual_average_consumption_loss_pct = annual_average_consumption_loss / \
+    #     annual_average_consumption
+
+    annual_average_consumption_loss_pct = (affected_households['consumption_loss_NPV']
+                                           .div(years_to_recover)
+                                           .div(affected_households['aeexp'])
+                                           .multiply(affected_households['popwgt']).sum())\
+        / affected_households['popwgt'].sum()
 
     if annual_average_consumption_loss_pct > 1:
         raise Exception(
