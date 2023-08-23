@@ -12,7 +12,6 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         households (pd.DataFrame): Households.
         tot_exposed_asset (float): Total exposed asset stock.
         expected_loss_fraction (float): Expected loss fraction.
-        median_productivity (float): Median productivity.
         years_to_recover (float): Number of years cut-off parameter when calculating consumption loss. Default is 10.
 
     Returns:
@@ -20,7 +19,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
     '''
     # Save some values for verification. There are not going to be used for the analysis.
     total_population = households['popwgt'].sum()
-    median_productivity = households['median_productivity'].iloc[0]
+    average_productivity = households['average_productivity'].iloc[0]
     tot_asset_surv = households['tot_asset_surv'].iloc[0]
     annual_average_consumption = (
         households['aeexp'] * households['popwgt']).sum() / households['popwgt'].sum()
@@ -63,7 +62,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         'total_asset_loss': total_asset_loss,
         'total_consumption_loss': total_consumption_loss,
         'tot_exposed_asset': tot_exposed_asset,
-        'median_productivity': median_productivity,
+        'average_productivity': average_productivity,
         'tot_asset_surv': tot_asset_surv,
         'expected_loss_frac': expected_loss_frac,
         'n_affected_people': n_affected_people,
@@ -155,9 +154,7 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         Exception: If the index is duplicated
         Exception: If the poverty gap is greater than 1
     '''
-    # TODO: Fix docstring and comments
     # First we need to calculate the poverty gap at the beginning of the simulation
-
     # Get the weighted average expenditure
     average_expenditure_poor_initial = (
         poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
@@ -173,12 +170,17 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
     all_poor = all_poor.assign(
         aeexp=all_poor['aeexp'] - all_poor['consumption_loss_NPV'] / years_to_recover)
 
-    poor_initial = poor_initial.assign(
-        aeexp=poor_initial['aeexp'] - poor_initial['consumption_loss_NPV'] / years_to_recover)
-
     # Now, get the average expenditure of the poor at the end of the simulation
     average_expenditure_poor_all = (
         all_poor['aeexp'] * all_poor['popwgt']).sum() / all_poor['popwgt'].sum()
+
+    # Calculate the poverty gap at the end of the simulation
+    new_poverty_gap_all = (
+        poverty_line - average_expenditure_poor_all) / poverty_line
+
+    # However, we also want to know the poverty gap for old poor
+    poor_initial = poor_initial.assign(
+        aeexp=poor_initial['aeexp'] - poor_initial['consumption_loss_NPV'] / years_to_recover)
 
     average_expenditure_poor_initial = (
         poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
@@ -186,13 +188,9 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
     new_poverty_gap_initial = (
         poverty_line - average_expenditure_poor_initial) / poverty_line
 
-    # Calculate the poverty gap at the end of the simulation
-    new_poverty_gap_all = (
-        poverty_line - average_expenditure_poor_all) / poverty_line
-
     # Poverty gap cannot be greater than 1
-    # if new_poverty_gap > 1 or initial_poverty_gap > 1:
-    #     raise Exception('Poverty gap is greater than 1')
+    if initial_poverty_gap > 1 or new_poverty_gap_initial > 1 or new_poverty_gap_all > 1:
+        raise Exception('Poverty gap cannot be greater than 1')
 
     return initial_poverty_gap, new_poverty_gap_initial, new_poverty_gap_all
 

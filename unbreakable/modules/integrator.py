@@ -24,7 +24,7 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
     '''
 
     # Get the median productivity. It is the same for all households in a district.
-    median_productivity = households['median_productivity'].values[0]
+    average_productivity = households['average_productivity'].values[0]
 
     # Subset households that are affected by the disaster
     affected_households = households[households['is_affected'] == True].copy()
@@ -42,7 +42,7 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
 
     # Calculate the recovery rate for each affected household
     affected_households['recovery_rate'] = affected_households['v'].apply(lambda x: integrate_and_find_recovery_rate(
-        x, results, consumption_utility, discount_rate, median_productivity, lambda_increment, years_to_recover))
+        x, results, consumption_utility, discount_rate, average_productivity, lambda_increment, years_to_recover))
 
     # Set recovery rate to zero for unaffected households
     households['recovery_rate'] = 0
@@ -54,7 +54,7 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
     return households
 
 
-def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumption_utility: float, discount_rate: float, median_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
+def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
     '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
 
     Args:
@@ -62,7 +62,7 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
         results (pd.DataFrame): Data frame to store integration results.
         consumption_utility (float): Consumption utility.
         discount_rate (float): Discount rate.
-        median_productivity (float): Median productivity.
+        average_productivity (float): Average productivity.
         lambda_increment (float): Lambda increment for the integration.
         years_to_recover (int): Number of years to recover.
 
@@ -70,12 +70,12 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
         float: Recovery rate (lambda).
     '''
     rounded_v = round(v, 3)
-    rounded_median_productivity = round(median_productivity, 3)
+    rounded_average_productivity = round(average_productivity, 3)
 
     try:
         # Look for the existing solution
         solution = results.loc[(
-            0, 0, 0, rounded_v, rounded_median_productivity), 'solution']
+            0, 0, 0, rounded_v, rounded_average_productivity), 'solution']
         return solution
 
     except KeyError:
@@ -89,8 +89,8 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
         while True:
             dwdlambda = 0
             for _t in np.linspace(0, years_to_recover, tot_weeks):
-                factor = median_productivity + _lambda
-                part1 = median_productivity - \
+                factor = average_productivity + _lambda
+                part1 = average_productivity - \
                     factor * v * np.e**(-_lambda * _t)
                 part1 = part1**(-consumption_utility)
                 part2 = _t * factor - 1
@@ -98,7 +98,7 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
                 dwdlambda += part1 * part2 * part3 * dt
 
             if (last_dwdlambda < 0 and dwdlambda > 0) or (last_dwdlambda > 0 and dwdlambda < 0) or _lambda > 10:
-                results.loc[(0, 0, 0, rounded_v, rounded_median_productivity), [
+                results.loc[(0, 0, 0, rounded_v, rounded_average_productivity), [
                     'solution', 'bankrupt']] = [_lambda, False]
                 results = results.sort_index()
                 return _lambda
@@ -124,7 +124,7 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
     '''
 
     # Get the median productivity and poverty line. They are the same for all households in a district.
-    median_productivity = households['median_productivity'].values[0]
+    average_productivity = households['average_productivity'].values[0]
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
 
     # Add new columns
@@ -185,7 +185,7 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
         #         affected_households[['keff', 'recovery_rate']].prod(axis=1))
 
         income_loss = gfac * (1 - affected_households['delta_tax_safety']) * \
-            median_productivity * \
+            average_productivity * \
             affected_households['keff'] * affected_households['v']
 
         if add_income_loss == False:

@@ -1,7 +1,6 @@
 # --------------------------------- Constants -------------------------------- #
 constants:
-# TODO: Rename to average_productivity
-  median_productivity: 0.238 # This value is taken from Penn World Table 
+  average_productivity: 0.238 # This value is taken from Penn World Table 
   add_income_loss: false
   calc_exposure_params:
     pov_bias_rnd_distr: uniform
