@@ -203,6 +203,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
 
     if len(outcomes_of_interest) == 0:
         outcomes_of_interest = ['total_asset_loss',
+                                'tot_exposed_asset',
                                 'total_consumption_loss',
                                 'n_affected_people',
                                 'n_new_poor',

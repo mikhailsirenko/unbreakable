@@ -300,9 +300,8 @@ def calc_tot_wellbeing_loss(households: pd.DataFrame, consump_util: float) -> fl
     Returns:
         float: Total wellbeing loss.
     '''
-    x = households['aeexp'].multiply(
-        households['popwgt']) / households['popwgt'].sum()
+    x = (households['aeexp'].multiply(households['popwgt'])
+         ).sum() / households['popwgt'].sum()
     W = x**(-consump_util)
-    wellbeing = households['wellbeing']
-    wellbeing_loss = - wellbeing / W
-    return wellbeing_loss.sum()
+    wellbeing_loss = - households['wellbeing'].sum() / W
+    return wellbeing_loss
