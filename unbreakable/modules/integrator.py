@@ -6,7 +6,7 @@ import pandas as pd
 import pickle
 
 
-def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int) -> pd.DataFrame:
+def calculate_recovery_rate(households: pd.DataFrame, consump_util: float, discount_rate: float, lambda_increment: float, years_to_recover: int) -> pd.DataFrame:
     '''Calculates the recovery rate for each affected household.
 
     Recovery rate is a function of the household vulnerability (v), 
@@ -14,7 +14,7 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
 
     Args:
         households (pd.DataFrame): Households data frame.
-        consumption_utility (float): Consumption utility.
+        consump_util (float): Consumption utility.
         discount_rate (float): Discount rate.
         lambda_increment (float): Lambda increment for the integration.
         years_to_recover (int): Number of years to recover.
@@ -42,7 +42,7 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
 
     # Calculate the recovery rate for each affected household
     affected_households['recovery_rate'] = affected_households['v'].apply(lambda x: integrate_and_find_recovery_rate(
-        x, results, consumption_utility, discount_rate, average_productivity, lambda_increment, years_to_recover))
+        x, results, consump_util, discount_rate, average_productivity, lambda_increment, years_to_recover))
 
     # Set recovery rate to zero for unaffected households
     households['recovery_rate'] = 0
@@ -54,13 +54,13 @@ def calculate_recovery_rate(households: pd.DataFrame, consumption_utility: float
     return households
 
 
-def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumption_utility: float, discount_rate: float, average_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
+def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consump_util: float, discount_rate: float, average_productivity: float, lambda_increment: float, years_to_recover: int) -> float:
     '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
 
     Args:
         v (float): Household vulnerability.
         results (pd.DataFrame): Data frame to store integration results.
-        consumption_utility (float): Consumption utility.
+        consump_util (float): Consumption utility.
         discount_rate (float): Discount rate.
         average_productivity (float): Average productivity.
         lambda_increment (float): Lambda increment for the integration.
@@ -92,7 +92,7 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
                 factor = average_productivity + _lambda
                 part1 = average_productivity - \
                     factor * v * np.e**(-_lambda * _t)
-                part1 = part1**(-consumption_utility)
+                part1 = part1**(-consump_util)
                 part2 = _t * factor - 1
                 part3 = np.e**(-_t * (discount_rate + _lambda))
                 dwdlambda += part1 * part2 * part3 * dt
@@ -107,12 +107,12 @@ def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, consumptio
             _lambda += lambda_increment
 
 
-def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, discount_rate: float, income_and_expenditure_growth: float, years_to_recover: int, add_income_loss: bool, cash_transfer: dict = {}) -> pd.DataFrame:
+def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_rate: float, income_and_expenditure_growth: float, years_to_recover: int, add_income_loss: bool, cash_transfer: dict = {}) -> pd.DataFrame:
     '''Calculates consumption loss and well-being for each affected household.
 
     Args:
         households (pd.DataFrame): Households data frame.
-        consumption_utility (float): Consumption utility.
+        consump_util (float): Consumption utility.
         discount_rate (float): Discount rate.
         income_and_expenditure_growth (float): Income and expenditure growth.
         years_to_recover (int): Number of years to recover.
@@ -134,9 +134,8 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
                'net_consumption_loss_NPV',
                'c_t',
                'c_t_unaffected',
-               'w_final',
                'weeks_pov',
-               'w_final2']
+               'wellbeing']
 
     # Set values to zero
     households[columns] = 0
@@ -200,10 +199,9 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
         # Check if any of the households has a negative consumption
         # It may happen if a household have very low savings or expenditure
         if (affected_households['c_t'] < 0).any():
-            # If so, then set the consumption to 0
-            affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 0
-            # * Previously it was set to 1
-            # affected_households.loc[affected_households['c_t'] < 1, 'c_t'] = 1
+            # If so, then set the consumption to 1
+            # We must have 1 to to avoid -inf in the wellbeing integration
+            affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 1
 
         # Consumption after the disaster should be lower than or equal to consumption before the disaster
         if (affected_households['c_t'] > affected_households['c_t_unaffected']).any():
@@ -236,13 +234,24 @@ def calculate_wellbeing(households: pd.DataFrame, consumption_utility: float, di
         affected_households.loc[affected_households['c_t']
                                 < poverty_line_adjusted, 'weeks_pov'] += 1
 
-        # Integrate wellbeing
-        # !!!: Fix wellbeing integration, currently it is nan
-        affected_households['w_final'] += dt * (affected_households['c_t'])**(1 - consumption_utility) * \
-            np.e**(-discount_rate * _t) / (1 - consumption_utility)
+        # Integrate well-being
+        a = affected_households['c_t_unaffected']**(1 - consump_util)
+        b = (1 - consump_util) * dt
+        c = ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
+              * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)
+        d = np.e**(-discount_rate * _t)
+        e = a.div(b).mul(c).mul(d)
+        f = affected_households['c_t_unaffected']**(1 - consump_util)\
+            / (1 - consump_util) * dt\
+            * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
+                * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)\
+            * np.e**(-discount_rate * _t)
 
-        affected_households['w_final2'] += affected_households['c_t_unaffected']**(1-consumption_utility)/(1-consumption_utility)*dt*(
-            (1-((affected_households['c_t_unaffected'] - affected_households['c_t'])/affected_households['c_t_unaffected'])*np.e**(-affected_households['recovery_rate']*_t))**(1-consumption_utility)-1)*np.e**(-discount_rate*_t)
+        affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consump_util)\
+            / (1 - consump_util) * dt\
+            * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
+                * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)\
+            * np.e**(-discount_rate * _t)
 
         # Use to examine individual consumption recovery
         # Save consumption recovery value at the time _t

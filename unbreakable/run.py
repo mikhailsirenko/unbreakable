@@ -40,13 +40,14 @@ if __name__ == "__main__":
                          for district in constants['districts']]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 5
+    n_scenarios = 48
     n_policies = 0
+
+    # Perform the experiments
 
     # results = perform_experiments(
     #     models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    # Perform the experiments
     with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
         results = evaluator.perform_experiments(
             scenarios=n_scenarios, policies=n_policies)

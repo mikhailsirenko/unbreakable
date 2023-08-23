@@ -137,13 +137,14 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
                                                                                    f'M={df[x_column].median():.2f}',
                                                                                    horizontalalignment='left', size='small', color='black')
 
-            initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
+            # initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
             # Add initial poverty gap as in the legend to the plot
-            if x_column == 'new_poverty_gap_all' or x_column == 'new_poverty_gap_initial':
-                ax[districts.index(district) // 3, districts.index(district) % 3].text(0.025, 0.9,
-                                                                                       f'Poverty gap before disaster={initial_poverty_gap:.2f}',
-                                                                                       horizontalalignment='left', size='small', color='black',
-                                                                                       transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
+            # if x_column == 'new_poverty_gap_all' or x_column == 'new_poverty_gap_initial':
+            #     ax[districts.index(district) // 3, districts.index(district) % 3].text(0.025, 0.9,
+            #                                                                            f'Poverty gap before disaster={initial_poverty_gap:.2f}',
+            #                                                                            horizontalalignment='left', size='small', color='black',
+            #                                                                            transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
+
         fig.tight_layout()
         if savefig:
             plt.savefig(

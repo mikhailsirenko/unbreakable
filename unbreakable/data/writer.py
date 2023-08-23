@@ -3,9 +3,10 @@ It has the main function `get_outcomes` which uses other functions to calculate 
 
 import pandas as pd
 import numpy as np
+import yaml
 
 
-def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_recover) -> dict:
+def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, years_to_recover: int, consump_util: float) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
@@ -50,13 +51,14 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
         affected_households, years_to_recover)
 
-    r = calculate_resilience(affected_households)
+    tot_wellbeing_loss = calc_tot_wellbeing_loss(households, consump_util)
+    r = calculate_resilience(affected_households, tot_wellbeing_loss)
 
     # Get the weighted average vulnerability by consumption quintile and decile
     weighted_vuln_quint = get_weighted_vuln(affected_households, quintile=True)
     weighted_vuln_dec = get_weighted_vuln(affected_households, quintile=False)
 
-    return {
+    outcomes = {
         'total_population': total_population,
         'total_asset_loss': total_asset_loss,
         'total_consumption_loss': total_consumption_loss,
@@ -77,10 +79,17 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'r': r,
         'mean_recovery_rate': mean_recovery_rate,
+        'tot_wellbeing_loss': tot_wellbeing_loss,
         'weighted_vuln_quint': weighted_vuln_quint,
         'weighted_vuln_dec': weighted_vuln_dec,
         'years_in_poverty': years_in_poverty
     }
+
+    # Save outcome names in a yaml file to pick up in preprocessing
+    with open('analysis/outcome_names.yaml', 'w') as f:
+        yaml.dump(list(outcomes.keys()), f)
+
+    return outcomes
 
 
 def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: int) -> tuple:
@@ -226,13 +235,14 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
     return annual_average_consumption_loss, annual_average_consumption_loss_pct
 
 
-def calculate_resilience(affected_households: pd.DataFrame) -> float:
+def calculate_resilience(affected_households: pd.DataFrame, tot_wellbeing_loss: float) -> float:
     '''Calculate socio-economic resilience of affected households.
 
     Socio-economic resilience is a ratio of asset loss to consumption loss.
 
     Args:
         affected_households (pd.DataFrame): Affected households.
+        tot_wellbeing_loss (float): Total wellbeing loss.
 
     Returns:
         float: Socio-economic resilience
@@ -247,7 +257,8 @@ def calculate_resilience(affected_households: pd.DataFrame) -> float:
         r = np.nan
 
     else:
-        r = total_asset_damage / total_consumption_loss
+        # r = total_asset_damage / total_consumption_loss
+        r = total_asset_damage / tot_wellbeing_loss
 
     return r
 
@@ -277,3 +288,20 @@ def get_weighted_vuln(affected_households: pd.DataFrame, quintile: bool) -> dict
         pop_by_d = df.groupby('decile').sum(numeric_only=True)[['popwgt']]
         average_v_by_d = v_weighted_by_d['v_weighted'].div(pop_by_d['popwgt'])
         return average_v_by_d.to_dict()
+
+
+def calc_tot_wellbeing_loss(households: pd.DataFrame, consump_util: float) -> float:
+    '''Calculate wellbeing loss.
+
+    Args:
+        households (pd.DataFrame): Households.
+        consump_util (float): Consumption utility.
+
+    Returns:
+        float: Total wellbeing loss.
+    '''
+    x = (households['aeexp'].multiply(households['popwgt'])
+         ).sum() / households['popwgt'].sum()
+    W = x**(-consump_util)
+    wellbeing_loss = - households['wellbeing'].sum() / W
+    return wellbeing_loss

@@ -50,7 +50,7 @@ def model(**params) -> dict:
 
     # Uncertainties
     poverty_bias = params['poverty_bias']
-    consumption_utility = params['consumption_utility']
+    consump_util = params['consump_util']
     discount_rate = params['discount_rate']
     lambda_increment = params['lambda_increment']
     income_and_expenditure_growth = params['income_and_expenditure_growth']
@@ -99,8 +99,8 @@ def model(**params) -> dict:
                                 .pipe(calculate_exposure, poverty_bias, calc_exposure_params)
                                 .pipe(identify_affected, ident_affected_params)
                                 .pipe(apply_policy, my_policy)
-                                .pipe(calculate_recovery_rate, consumption_utility, discount_rate, lambda_increment, years_to_recover)
-                                .pipe(calculate_wellbeing, consumption_utility, discount_rate, income_and_expenditure_growth, years_to_recover, add_income_loss, cash_transfer))
+                                .pipe(calculate_recovery_rate, consump_util, discount_rate, lambda_increment, years_to_recover)
+                                .pipe(calculate_wellbeing, consump_util, discount_rate, income_and_expenditure_growth, years_to_recover, add_income_loss, cash_transfer))
 
         if save_households:
             Path(f'../experiments/households/').mkdir(parents=True, exist_ok=True)
@@ -108,7 +108,7 @@ def model(**params) -> dict:
                 f'../experiments/households/{district}_{random_seed}.csv')
 
         array_outcomes = np.array(list(get_outcomes(
-            households, tot_exposed_asset, expected_loss_frac, years_to_recover).values()))
+            households, tot_exposed_asset, expected_loss_frac, years_to_recover, consump_util).values()))
 
         # * To check whether we have different households affected in different runs
         # if district == 'Castries':
