@@ -25,7 +25,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'total_asset_loss',
         'total_consumption_loss',
         'tot_exposed_asset',
-        'average_productivity',
         'tot_asset_surv',
         'expected_loss_fraction',
         'n_affected_people',
@@ -364,7 +363,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
     # Convert the dictionary to a dataframe
     result = pd.DataFrame(district_average).T
     result.index.name = 'District'
-    result.columns = [i for i in range(1, len(all_keys) + 1)]
+    result.columns = [i for i in range(0, len(all_keys))]
     # result.columns = [int(x) if int(x) < len(
     #     all_keys) else f'>{len(all_keys)}' for x in range(1, len(all_keys) + 1)]
     return result
