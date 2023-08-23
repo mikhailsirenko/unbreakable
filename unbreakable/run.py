@@ -40,7 +40,7 @@ if __name__ == "__main__":
                          for district in constants['districts']]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 24
+    n_scenarios = 5
     n_policies = 0
 
     # results = perform_experiments(

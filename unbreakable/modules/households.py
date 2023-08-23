@@ -6,34 +6,34 @@ import pandas as pd
 import numpy as np
 
 
-def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
-    """Calculate the median productivity as a function of aeinc to k_house_ae, 
+# def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
+#     """Calculate the median productivity as a function of aeinc to k_house_ae, 
 
-    where:
-    - aeinc is the adult equivalent income (total)
-    - k_house_ae is the domicile value divided by 
-    the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
-      k_house_ae = domicile_value / (hhexp / aeexp)
+#     where:
+#     - aeinc is the adult equivalent income (total)
+#     - k_house_ae is the domicile value divided by 
+#     the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
+#       k_house_ae = domicile_value / (hhexp / aeexp)
 
-    Args:
-        households (pd.DataFrame): A households DataFrame containing the columns 'aeinc' and 'k_house_ae'.
+#     Args:
+#         households (pd.DataFrame): A households DataFrame containing the columns 'aeinc' and 'k_house_ae'.
 
-    Returns:
-        float: Median productivity.
+#     Returns:
+#         float: Median productivity.
 
-    Raises:
-        ValueError: If the input DataFrame does not contain the required columns.
+#     Raises:
+#         ValueError: If the input DataFrame does not contain the required columns.
 
-    Note:
-        The function ignores NaN values in the calculation of the median.
-    """
-    if not all(column in households.columns for column in ['aeinc', 'k_house_ae']):
-        raise ValueError(
-            f'Input DataFrame does not contain the required columns: ["aeinc", "k_house_ae"]')
+#     Note:
+#         The function ignores NaN values in the calculation of the median.
+#     """
+#     if not all(column in households.columns for column in ['aeinc', 'k_house_ae']):
+#         raise ValueError(
+#             f'Input DataFrame does not contain the required columns: ["aeinc", "k_house_ae"]')
 
-    households['median_productivity'] = households['aeinc'] / \
-        households['k_house_ae']
-    return households
+#     households['median_productivity'] = households['aeinc'] / \
+#         households['k_house_ae']
+#     return households
 
 
 def duplicate_households(households: pd.DataFrame, min_representative_households: int, random_state: int) -> pd.DataFrame:
@@ -265,9 +265,9 @@ def assign_vulnerability(households: pd.DataFrame, is_vuln_random: bool, assign_
     # If vulnerability is not random, use v_init as a starting point and add some noise
     # ?: What is the point of adding the noise to the v_init if we cap it anyhow
     else:
-        # default 0.6
+        # default 0.85
         low = assign_vuln_params['vuln_init_low']
-        # default 1.4
+        # default 1.15
         high = assign_vuln_params['vuln_init_high']
         # v - actual vulnerability
         # v_init - initial vulnerability
@@ -277,7 +277,7 @@ def assign_vulnerability(households: pd.DataFrame, is_vuln_random: bool, assign_
         else:
             raise ValueError("Only uniform distribution is supported yet.")
 
-        # default 0.95
+        # default 0.99
         vulnerability_threshold = assign_vuln_params['vuln_init_thresh']
 
         # If vulnerability turned out to be (drawn) is above the threshold, set it to the threshold
