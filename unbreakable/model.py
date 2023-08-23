@@ -37,8 +37,7 @@ def model(**params) -> dict:
     saving_rate = params['saving_rate']
     is_vuln_random = params['is_vuln_random']
     years_to_recover = params['years_to_recover']
-    # TODO: Rename to average_productivity
-    median_productivity = params['median_productivity']
+    average_productivity = params['average_productivity']
 
     # Model constants
     est_sav_params = params['est_sav_params']
@@ -90,7 +89,7 @@ def model(**params) -> dict:
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
 
-        households['median_productivity'] = median_productivity
+        households['average_productivity'] = average_productivity
 
         households = (households.pipe(duplicate_households, min_representative_households, random_seed)
                                 .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol)

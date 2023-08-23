@@ -25,7 +25,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'total_asset_loss',
         'total_consumption_loss',
         'tot_exposed_asset',
-        'median_productivity',
+        'average_productivity',
         'tot_asset_surv',
         'expected_loss_fraction',
         'n_affected_people',
@@ -192,7 +192,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
     outcomes['new_poverty_gap_all'] = outcomes['new_poverty_gap_all'] * 100
     outcomes['new_poverty_gap_initial'] = outcomes['new_poverty_gap_initial'] * 100
-
 
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
