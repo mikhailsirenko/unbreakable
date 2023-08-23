@@ -5,6 +5,7 @@ import numpy as np
 import ast
 import geopandas as gpd
 from tqdm import tqdm
+import yaml
 
 
 def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool) -> pd.DataFrame:
@@ -18,38 +19,16 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     Returns:
         pd.DataFrame: Outcomes.
     '''
-    # * Note that we specify all outcomes in `get_outcomes` function in `write.py`
-    # * Here we just read them in the same sequence that they are written
-    outcome_names = [
-        'total_population',
-        'total_asset_loss',
-        'total_consumption_loss',
-        'tot_exposed_asset',
-        'tot_asset_surv',
-        'expected_loss_fraction',
-        'n_affected_people',
-        'annual_average_consumption',
-        'poverty_line_adjusted',
-        'district_pml',
-        'n_poor_initial',
-        'n_poor_affected',
-        'n_new_poor',
-        'initial_poverty_gap',
-        'new_poverty_gap_initial',
-        'new_poverty_gap_all',
-        'annual_average_consumption_loss',
-        'annual_average_consumption_loss_pct',
-        'r',
-        'mean_recovery_rate',
-        'weighted_vuln_quint',
-        'weighted_vuln_dec',
-        'years_in_poverty',
-    ]
+    # Read outcome names from a yaml file
+    with open("../unbreakable/analysis/outcome_names.yaml", "r") as f:
+        outcome_names = yaml.safe_load(f)
 
-    uncertainty_names = ['consumption_utility',
-                         'discount_rate',
-                         'income_and_expenditure_growth',
-                         'poverty_bias']
+    # TODO: Read uncertainty names from results
+    # uncertainty_names = ['consump_util',
+    #                      'discount_rate',
+    #                      'income_and_expenditure_growth',
+    #                      'poverty_bias']
+    uncertainty_names = []
 
     experiments, _ = results
     experiments['random_seed'] = experiments['random_seed'].astype(int)
@@ -172,16 +151,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
             i += 1  # increase row index of the outcomes dataframe
     outcomes = pd.DataFrame(outcomes, columns=columns)
 
-    # Convert numeric columns to numeric
-    if add_policies:
-        numeric_columns = outcomes.columns[5:-4].tolist()
-        outcomes[numeric_columns] = outcomes[numeric_columns].apply(
-            pd.to_numeric)
-    else:
-        numeric_columns = outcomes.columns[4:-4].tolist()
-        outcomes[numeric_columns] = outcomes[numeric_columns].apply(
-            pd.to_numeric)
-
     # Rename a district
     outcomes['district'].replace(
         {'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
@@ -195,13 +164,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
         outcomes['total_population']).multiply(100))
-
-    outcomes['pct_poor_before'] = outcomes['n_poor_initial'].div(
-        outcomes['total_population'])
-    outcomes['pct_poor_after'] = outcomes['n_new_poor'].add(
-        outcomes['n_poor_initial']).div(outcomes['total_population'])
-    outcomes['pct_poor_increase'] = outcomes['pct_poor_after'].sub(
-        outcomes['pct_poor_before'])
 
     # Move years_in_poverty column to the end of the data frame
     outcomes = outcomes[[c for c in outcomes if c not in [
@@ -314,7 +276,7 @@ def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.DataFrame:
+def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
     '''Get the average across scenarios number of weeks in poverty for each district.
 
     Args:
