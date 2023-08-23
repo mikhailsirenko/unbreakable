@@ -19,7 +19,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
     '''
     # Save some values for verification. There are not going to be used for the analysis.
     total_population = households['popwgt'].sum()
-    average_productivity = households['average_productivity'].iloc[0]
+    district_pml = households['district_pml'].iloc[0]
     tot_asset_surv = households['tot_asset_surv'].iloc[0]
     annual_average_consumption = (
         households['aeexp'] * households['popwgt']).sum() / households['popwgt'].sum()
@@ -38,6 +38,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
     # Poverty line ois the same for all households
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
 
+    # Get the model outcomes
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
         households, poverty_line_adjusted, years_to_recover)
 
@@ -51,9 +52,7 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
 
     r = calculate_resilience(affected_households)
 
-    # PML is the same for all households in a district
-    district_pml = households['district_pml'].iloc[0]
-
+    # Get the weighted average vulnerability by consumption quintile and decile
     weighted_vuln_quint = get_weighted_vuln(affected_households, quintile=True)
     weighted_vuln_dec = get_weighted_vuln(affected_households, quintile=False)
 
@@ -62,7 +61,6 @@ def get_outcomes(households, tot_exposed_asset, expected_loss_frac, years_to_rec
         'total_asset_loss': total_asset_loss,
         'total_consumption_loss': total_consumption_loss,
         'tot_exposed_asset': tot_exposed_asset,
-        'average_productivity': average_productivity,
         'tot_asset_surv': tot_asset_surv,
         'expected_loss_frac': expected_loss_frac,
         'n_affected_people': n_affected_people,
@@ -126,15 +124,10 @@ def get_people_by_years_in_poverty(affected_households: pd.DataFrame) -> dict:
     affected_households = affected_households.assign(
         years_in_poverty=affected_households['weeks_pov'] // 52)
     d = {}
-    # !: This cannot be higher > years_to_recover
     longest_years_in_poverty = 10
-    for i in range(longest_years_in_poverty):
+    for i in range(longest_years_in_poverty + 1):
         d[i] = round(affected_households[affected_households['years_in_poverty'] == i]
                      ['popwgt'].sum())
-
-    # d[longest_years_in_poverty] = round(
-    #     affected_households[affected_households['years_in_poverty'] >= longest_years_in_poverty]['popwgt'].sum())
-
     return d
 
 
@@ -219,15 +212,6 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
     # Weighted average
     annual_average_consumption_loss = annual_consumption_loss / \
         affected_households['popwgt'].sum()
-
-    # Annual average consumption
-    annual_average_consumption = (
-        affected_households['aeexp'] * affected_households['popwgt']).sum() / \
-        affected_households['popwgt'].sum()
-
-    # Annual average consumption loss as a percentage of average annual consumption
-    # annual_average_consumption_loss_pct = annual_average_consumption_loss / \
-    #     annual_average_consumption
 
     annual_average_consumption_loss_pct = (affected_households['consumption_loss_NPV']
                                            .div(years_to_recover)

@@ -25,7 +25,6 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         'total_asset_loss',
         'total_consumption_loss',
         'tot_exposed_asset',
-        'average_productivity',
         'tot_asset_surv',
         'expected_loss_fraction',
         'n_affected_people',
@@ -245,7 +244,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
                                 'total_consumption_loss',
                                 'n_affected_people',
                                 'n_new_poor',
-                                'new_poverty_gap',
+                                'new_poverty_gap_all',
                                 'annual_average_consumption_loss',
                                 'annual_average_consumption_loss_pct',
                                 'n_new_poor_increase_pp',
@@ -320,49 +319,54 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame, max_years: int = 10) -> pd.
 
     Args:
         outcomes (pd.DataFrame): Outcomes.
-        max_years (int, optional): Maximum number of years to consider. Defaults to 10.
 
     Returns:
         pd.DataFrame: Average number of weeks in poverty for each district.
     '''
-    # TODO: Rewrite as `get_average_weighted_vulnerability` to speed up
-    # Specify the columns
-    columns = [str(i) for i in range(0, max_years+1)]
-    columns[-1] = '>' + columns[-1]
+    # Specify the districts
+    districts = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
+                 'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
 
-    # Specify the index
-    index = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul', 'Dennery',
-             'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+    # Keep track of the averages
+    district_average = {}
 
-    # Prepare the data frame
-    average_years_in_poverty = pd.DataFrame(columns=columns, index=index)
-    average_years_in_poverty = average_years_in_poverty.fillna(0)
+    # Get the number of scenarios
     n_scenarios = outcomes['scenario'].unique().size
 
-    # Go over each scenario
-    for scenario in tqdm(outcomes['scenario'].unique()):
-        # Subset the scenario
-        df = outcomes[outcomes['scenario'] == scenario]
-        df.set_index('district', inplace=True)
-        years_in_poverty = pd.DataFrame(columns=columns)
+    # Get the keys
+    column_name = 'years_in_poverty'
+    all_keys = outcomes[column_name][0].keys()
 
-        # Go over each district
-        for index, row in df.iterrows():
-            x = row['years_in_poverty']
+    # Iterate through the districts
+    for district in districts:
+        # Subset the outcomes for a specific district
+        df = outcomes[outcomes['district'] == district]
 
-            # Go over each year
-            for key, values in x.items():
-                if key == max_years:
-                    key_value = columns[-1]
+        # Get the dictionaries from the column
+        dicts = df[column_name].tolist()
+
+        # Initialize the sums
+        sums = dict(zip(all_keys, [0] * len(all_keys)))
+
+        # Iterate through the dictionaries and update the sums
+        for d in dicts:
+            for key in all_keys:
+                if key in d:
+                    sums[key] += d[key]
                 else:
-                    key_value = str(key)
-                years_in_poverty.loc[index, key_value] = int(values)
-        # Add the years in poverty for the current scenario to the average
-        average_years_in_poverty += years_in_poverty
+                    sums[key] += 0
 
-    # Calculate the average over n_scenarios
-    average_years_in_poverty = average_years_in_poverty / n_scenarios
-    return average_years_in_poverty
+        # Calculate the average
+        district_average[district] = {
+            key: sums[key] / n_scenarios for key in all_keys}
+
+    # Convert the dictionary to a dataframe
+    result = pd.DataFrame(district_average).T
+    result.index.name = 'District'
+    result.columns = [i for i in range(0, len(all_keys))]
+    # result.columns = [int(x) if int(x) < len(
+    #     all_keys) else f'>{len(all_keys)}' for x in range(1, len(all_keys) + 1)]
+    return result
 
 
 def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -> pd.DataFrame:

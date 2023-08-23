@@ -15,7 +15,7 @@ from mycolorpy import colorlist as mcp
 # import contextily as ctx
 
 
-def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], plot_years_in_poverty: bool = False, color_palette: str = 'Set2', sharex: bool = True):
+def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], color_palette: str = 'Set2', sharex: bool = True):
     '''Visualize the outcomes using a raincloud plot.
 
     Args:
@@ -23,13 +23,19 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
         savefig (bool): Whether to save the figure or not.
         x_columns (list, optional): The columns to plot. Defaults to [].
         x_titles (list, optional): The titles of the columns to plot. Defaults to [].
-        plot_years_in_poverty (bool, optional): Whether to plot the years in poverty or not. Defaults to False.
         color_palette (str, optional): The color palette to use. Defaults to 'Set2'.
         sharex (bool, optional): Whether to share the x-axis or not. Defaults to True.
 
     Returns:
         None
     '''
+
+    if savefig:
+        outcomes['district'].replace(
+            {'Anse-La-Raye & Canaries': 'Anse-La-Raye \& Canaries'}, inplace=True)
+        pct_symbol = '\%'
+    else:
+        pct_symbol = '%'
 
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
@@ -44,16 +50,6 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             'r',
             'new_poverty_gap_initial',
             'new_poverty_gap_all',
-            # 'one_year_in_poverty',
-            # 'two_years_in_poverty',
-            # 'three_years_in_poverty',
-            # 'four_years_in_poverty',
-            # 'five_years_in_poverty',
-            # 'six_years_in_poverty',
-            # 'seven_years_in_poverty',
-            # 'eight_years_in_poverty',
-            # 'nine_years_in_poverty',
-            # 'ten_years_in_poverty'
         ]
 
     if len(x_titles) == 0:
@@ -61,20 +57,10 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             'Affected People',
             'New Poor Increase (p.p.)',
             'New Poor',
-            'Wt. Ann. Avg. Consump. Loss p.c. (%)',
+            f'Wt. Ann. Avg. Consump. Loss p.c. ({pct_symbol})',
             'Socio-Economic Resilience',
             'New Poverty Gap Initial Poor',
             'New Poverty Gap All Poor',
-            # 'One year in poverty',
-            # 'Two years in poverty',
-            # 'Three years in poverty',
-            # 'Four years in poverty',
-            # 'Five years in poverty',
-            # 'Six years in poverty',
-            # 'Seven years in poverty',
-            # 'Eight years in poverty',
-            # 'Nine years in poverty',
-            # 'Ten years in poverty'
         ]
 
     is_years_in_poverty = False
@@ -85,18 +71,6 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
 
         for district in districts:
             df = outcomes[outcomes['district'] == district].copy()
-
-            # Calculate an increase in new poor in respect to the total population
-            # df = df.assign(one_year_in_poverty = df['years_in_poverty'].apply(lambda x: x[0]))
-            # df = df.assign(two_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[1]))
-            # df = df.assign(three_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[2]))
-            # df = df.assign(four_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[3]))
-            # df = df.assign(five_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[4]))
-            # df = df.assign(six_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[5]))
-            # df = df.assign(seven_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[6]))
-            # df = df.assign(eight_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[7]))
-            # df = df.assign(nine_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[8]))
-            # df = df.assign(ten_years_in_poverty = df['years_in_poverty'].apply(lambda x: x[9]))
 
             df[x_column] = df[x_column].astype(float)
 
@@ -139,11 +113,8 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
                         orient='h',
                         ax=ax[districts.index(district) // 3, districts.index(district) % 3])
 
-            if is_years_in_poverty:
-                title = district + ', E = ' + \
-                    f'{round(df[x_column].mean())}'
-            else:
-                title = district
+            # Set title
+            title = district
             ax[districts.index(district) // 3,
                districts.index(district) % 3].set_title(title)
             ax[districts.index(district) // 3,
@@ -161,39 +132,24 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             ax[districts.index(district) // 3, districts.index(district) %
                3].xaxis.set_major_locator(MaxNLocator(integer=True))
 
-            # Plot the median
-            # ax[districts.index(district) // 3, districts.index(district) % 3].axvline(df[x_column].median(), color='black', linestyle='--', linewidth=1)
-
             # Add text close to the boxplot's median
             ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].median(), 0.2,
                                                                                    f'M={df[x_column].median():.2f}',
                                                                                    horizontalalignment='left', size='small', color='black')
 
-            # # Add text close to the boxplot's min and max
-            # ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].min(), 0.3,
-            #                                                                        f'min={df[x_column].min():.2f}',
-            #                                                                        horizontalalignment='left', size='small', color='black')
-            # ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].max(), 0.4,
-            #                                                                        f'max={df[x_column].max():.2f}',
-            #                                                                        horizontalalignment='left', size='small', color='black')
-
             initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
-
             # Add initial poverty gap as in the legend to the plot
-            if x_column == 'new_poverty_gap':
+            if x_column == 'new_poverty_gap_all' or x_column == 'new_poverty_gap_initial':
                 ax[districts.index(district) // 3, districts.index(district) % 3].text(0.025, 0.9,
                                                                                        f'Poverty gap before disaster={initial_poverty_gap:.2f}',
                                                                                        horizontalalignment='left', size='small', color='black',
                                                                                        transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
-
-        # Add a super title
-        # fig.suptitle(x_title, fontsize=16)
         fig.tight_layout()
         if savefig:
             plt.savefig(
                 f'../reports/figures/analysis/{x_column}.png', dpi=500, bbox_inches='tight')
-            # plt.savefig(
-            #     f'../reports/figures/analysis/{x_column}.pgf', bbox_inches='tight')
+            plt.savefig(
+                f'../reports/figures/analysis/{x_column}.pgf', bbox_inches='tight')
 
 
 def bivariate_choropleth(data: gpd.GeoDataFrame, x_name: str, y_name: str, x_label: str, y_label: str, scheme: str, figsize: tuple, return_table: bool) -> None:
@@ -528,8 +484,9 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
                  horizontalalignment='left', verticalalignment='top')
     plt.tight_layout()
     if savefig:
-        # plt.savefig('../reports/figures/analysis/WAACLP.pgf', bbox_inches='tight')
-        plt.savefig('../reports/figures/analysis/WAACLP.png',
+        plt.savefig(
+            '../reports/figures/analysis/av_cons_loss.pgf', bbox_inches='tight')
+        plt.savefig('../reports/figures/analysis/av_cons_loss.png',
                     dpi=300, bbox_inches='tight')
 
 
@@ -547,6 +504,10 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         None
     '''
     # Let's make colors of density plots match the colors of the choropleth map
+
+    if savefig:
+        outcomes['district'].replace(
+            {'Anse-La-Raye & Canaries': 'Anse-La-Raye \& Canaries'}, inplace=True)
 
     # Choropleth map uses median values to classify the districts, we're going to do the same
     median_outcomes = outcomes.groupby('district').median(numeric_only=True)[
@@ -595,7 +556,10 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
             linewidth = 1
         sns.kdeplot(data=df, x='annual_average_consumption_loss_pct',
                     ax=ax, color=color, linewidth=linewidth, alpha=1)
-        ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+        if savefig:
+            ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
+        else:
+            ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
         ax.set_ylabel('Run density')
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
@@ -607,5 +571,7 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
     fig.tight_layout()
 
     if savefig:
-        plt.savefig('../reports/figures/analysis/WAACLP_districts.png',
+        plt.savefig('../reports/figures/analysis/av_cons_loss_distr.png',
                     dpi=300, bbox_inches='tight')
+        plt.savefig('../reports/figures/analysis/av_cons_loss_distr.pgf',
+                    bbox_inches='tight')
