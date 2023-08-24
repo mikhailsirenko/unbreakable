@@ -151,6 +151,18 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
             i += 1  # increase row index of the outcomes dataframe
     outcomes = pd.DataFrame(outcomes, columns=columns)
 
+    numeric_columns = ['total_population',
+                       'total_asset_loss', 'total_consumption_loss', 'tot_exposed_asset',
+                       'tot_asset_surv', 'expected_loss_frac', 'n_affected_people',
+                       'annual_average_consumption', 'poverty_line_adjusted', 'district_pml',
+                       'n_poor_initial', 'n_poor_affected', 'n_new_poor',
+                       'initial_poverty_gap', 'new_poverty_gap_initial', 'new_poverty_gap_all',
+                       'annual_average_consumption_loss',
+                       'annual_average_consumption_loss_pct', 'r', 'mean_recovery_rate',
+                       'tot_wellbeing_loss']
+
+    outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
+
     # Rename a district
     outcomes['district'].replace(
         {'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
