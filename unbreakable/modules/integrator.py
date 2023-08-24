@@ -235,17 +235,17 @@ def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_
                                 < poverty_line_adjusted, 'weeks_pov'] += 1
 
         # Integrate well-being
-        a = affected_households['c_t_unaffected']**(1 - consump_util)
-        b = (1 - consump_util) * dt
-        c = ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
-              * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)
-        d = np.e**(-discount_rate * _t)
-        e = a.div(b).mul(c).mul(d)
-        f = affected_households['c_t_unaffected']**(1 - consump_util)\
-            / (1 - consump_util) * dt\
-            * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
-                * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)\
-            * np.e**(-discount_rate * _t)
+        # a = affected_households['c_t_unaffected']**(1 - consump_util)
+        # b = (1 - consump_util) * dt
+        # c = ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
+        #       * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)
+        # d = np.e**(-discount_rate * _t)
+        # e = a.div(b).mul(c).mul(d)
+        # f = affected_households['c_t_unaffected']**(1 - consump_util)\
+        #     / (1 - consump_util) * dt\
+        #     * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
+        #         * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)\
+        #     * np.e**(-discount_rate * _t)
 
         affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consump_util)\
             / (1 - consump_util) * dt\
