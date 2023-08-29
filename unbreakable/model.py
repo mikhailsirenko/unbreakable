@@ -74,6 +74,10 @@ def model(**params) -> dict:
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
+    # Calculate the wprime for the whole country
+    wprime = calculate_wprime(all_households, all_damage, districts, return_period,
+                              min_representative_households, random_seed, poverty_line, indigence_line, atol, consump_util)
+
     for district in districts:
         # Get total exposed asset stock and expected loss fraction for a specific district and return period
         tot_exposed_asset = get_tot_exposed_asset_stock(
@@ -108,7 +112,7 @@ def model(**params) -> dict:
                 f'../experiments/households/{district}_{random_seed}.csv')
 
         array_outcomes = np.array(list(get_outcomes(
-            households, tot_exposed_asset, expected_loss_frac, years_to_recover, consump_util).values()))
+            households, tot_exposed_asset, expected_loss_frac, years_to_recover, wprime).values()))
 
         # * To check whether we have different households affected in different runs
         # if district == 'Castries':

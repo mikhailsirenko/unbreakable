@@ -201,6 +201,8 @@ def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_
         if (affected_households['c_t'] < 0).any():
             # If so, then set the consumption to 1
             # We must have 1 to to avoid -inf in the wellbeing integration
+            # TODO: Experiment with 0.1 instead of 1
+            # This could be relevant if we do daily consumption/integration
             affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 1
 
         # Consumption after the disaster should be lower than or equal to consumption before the disaster
@@ -235,18 +237,6 @@ def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_
                                 < poverty_line_adjusted, 'weeks_pov'] += 1
 
         # Integrate well-being
-        # a = affected_households['c_t_unaffected']**(1 - consump_util)
-        # b = (1 - consump_util) * dt
-        # c = ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
-        #       * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)
-        # d = np.e**(-discount_rate * _t)
-        # e = a.div(b).mul(c).mul(d)
-        # f = affected_households['c_t_unaffected']**(1 - consump_util)\
-        #     / (1 - consump_util) * dt\
-        #     * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
-        #         * np.e**(-affected_households['recovery_rate'] * _t))**(1 - consump_util) - 1)\
-        #     * np.e**(-discount_rate * _t)
-
         affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consump_util)\
             / (1 - consump_util) * dt\
             * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])

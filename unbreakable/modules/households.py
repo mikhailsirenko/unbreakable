@@ -5,13 +5,15 @@ It contains a set of functions that are used to calculate the impact of a disast
 import pandas as pd
 import numpy as np
 
+from unbreakable.data.reader import get_tot_exposed_asset_stock
+
 
 # def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
-#     """Calculate the median productivity as a function of aeinc to k_house_ae, 
+#     """Calculate the median productivity as a function of aeinc to k_house_ae,
 
 #     where:
 #     - aeinc is the adult equivalent income (total)
-#     - k_house_ae is the domicile value divided by 
+#     - k_house_ae is the domicile value divided by
 #     the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
 #       k_house_ae = domicile_value / (hhexp / aeexp)
 
@@ -451,3 +453,33 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
                    'aesav'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
 
     return households
+
+
+def calculate_wprime(all_households: pd.DataFrame,
+                     all_damage: pd.DataFrame,
+                     districts: list,
+                     return_period: int,
+                     min_representative_households: int,
+                     random_seed: int,
+                     poverty_line: float,
+                     indigence_line: float,
+                     atol: float,
+                     consump_util: float) -> pd.DataFrame:
+    '''Calculate wprime for the whole country.'''
+
+    households_adjusted = []
+    for district in districts:
+        tot_exposed_asset = get_tot_exposed_asset_stock(
+            all_damage, district, return_period)
+
+        households = all_households[all_households['district'] == district].copy(
+        )
+        households = (households.pipe(duplicate_households, min_representative_households, random_seed)
+                                .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol))
+        households_adjusted.append(households)
+    households_adjusted = pd.concat(households_adjusted)
+
+    # wprime is a factor that converts an abstract concept of wellbeing loss into consumption loss in monetary terms
+    wprime = (np.sum(
+        households_adjusted['aeexp'] * households_adjusted['popwgt']) / np.sum(households_adjusted['popwgt']))**(-consump_util)
+    return wprime
