@@ -453,33 +453,3 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
                    'aesav'] += households.loc[beneficiaries].eval('keff*v') * top_up / 100
 
     return households
-
-
-def calculate_wprime(all_households: pd.DataFrame,
-                     all_damage: pd.DataFrame,
-                     districts: list,
-                     return_period: int,
-                     min_representative_households: int,
-                     random_seed: int,
-                     poverty_line: float,
-                     indigence_line: float,
-                     atol: float,
-                     consump_util: float) -> pd.DataFrame:
-    '''Calculate wprime for the whole country.'''
-
-    households_adjusted = []
-    for district in districts:
-        tot_exposed_asset = get_tot_exposed_asset_stock(
-            all_damage, district, return_period)
-
-        households = all_households[all_households['district'] == district].copy(
-        )
-        households = (households.pipe(duplicate_households, min_representative_households, random_seed)
-                                .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol))
-        households_adjusted.append(households)
-    households_adjusted = pd.concat(households_adjusted)
-
-    # wprime is a factor that converts an abstract concept of wellbeing loss into consumption loss in monetary terms
-    wprime = (np.sum(
-        households_adjusted['aeexp'] * households_adjusted['popwgt']) / np.sum(households_adjusted['popwgt']))**(-consump_util)
-    return wprime
