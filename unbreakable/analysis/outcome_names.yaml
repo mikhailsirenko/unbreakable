@@ -16,9 +16,8 @@
 - new_poverty_gap_all
 - annual_average_consumption_loss
 - annual_average_consumption_loss_pct
-- r
 - mean_recovery_rate
-- tot_wellbeing_loss
+- r
 - weighted_vuln_quint
 - weighted_vuln_dec
 - years_in_poverty

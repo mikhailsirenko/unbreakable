@@ -152,14 +152,25 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes = pd.DataFrame(outcomes, columns=columns)
 
     numeric_columns = ['total_population',
-                       'total_asset_loss', 'total_consumption_loss', 'tot_exposed_asset',
-                       'tot_asset_surv', 'expected_loss_frac', 'n_affected_people',
-                       'annual_average_consumption', 'poverty_line_adjusted', 'district_pml',
-                       'n_poor_initial', 'n_poor_affected', 'n_new_poor',
-                       'initial_poverty_gap', 'new_poverty_gap_initial', 'new_poverty_gap_all',
+                       'total_asset_loss',
+                       'total_consumption_loss',
+                       'tot_exposed_asset',
+                       'tot_asset_surv',
+                       'expected_loss_frac',
+                       'n_affected_people',
+                       'annual_average_consumption',
+                       'poverty_line_adjusted',
+                       'district_pml',
+                       'n_poor_initial',
+                       'n_poor_affected',
+                       'n_new_poor',
+                       'initial_poverty_gap',
+                       'new_poverty_gap_initial',
+                       'new_poverty_gap_all',
                        'annual_average_consumption_loss',
-                       'annual_average_consumption_loss_pct', 'r', 'mean_recovery_rate',
-                       'tot_wellbeing_loss']
+                       'annual_average_consumption_loss_pct',
+                       'mean_recovery_rate',
+                       'r']
 
     outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
 
@@ -404,3 +415,31 @@ def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -
     else:
         result.columns.name = 'Decile'
     return result
+
+
+def calculate_resilience(affected_households: pd.DataFrame, tot_wellbeing_loss: float) -> float:
+    '''Calculate socio-economic resilience of affected households.
+
+    Socio-economic resilience is a ratio of asset loss to consumption loss.
+
+    Args:
+        affected_households (pd.DataFrame): Affected households.
+        tot_wellbeing_loss (float): Total wellbeing loss.
+
+    Returns:
+        float: Socio-economic resilience
+    '''
+    total_consumption_loss = (
+        affected_households[['consumption_loss_NPV', 'popwgt']].prod(axis=1)).sum()
+
+    total_asset_damage = (
+        affected_households[['keff', 'v', 'popwgt']].prod(axis=1)).sum()
+
+    if total_consumption_loss == 0:
+        r = np.nan
+
+    else:
+        r = total_asset_damage / total_consumption_loss
+        # r = total_asset_damage / tot_wellbeing_loss
+
+    return r

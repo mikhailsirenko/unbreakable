@@ -74,6 +74,10 @@ def model(**params) -> dict:
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
+    # Calculate the wprime for the whole country
+    wprime = calculate_wprime(all_households, all_damage, districts, return_period,
+                              min_representative_households, random_seed, poverty_line, indigence_line, atol, consump_util)
+
     for district in districts:
         # Get total exposed asset stock and expected loss fraction for a specific district and return period
         tot_exposed_asset = get_tot_exposed_asset_stock(
@@ -108,7 +112,7 @@ def model(**params) -> dict:
                 f'../experiments/households/{district}_{random_seed}.csv')
 
         array_outcomes = np.array(list(get_outcomes(
-            households, tot_exposed_asset, expected_loss_frac, years_to_recover, consump_util).values()))
+            households, tot_exposed_asset, expected_loss_frac, years_to_recover, wprime).values()))
 
         # * To check whether we have different households affected in different runs
         # if district == 'Castries':
@@ -117,6 +121,44 @@ def model(**params) -> dict:
         outcomes[district] = array_outcomes
 
     return outcomes
+
+
+def calculate_wprime(all_households: pd.DataFrame, all_damage: pd.DataFrame, districts: list, return_period: int, min_representative_households: int, random_seed: int, poverty_line: float, indigence_line: float, atol: float, consump_util: float) -> float:
+    '''Calculate `wprime` for the whole country.
+
+    `wprime` is a factor that converts an abstract concept of wellbeing loss 
+    into consumption loss in monetary terms.
+
+    Args:
+        all_households (pd.DataFrame): Households from all districts.
+        all_damage (pd.DataFrame): Damage data for all districts.
+        districts (list): A list of districts.
+        return_period (int): Return period.
+        min_representative_households (int): Minimum number of households to be representative.
+        random_seed (int): Random seed.
+        poverty_line (float): Poverty line.
+        indigence_line (float): Indigence line.
+        atol (float): Abs tolerance for matching asset stock of damage and household survey data sets.
+        consump_util (float): Consumption utility.
+
+    Returns:
+        float: `wprime` for the whole country.
+    '''
+
+    households_adjusted = []
+    for district in districts:
+        tot_exposed_asset = get_tot_exposed_asset_stock(
+            all_damage, district, return_period)
+
+        households = all_households[all_households['district'] == district].copy(
+        )
+        households = (households.pipe(duplicate_households, min_representative_households, random_seed)
+                                .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol))
+        households_adjusted.append(households)
+    households_adjusted = pd.concat(households_adjusted)
+    wprime = (np.sum(
+        households_adjusted['aeexp'] * households_adjusted['popwgt']) / np.sum(households_adjusted['popwgt']))**(-consump_util)
+    return wprime
 
 
 def initialize_model(country: str, scale: str):

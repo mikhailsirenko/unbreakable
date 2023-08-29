@@ -40,17 +40,17 @@ if __name__ == "__main__":
                          for district in constants['districts']]
 
     # Specify the number of scenarios and policies
-    n_scenarios = 48
+    n_scenarios = 1
     n_policies = 0
 
     # Perform the experiments
 
-    # results = perform_experiments(
-    #     models=my_model, scenarios=n_scenarios, policies=n_policies)
+    results = perform_experiments(
+        models=my_model, scenarios=n_scenarios, policies=n_policies)
 
-    with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
-        results = evaluator.perform_experiments(
-            scenarios=n_scenarios, policies=n_policies)
+    # with MultiprocessingEvaluator(my_model, n_processes=12) as evaluator:
+    #     results = evaluator.perform_experiments(
+    #         scenarios=n_scenarios, policies=n_policies)
 
     # Save the results
     Path(f'../experiments/').mkdir(parents=True, exist_ok=True)

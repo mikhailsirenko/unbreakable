@@ -5,13 +5,15 @@ It contains a set of functions that are used to calculate the impact of a disast
 import pandas as pd
 import numpy as np
 
+from unbreakable.data.reader import get_tot_exposed_asset_stock
+
 
 # def calculate_median_productivity(households: pd.DataFrame) -> pd.DataFrame:
-#     """Calculate the median productivity as a function of aeinc to k_house_ae, 
+#     """Calculate the median productivity as a function of aeinc to k_house_ae,
 
 #     where:
 #     - aeinc is the adult equivalent income (total)
-#     - k_house_ae is the domicile value divided by 
+#     - k_house_ae is the domicile value divided by
 #     the ratio of household expenditure to adult equivalent expenditure (per capita), calculated as:
 #       k_house_ae = domicile_value / (hhexp / aeexp)
 
