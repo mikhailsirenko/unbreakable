@@ -6,7 +6,7 @@ constants:
     pov_bias_rnd_distr: uniform
     pov_bias_rnd_high: 1.5
     pov_bias_rnd_low: 0.5
-  consump_util: 1.5
+  consump_util: 1.5 # default 1.5
   country: Saint Lucia
   ident_affected_params:
     delta_pct: 0.05
