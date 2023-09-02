@@ -458,7 +458,7 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
     sns.histplot(outcomes['annual_average_consumption_loss_pct'])
     plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
     plt.ylabel('Run count')
-    plt.xlim(0, 100)
+    # plt.xlim(0, 50)
     plt.axvline(outcomes['annual_average_consumption_loss_pct'].min(
     ), color='red', linestyle='dashed', linewidth=1)
     plt.axvline(outcomes['annual_average_consumption_loss_pct'].max(
@@ -484,6 +484,8 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
                  arrowprops=dict(facecolor='black', shrink=0.05),
                  horizontalalignment='left', verticalalignment='top')
     plt.tight_layout()
+    # Remove spines
+    sns.despine()
     if savefig:
         plt.savefig(
             '../reports/figures/analysis/av_cons_loss.pgf', bbox_inches='tight')
@@ -567,7 +569,7 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.set_facecolor('lightgray')
-    ax.set_xlim(0, 100)
+    # ax.set_xlim(0, 50)
     ax.legend(districts, title='District', frameon=False)
     fig.tight_layout()
 
