@@ -75,8 +75,11 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
-/data
+# exclude real data from source control by default
+/data/raw
+/data/processed
+/data/interim
+/data/external
 
 # exclude figures until the paper is not on the arxiv
 /figures
@@ -125,3 +128,6 @@ TODO.md
 
 # Exclude Saint-Lucia specific config
 /config/SaintLucia.yaml
+
+# Exclude reports
+/reports
