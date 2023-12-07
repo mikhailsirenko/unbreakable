@@ -195,7 +195,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     return outcomes
 
 
-def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = [], country: str = 'Saint Lucia', aggregation: str = 'mean') -> gpd.GeoDataFrame:
+def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_interest: list = [], aggregation: str = 'mean') -> gpd.GeoDataFrame:
     '''Connect outcomes of interest with the shapefile.
 
     Args:
@@ -208,21 +208,32 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
         gpd.GeoDataFrame: Spatial outcomes.
     '''
 
-    gdf = gpd.read_file(
-        f'../data/raw/shapefiles/{country}/gadm36_LCA_shp/gadm36_LCA_1.shp')
-
     # Align district names with the ones in the outcomes
-    gdf['NAME_1'].replace(
-        {'Soufrière': 'Soufriere', 'Vieux Fort': 'Vieuxfort'}, inplace=True)
+    if country == 'Saint Lucia':
+        column = 'NAME_1'
+        gdf = gpd.read_file(
+            f'../data/raw/shapefiles/{country}/gadm36_LCA_shp/gadm36_LCA_1.shp')
 
-    # Merge Anse-la-Raye and Canaries into a single geometry
-    geometry = gdf[gdf['NAME_1'].isin(
-        ['Anse-la-Raye', 'Canaries'])].unary_union
+        gdf['NAME_1'].replace(
+            {'Soufrière': 'Soufriere', 'Vieux Fort': 'Vieuxfort'}, inplace=True)
 
-    # Add it to the dataframe
-    gdf.loc[len(gdf)] = [None, None, 'LCA.11_1', 'Anse-La-Raye & Canaries',
-                         None, None, None, None, None, None, geometry]
-    gdf = gdf[gdf['NAME_1'].isin(outcomes['district'].unique())]
+        # Merge Anse-la-Raye and Canaries into a single geometry
+        geometry = gdf[gdf['NAME_1'].isin(
+            ['Anse-la-Raye', 'Canaries'])].unary_union
+
+        # Add it to the dataframe
+        gdf.loc[len(gdf)] = [None, None, 'LCA.11_1', 'Anse-La-Raye & Canaries',
+                             None, None, None, None, None, None, geometry]
+        gdf = gdf[gdf['NAME_1'].isin(outcomes['district'].unique())]
+
+    elif country == 'Dominica':
+        column = 'NAME'
+        gdf = gpd.read_file(
+            '../../data/raw/shapefiles/Dominica/dma_admn_adm1_py_s1_dominode_v2.shp')
+        gdf['NAME'] = gdf['NAME'].replace(
+            {'St. Paul': 'St Paul', 'St. Peter': 'St Peter'})
+        outcomes['district'] = outcomes['district'].replace(
+            {'City of Roseau': 'St. George', 'Rest of St George': 'St. George'})
 
     if len(outcomes_of_interest) == 0:
         outcomes_of_interest = ['total_asset_loss',
@@ -247,7 +258,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, outcomes_of_interest: list = []
         raise ValueError('Aggregation must be either mean or median')
 
     # Merge with the shapefile
-    gdf = pd.merge(gdf, aggregated, left_on='NAME_1', right_index=True)
+    gdf = pd.merge(gdf, aggregated, left_on=column, right_index=True)
     gdf.reset_index(inplace=True, drop=True)
     return gdf
 
@@ -312,6 +323,7 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
     # Specify the districts
     districts = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
                  'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+    districts = outcomes['district'].unique()
 
     # Keep track of the averages
     district_average = {}

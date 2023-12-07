@@ -66,7 +66,7 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
     is_years_in_poverty = False
 
     for x_column, x_title in zip(x_columns, x_titles):
-        fig, ax = plt.subplots(ncols=3, nrows=3, figsize=(
+        fig, ax = plt.subplots(ncols=3, nrows=4, figsize=(
             4 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
 
         for district in districts:
@@ -145,6 +145,8 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             #                                                                            horizontalalignment='left', size='small', color='black',
             #                                                                            transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
 
+        # Remove last subplot
+        ax[3, 2].set_visible(False)
         fig.tight_layout()
         if savefig:
             plt.savefig(
@@ -469,23 +471,23 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
     ), color='black', linestyle='dashed', linewidth=1)
     if annotate:
         plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].min():.2f}%",
-                    xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
-                    xytext=(
-                        outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
-                    arrowprops=dict(facecolor='black', shrink=0.05),
-                    horizontalalignment='right', verticalalignment='top')
+                     xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
+                     xytext=(
+                         outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
+                     arrowprops=dict(facecolor='black', shrink=0.05),
+                     horizontalalignment='right', verticalalignment='top')
         plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].max():.2f}%",
-                    xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
-                    xytext=(
-                        outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
-                    arrowprops=dict(facecolor='black', shrink=0.05),
-                    horizontalalignment='left', verticalalignment='top')
+                     xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
+                     xytext=(
+                         outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
+                     arrowprops=dict(facecolor='black', shrink=0.05),
+                     horizontalalignment='left', verticalalignment='top')
         plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].median():.2f}%",
-                    xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
-                    xytext=(
-                        outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
-                    arrowprops=dict(facecolor='black', shrink=0.05),
-                    horizontalalignment='left', verticalalignment='top')
+                     xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
+                     xytext=(
+                         outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
+                     arrowprops=dict(facecolor='black', shrink=0.05),
+                     horizontalalignment='left', verticalalignment='top')
     plt.tight_layout()
     # Remove spines
     sns.despine()
