@@ -103,7 +103,8 @@ chache/
 *./*./cache
 
 # Raw country-specific experiment results
-results/
+experiments/Dominica
+experiments/Saint Lucia
 
 # Internal reports
 /reports

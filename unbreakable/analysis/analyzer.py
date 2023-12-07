@@ -20,7 +20,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         pd.DataFrame: Outcomes.
     '''
     # Read outcome names from a yaml file
-    with open("../unbreakable/analysis/outcome_names.yaml", "r") as f:
+    with open("../../unbreakable/analysis/outcomes.yaml", "r") as f:
         outcome_names = yaml.safe_load(f)
 
     # TODO: Read uncertainty names from results
