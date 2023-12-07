@@ -99,8 +99,7 @@ target/
 
 # 
 .idea/
-chache/
-*./*./cache
+cache/
 
 # Raw country-specific experiment results
 experiments/Dominica

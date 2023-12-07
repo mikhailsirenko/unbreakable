@@ -1,5 +1,44 @@
-"""This module is used to calculate the recovery rate, consumption and well-being losses of affected households.
-The calculation are done on the household level which we later aggregate to the district level."""
+"""
+This module provides comprehensive functions for calculating the recovery rate and overall well-being of households affected by disasters. It uses a set of economic and social parameters to assess the impact of disasters on household consumption and savings, and to model their path to recovery.
+
+Functions:
+    1. calculate_recovery_rate: 
+        - Purpose: To compute the recovery rate for each affected household based on their vulnerability, consumption utility, discount rate, median productivity, and years to recover.
+        - Input: A DataFrame representing households, along with relevant economic parameters such as consumption utility, discount rate, lambda increment, and years to recover.
+        - Output: The same DataFrame with an additional column indicating the recovery rate for each affected household.
+
+    2. calculate_wellbeing: 
+        - Purpose: To calculate the consumption loss and overall well-being of each affected household over a specified recovery period.
+        - Input: A DataFrame of households and parameters including consumption utility, discount rate, growth in income and expenditure, years to recover, a boolean flag for including income loss, and an optional cash transfer schedule.
+        - Output: An updated DataFrame featuring detailed calculations of consumption loss, net consumption loss, well-being, and other relevant metrics for each affected household.
+
+Example usage:
+    import pandas as pd
+    from your_module_name import calculate_recovery_rate, calculate_wellbeing
+
+    # Load household data
+    households_data = pd.read_csv('households.csv')
+
+    # Define economic parameters
+    consump_util = 0.5
+    discount_rate = 0.03
+    lambda_increment = 0.01
+    years_to_recover = 5
+
+    # Calculate recovery rates
+    households_with_recovery = calculate_recovery_rate(households_data, consump_util, discount_rate, lambda_increment, years_to_recover)
+
+    # Define additional parameters for well-being calculation
+    income_and_expenditure_growth = 0.02
+    add_income_loss = True
+    cash_transfer = {1: 100, 5: 50}  # Example cash transfer schedule
+
+    # Calculate well-being
+    households_with_wellbeing = calculate_wellbeing(households_with_recovery, consump_util, discount_rate, income_and_expenditure_growth, years_to_recover, add_income_loss, cash_transfer)
+
+    # households_with_wellbeing now contains detailed metrics on household recovery and well-being
+"""
+
 
 import numpy as np
 import pandas as pd
@@ -7,7 +46,7 @@ import pickle
 
 
 def calculate_recovery_rate(households: pd.DataFrame, consump_util: float, discount_rate: float, lambda_increment: float, years_to_recover: int) -> pd.DataFrame:
-    '''Calculates the recovery rate for each affected household.
+    '''Calculate the recovery rate for each affected household.
 
     Recovery rate is a function of the household vulnerability (v), 
     consumption utility, discount rate, median productivity and years to recover.    
