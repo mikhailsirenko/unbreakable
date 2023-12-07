@@ -75,8 +75,11 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
-/data
+# exclude real data from source control by default
+/data/raw
+/data/processed
+/data/interim
+/data/external
 
 # exclude figures until the paper is not on the arxiv
 /figures
@@ -98,11 +101,34 @@ target/
 .idea/
 chache/
 *./*./cache
-# /docs
-/debugging
-/experiments
+
+# Raw country-specific experiment results
+experiments/Dominica
+experiments/Saint Lucia
+
+# Internal reports
 /reports
+
+# Input data preparation scripts
 /scripts
+
+# Temporary files
+/temp
+
+# WIP notebooks
 /wip
+
+# Internal notes
 NOTES.md
+
+# Internal TODOs
 TODO.md
+
+# Exclude Dominica-specific config
+/config/Dominica.yaml
+
+# Exclude Saint-Lucia specific config
+/config/SaintLucia.yaml
+
+# Exclude reports
+/reports

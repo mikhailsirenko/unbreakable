@@ -445,18 +445,20 @@ def bin_data(data: gpd.GeoDataFrame, x_name: str, y_name: str, scheme: str = 'fi
     return data
 
 
-def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
+def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> None:
     '''Plot a histogram with annotations for the median, min, and max values.
 
     Args:
         outcomes (pd.DataFrame): The outcomes dataframe.
         savefig (bool): Whether to save the figure or not.
+        annotate (bool): Whether to annotate the figure or not.
 
     Returns:
         None
     '''
     sns.histplot(outcomes['annual_average_consumption_loss_pct'])
-    plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+    # plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+    plt.xlabel('Annual Average Consumption Loss PC (%)')
     plt.ylabel('Run count')
     # plt.xlim(0, 50)
     plt.axvline(outcomes['annual_average_consumption_loss_pct'].min(
@@ -465,24 +467,25 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool) -> None:
     ), color='red', linestyle='dashed', linewidth=1)
     plt.axvline(outcomes['annual_average_consumption_loss_pct'].median(
     ), color='black', linestyle='dashed', linewidth=1)
-    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].min():.2f}%",
-                 xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
-                 xytext=(
-                     outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
-                 arrowprops=dict(facecolor='black', shrink=0.05),
-                 horizontalalignment='right', verticalalignment='top')
-    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].max():.2f}%",
-                 xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
-                 xytext=(
-                     outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
-                 arrowprops=dict(facecolor='black', shrink=0.05),
-                 horizontalalignment='left', verticalalignment='top')
-    plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].median():.2f}%",
-                 xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
-                 xytext=(
-                     outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
-                 arrowprops=dict(facecolor='black', shrink=0.05),
-                 horizontalalignment='left', verticalalignment='top')
+    if annotate:
+        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].min():.2f}%",
+                    xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
+                    xytext=(
+                        outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
+                    arrowprops=dict(facecolor='black', shrink=0.05),
+                    horizontalalignment='right', verticalalignment='top')
+        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].max():.2f}%",
+                    xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
+                    xytext=(
+                        outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
+                    arrowprops=dict(facecolor='black', shrink=0.05),
+                    horizontalalignment='left', verticalalignment='top')
+        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].median():.2f}%",
+                    xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
+                    xytext=(
+                        outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
+                    arrowprops=dict(facecolor='black', shrink=0.05),
+                    horizontalalignment='left', verticalalignment='top')
     plt.tight_layout()
     # Remove spines
     sns.despine()
@@ -560,7 +563,8 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         sns.kdeplot(data=df, x='annual_average_consumption_loss_pct',
                     ax=ax, color=color, linewidth=linewidth, alpha=1)
         if savefig:
-            ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
+            # ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
+            ax.set_xlabel('Annual Average Consumption Loss PC (%)')
         else:
             ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
         ax.set_ylabel('Run density')

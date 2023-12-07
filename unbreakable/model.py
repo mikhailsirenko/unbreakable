@@ -8,9 +8,10 @@ from pathlib import Path
 import pandas as pd
 from unbreakable.data.reader import *
 from unbreakable.data.writer import *
-from unbreakable.modules.integrator import *
+from unbreakable.modules.shock import *
 from unbreakable.modules.households import *
-from unbreakable.modules.country import *
+from unbreakable.modules.policy import *
+from unbreakable.modules.recovery import *
 
 
 def model(**params) -> dict:
@@ -25,7 +26,6 @@ def model(**params) -> dict:
     # Case study parameters
     country = params['country']
     districts = params['districts']
-    min_representative_households = params['min_representative_households']
 
     # Read household survey and damage files
     all_households = read_household_survey(country)
@@ -33,19 +33,14 @@ def model(**params) -> dict:
 
     # Case study constants
     return_period = params['return_period']
-    poverty_line = params['poverty_line']
-    indigence_line = params['indigence_line']
-    saving_rate = params['saving_rate']
-    is_vuln_random = params['is_vuln_random']
     years_to_recover = params['years_to_recover']
     average_productivity = params['average_productivity']
 
     # Model constants
-    est_sav_params = params['est_sav_params']
-    assign_vuln_params = params['assign_vuln_params']
     calc_exposure_params = params['calc_exposure_params']
     ident_affected_params = params['ident_affected_params']
     save_households = params['save_households']
+
     # Abs tolerance for matching asset stock of damage and household survey data sets
     atol = params['atol']
 
@@ -75,9 +70,8 @@ def model(**params) -> dict:
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
-    # Calculate the wprime for the whole country
-    wprime = calculate_wprime(all_households, all_damage, districts, return_period,
-                              min_representative_households, random_seed, poverty_line, indigence_line, atol, consump_util)
+    w = (np.sum(all_households['aeexp'] * all_households['wgt']
+                ) / np.sum(all_households['wgt']))**(-consump_util)
 
     for district in districts:
         # Get total exposed asset stock and expected loss fraction for a specific district and return period
@@ -94,13 +88,11 @@ def model(**params) -> dict:
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
 
+        # Store average productivity in households for the sake of simplicity
         households['average_productivity'] = average_productivity
 
-        households = (households.pipe(duplicate_households, min_representative_households, random_seed)
-                                .pipe(match_assets_and_expenditure, tot_exposed_asset, poverty_line, indigence_line, atol)
-                                .pipe(calculate_district_pml, expected_loss_frac)
-                                .pipe(estimate_savings, saving_rate, est_sav_params)
-                                .pipe(assign_vulnerability, is_vuln_random, assign_vuln_params)
+        households = (households.pipe(match_assets_and_damage, tot_exposed_asset, atol)
+                                .pipe(calculate_pml, expected_loss_frac)
                                 .pipe(calculate_exposure, poverty_bias, calc_exposure_params)
                                 .pipe(identify_affected, ident_affected_params)
                                 .pipe(apply_policy, my_policy)
@@ -113,7 +105,7 @@ def model(**params) -> dict:
                 f'../experiments/households/{district}_{random_seed}.csv')
 
         array_outcomes = np.array(list(get_outcomes(
-            households, tot_exposed_asset, expected_loss_frac, years_to_recover, wprime).values()))
+            households, tot_exposed_asset, expected_loss_frac, years_to_recover, w).values()))
 
         # * To check whether we have different households affected in different runs
         # if district == 'Castries':
@@ -122,46 +114,3 @@ def model(**params) -> dict:
         outcomes[district] = array_outcomes
 
     return outcomes
-
-
-def initialize_model(country: str, scale: str):
-    # First check whether all necessary folders exist
-    Path(f'../experiments/').mkdir(parents=True, exist_ok=True)
-    Path(f'../experiments/households/').mkdir(parents=True, exist_ok=True)
-
-    # Check whether the data folder exists
-    if not Path(f'../data/processed/').exists():
-        raise Exception('The "../data/processed/" folder does not exist.')
-
-    else:
-        if not Path(f'../data/processed/asset_damage/{country}.xlsx').exists():
-            raise Exception(
-                f'The "../data/processed/asset_damage/{country}.xlsx" file does not exist.')
-
-        if not Path(f'../data/processed/household_survey/{country}.xlsx').exists():
-            raise Exception(
-                f'The "../data/processed/household_survey/{country}.xlsx" file does not exist.')
-
-    # Check whether data files have necessary columns
-    columns = ['rp', 'district',
-               'total_exposed_asset_stock', 'probable_maximum_loss']
-    df = pd.read_excel(f'../data/processed/asset_damage/{country}.xlsx')
-    if not all([column in df.columns for column in columns]):
-        raise Exception(
-            f'The "../data/processed/asset_damage/{country}.xlsx" file does not have all necessary columns.')
-
-    columns = []
-
-    # Check whether config file exists
-
-
-def check_folders():
-    pass
-
-
-def check_files():
-    pass
-
-
-def check_columns():
-    pass

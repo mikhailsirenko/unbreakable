@@ -20,21 +20,21 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
         dict: Outcomes of interest, where the key is the name of the outcome and value is the outcome.
     '''
     # Save some values for verification. There are not going to be used for the analysis.
-    total_population = households['popwgt'].sum()
-    district_pml = households['district_pml'].iloc[0]
+    total_population = households['wgt'].sum()
+    district_pml = households['pml'].iloc[0]
     tot_asset_surv = households['tot_asset_surv'].iloc[0]
     annual_average_consumption = (
-        households['aeexp'] * households['popwgt']).sum() / households['popwgt'].sum()
+        households['aeexp'] * households['wgt']).sum() / households['wgt'].sum()
 
     affected_households = households[households['is_affected'] == True]
-    n_affected_people = affected_households['popwgt'].sum()
+    n_affected_people = affected_households['wgt'].sum()
 
     # Recovery rate must be calculated only for the affected households only
     mean_recovery_rate = affected_households['recovery_rate'].mean()
     total_asset_loss = affected_households[[
-        'keff', 'v', 'popwgt']].prod(axis=1).sum()
+        'keff', 'v', 'wgt']].prod(axis=1).sum()
     total_consumption_loss = affected_households[[
-        'consumption_loss_NPV', 'popwgt']].prod(axis=1).sum()
+        'consumption_loss_NPV', 'wgt']].prod(axis=1).sum()
 
     # Poverty line adjusted (see `match_assets_and_expenditures` function in `households.py`)
     # Poverty line ois the same for all households
@@ -53,13 +53,13 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
         affected_households, years_to_recover)
 
     tot_consum_equiv_loss = - affected_households['wellbeing'].div(wprime).multiply(
-        affected_households['popwgt']).sum()
+        affected_households['wgt']).sum()
 
     r = calculate_resilience(affected_households, tot_consum_equiv_loss)
 
     # Get the weighted average vulnerability by consumption quintile and decile
-    weighted_vuln_quint = get_weighted_vuln(affected_households, quintile=True)
-    weighted_vuln_dec = get_weighted_vuln(affected_households, quintile=False)
+    # weighted_vuln_quint = get_weighted_vuln(affected_households, quintile=True)
+    # weighted_vuln_dec = get_weighted_vuln(affected_households, quintile=False)
 
     outcomes = {
         'total_population': total_population,
@@ -82,8 +82,8 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
         'annual_average_consumption_loss_pct': annual_average_consumption_loss_pct,
         'mean_recovery_rate': mean_recovery_rate,
         'r': r,
-        'weighted_vuln_quint': weighted_vuln_quint,
-        'weighted_vuln_dec': weighted_vuln_dec,
+        # 'weighted_vuln_quint': weighted_vuln_quint,
+        # 'weighted_vuln_dec': weighted_vuln_dec,
         'years_in_poverty': years_in_poverty
     }
 
@@ -107,9 +107,9 @@ def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: i
     '''
     # First, find the poor at the beginning of the simulation
     poor_initial = households[households['is_poor'] == True]
-    n_poor_initial = round(poor_initial['popwgt'].sum())
+    n_poor_initial = round(poor_initial['wgt'].sum())
     n_poor_affected = round(
-        poor_initial[poor_initial['is_affected'] == True]['popwgt'].sum())
+        poor_initial[poor_initial['is_affected'] == True]['wgt'].sum())
 
     # Second, find the new poor at the end of the simulation (`years_to_recover`)
     not_poor = households[households['is_poor'] == False]
@@ -118,7 +118,7 @@ def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: i
         not_poor_affected['consumption_loss_NPV'] / years_to_recover
     new_poor = not_poor_affected.loc[x < poverty_line, :]
     new_poor = new_poor.assign(is_poor=True)
-    n_new_poor = round(new_poor['popwgt'].sum())
+    n_new_poor = round(new_poor['wgt'].sum())
 
     return n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor
 
@@ -138,7 +138,7 @@ def get_people_by_years_in_poverty(affected_households: pd.DataFrame) -> dict:
     longest_years_in_poverty = 10
     for i in range(longest_years_in_poverty + 1):
         d[i] = round(affected_households[affected_households['years_in_poverty'] == i]
-                     ['popwgt'].sum())
+                     ['wgt'].sum())
     return d
 
 
@@ -161,7 +161,7 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
     # First we need to calculate the poverty gap at the beginning of the simulation
     # Get the weighted average expenditure
     average_expenditure_poor_initial = (
-        poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
+        poor_initial['aeexp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
 
     # Calculate the poverty gap at the beginning of the simulation
     initial_poverty_gap = (
@@ -176,7 +176,7 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
 
     # Now, get the average expenditure of the poor at the end of the simulation
     average_expenditure_poor_all = (
-        all_poor['aeexp'] * all_poor['popwgt']).sum() / all_poor['popwgt'].sum()
+        all_poor['aeexp'] * all_poor['wgt']).sum() / all_poor['wgt'].sum()
 
     # Calculate the poverty gap at the end of the simulation
     new_poverty_gap_all = (
@@ -187,7 +187,7 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         aeexp=poor_initial['aeexp'] - poor_initial['consumption_loss_NPV'] / years_to_recover)
 
     average_expenditure_poor_initial = (
-        poor_initial['aeexp'] * poor_initial['popwgt']).sum() / poor_initial['popwgt'].sum()
+        poor_initial['aeexp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
 
     new_poverty_gap_initial = (
         poverty_line - average_expenditure_poor_initial) / poverty_line
@@ -218,17 +218,17 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
 
     # Annual consumption loss
     annual_consumption_loss = (
-        affected_households['consumption_loss_NPV'].div(years_to_recover).multiply(affected_households['popwgt'])).sum()
+        affected_households['consumption_loss_NPV'].div(years_to_recover).multiply(affected_households['wgt'])).sum()
 
     # Weighted average
     annual_average_consumption_loss = annual_consumption_loss / \
-        affected_households['popwgt'].sum()
+        affected_households['wgt'].sum()
 
     annual_average_consumption_loss_pct = (affected_households['consumption_loss_NPV']
                                            .div(years_to_recover)
                                            .div(affected_households['aeexp'])
-                                           .multiply(affected_households['popwgt']).sum())\
-        / affected_households['popwgt'].sum()
+                                           .multiply(affected_households['wgt']).sum())\
+        / affected_households['wgt'].sum()
 
     if annual_average_consumption_loss_pct > 1:
         raise Exception(
@@ -250,10 +250,10 @@ def calculate_resilience(affected_households: pd.DataFrame, tot_consum_equiv_los
         float: Socio-economic resilience
     '''
     # total_consumption_loss = (
-    #     affected_households[['consumption_loss_NPV', 'popwgt']].prod(axis=1)).sum()
+    #     affected_households[['consumption_loss_NPV', 'wgt']].prod(axis=1)).sum()
 
     total_asset_damage = (
-        affected_households[['keff', 'v', 'popwgt']].prod(axis=1)).sum()
+        affected_households[['keff', 'v', 'wgt']].prod(axis=1)).sum()
 
     # if total_consumption_loss == 0:
     #     r = np.nan
@@ -277,16 +277,16 @@ def get_weighted_vuln(affected_households: pd.DataFrame, quintile: bool) -> dict
     '''
     df = affected_households.copy()
     if quintile:
-        df['v_weighted'] = df['v'].multiply(df['popwgt'])
+        df['v_weighted'] = df['v'].multiply(df['wgt'])
         v_weighted_by_q = df.groupby('quintile').sum(
             numeric_only=True)[['v_weighted']]
-        pop_by_q = df.groupby('quintile').sum(numeric_only=True)[['popwgt']]
-        average_v_by_q = v_weighted_by_q['v_weighted'].div(pop_by_q['popwgt'])
+        pop_by_q = df.groupby('quintile').sum(numeric_only=True)[['wgt']]
+        average_v_by_q = v_weighted_by_q['v_weighted'].div(pop_by_q['wgt'])
         return average_v_by_q.to_dict()
     else:
-        df['v_weighted'] = df['v'].multiply(df['popwgt'])
+        df['v_weighted'] = df['v'].multiply(df['wgt'])
         v_weighted_by_d = df.groupby('decile').sum(
             numeric_only=True)[['v_weighted']]
-        pop_by_d = df.groupby('decile').sum(numeric_only=True)[['popwgt']]
-        average_v_by_d = v_weighted_by_d['v_weighted'].div(pop_by_d['popwgt'])
+        pop_by_d = df.groupby('decile').sum(numeric_only=True)[['wgt']]
+        average_v_by_d = v_weighted_by_d['v_weighted'].div(pop_by_d['wgt'])
         return average_v_by_d.to_dict()
