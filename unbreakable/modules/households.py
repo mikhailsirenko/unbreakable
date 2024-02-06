@@ -6,92 +6,9 @@ import pandas as pd
 import numpy as np
 
 
-def match_assets_and_damage(households: pd.DataFrame, tot_exposed_asset: float, atol: bool) -> pd.DataFrame:
-    '''Match assets and expenditure of to the asset damage data.
-
-    There can be a mismatch between the asset stock in the household survey and the of the asset stock in the damage data.
-    This function adjusts the asset stock and expenditure in the household survey to match the asset damage data.
-
-    1). `k_house_ae` is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita)
-    `k_house_ae` = domicile_value / (`hhexp` / `aeexp`)
-    2). `aeexp` is adult equivalent expenditure (per capita)
-    3). `aeexp_house` is `hhexp_house` (household annual rent) / `hhsize_ae`, 
-    where `hhsize_ae` = `hhexp` / `aeexp`.
-
-    Args:
-        households (pd.DataFrame): Households.
-        total_exposed_asset_stock (float): Total exposed asset stock from the damage data.
-        indigence_line (float): Indigence line.
-        atol (bool): Absolute tolerance for the comparison of the total exposed asset stock and the total asset stock in the survey.
-
-    Returns:
-        pd.DataFrame: Households with adjusted assets and expenditure.
-
-    Raises:
-        ValueError: If the total exposed asset stock is less than the total asset stock in the survey.
-    '''
-
-    # Get the total asset stock in the survey
-    # In simple terms, k_house_ae is the price of a house
-    tot_asset_surv = households[[
-        'wgt', 'k_house_ae']].prod(axis=1).sum()
-
-    # If the difference is small, return the original households (default atol = 100,000)
-    if np.isclose(tot_exposed_asset, tot_asset_surv, atol=atol):
-        return households
-    else:
-        # Save the initial values
-        households['k_house_ae_orig'] = households['k_house_ae']
-        households['aeexp_orig'] = households['aeexp']
-        households['aeexp_house_orig'] = households['aeexp_house']
-
-        # Calculate the total asset in the survey
-        households['tot_asset_surv'] = tot_asset_surv
-
-        # Calculate the scaling factor and adjust the variables
-        scaling_factor = tot_exposed_asset / tot_asset_surv
-        included_variables = ['k_house_ae', 'aeexp', 'aeexp_house']
-        households[included_variables] *= scaling_factor
-        poverty_line = households['povline'].iloc[0]
-        households['poverty_line_adjusted'] = poverty_line * scaling_factor
-
-        # Check the result of the adjustment
-        tot_asset_surv_adjusted = households[['wgt', 'k_house_ae']].prod(
-            axis=1).sum()
-
-        if not np.isclose(tot_exposed_asset, tot_asset_surv_adjusted, atol=1e1):
-            raise ValueError(
-                'Total exposed asset stock is not equal to the total asset stock in the survey after adjustment.')
-
-        return households
-
-
-def calculate_pml(households: pd.DataFrame, expected_loss_frac: float) -> pd.DataFrame:
-    '''Calculate the probable maximum loss (PML) of households in a district.
-
-    PML here is a function of effective capital stock (`k_house_ae`) and expected loss fraction multiplied by the population weight of a household
-
-    `k_house_ae` is domicile value divided by the ratio of household expenditure to adult equivalent expenditure (per capita)
-    `k_house_ae` = domicile_value / (`hhexp` / `aeexp`)
-
-    Args:
-        households (pd.DataFrame): Households.
-        expected_loss_frac (float): Expected loss fraction.
-
-    Returns:
-        pd.DataFrame: Households with calculated PML (`pml` column).
-    '''
-    households['keff'] = households['k_house_ae'].copy()
-    district_pml = households[['wgt', 'keff']].prod(
-        axis=1).sum() * expected_loss_frac
-
-    # !: PML is the same for all households in a district
-    households['pml'] = district_pml
-    return households
-
-
+# What happens here is that we
 def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calc_exposure_params: dict) -> pd.DataFrame:
-    '''Calculate the exposure of households.
+    '''Calculate exposure of households to the disaster.
 
     Exposure is a function of poverty bias, effective capital stock, 
     vulnerability and probable maximum loss.
@@ -125,11 +42,13 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calc_expos
     # Set poverty bias to povbias for poor households
     households.loc[households['is_poor'] == True, 'poverty_bias'] = povbias
 
+    # !: Get rid of keff
+    households['keff'] = households['k_house_ae'].copy()
+
     delimiter = households[['keff', 'v', 'poverty_bias', 'wgt']].prod(
         axis=1).sum()
 
     fa0 = district_pml / delimiter
-
     households['fa'] = fa0 * households[['poverty_bias']]
     households.drop('poverty_bias', axis=1, inplace=True)
     return households

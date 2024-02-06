@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 
-def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, years_to_recover: int, wprime: float) -> dict:
+def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, years_to_recover: int, wprime: float) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
@@ -38,16 +38,16 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
 
     # Poverty line adjusted (see `match_assets_and_expenditures` function in `households.py`)
     # Poverty line ois the same for all households
-    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
+    povline_adjusted = households['povline_adjusted'].values[0]
 
     # Get the model outcomes
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
-        households, poverty_line_adjusted, years_to_recover)
+        households, povline_adjusted, years_to_recover)
 
     years_in_poverty = get_people_by_years_in_poverty(new_poor)
 
     initial_poverty_gap, new_poverty_gap_initial, new_poverty_gap_all = calculate_poverty_gap(
-        poor_initial, new_poor, poverty_line_adjusted, years_to_recover)
+        poor_initial, new_poor, povline_adjusted, years_to_recover)
 
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
         affected_households, years_to_recover)
@@ -70,7 +70,7 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
         'expected_loss_frac': expected_loss_frac,
         'n_affected_people': n_affected_people,
         'annual_average_consumption': annual_average_consumption,
-        'poverty_line_adjusted': poverty_line_adjusted,
+        'povline_adjusted': povline_adjusted,
         'district_pml': district_pml,
         'n_poor_initial': n_poor_initial,
         'n_poor_affected': n_poor_affected,
@@ -88,7 +88,7 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
     }
 
     # Save outcome names in a yaml file to pick up in preprocessing
-    with open('analysis/outcome_names.yaml', 'w') as f:
+    with open('analysis/outcomes.yaml', 'w') as f:
         yaml.dump(list(outcomes.keys()), f)
 
     return outcomes

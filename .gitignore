@@ -131,3 +131,6 @@ TODO.md
 
 # Exclude reports
 /reports
+
+# Exclude experiment results
+/experiments

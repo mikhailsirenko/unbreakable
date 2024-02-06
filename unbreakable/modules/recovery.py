@@ -164,7 +164,7 @@ def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_
 
     # Get the median productivity and poverty line. They are the same for all households in a district.
     average_productivity = households['average_productivity'].values[0]
-    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
+    povline_adjusted = households['povline_adjusted'].values[0]
 
     # Add new columns
     columns = ['consumption_loss',
@@ -273,7 +273,7 @@ def calculate_wellbeing(households: pd.DataFrame, consump_util: float, discount_
 
         # Increase the number of weeks in poverty
         affected_households.loc[affected_households['c_t']
-                                < poverty_line_adjusted, 'weeks_pov'] += 1
+                                < povline_adjusted, 'weeks_pov'] += 1
 
         # Integrate well-being
         affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consump_util)\

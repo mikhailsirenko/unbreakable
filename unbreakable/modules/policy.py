@@ -22,6 +22,9 @@ Example usage:
 import pandas as pd
 
 
+# TODO: Allow to specify dynamic policies
+
+
 def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
     '''
     Apply a policy to a specific target group.
@@ -30,7 +33,7 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
 
     Args:
         households (pd.DataFrame): Households.
-            Required columns: 'is_affected', 'is_poor', 'aeexp', 'poverty_line_adjusted', 'keff', 'v', 'aesav'
+            Required columns: 'is_affected', 'is_poor', 'aeexp', 'povline_adjusted', 'keff', 'v', 'aesav'
         my_policy (str): Policy to apply. Format: "<target_group>+<top_up>". Example: "poor+100".
 
     Returns:
@@ -44,9 +47,10 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
             "my_policy should be in the format '<target_group>+<top_up>'")
 
     # Get the adjusted poverty line
-    poverty_line_adjusted = households['poverty_line_adjusted'].iloc[0]
+    povline_adjusted = households['povline_adjusted'].iloc[0]
 
     # Filter affected households
+    # !: Seems to be wrong
     affected_households = households.query('is_affected')
 
     # Determine beneficiaries based on target group
@@ -58,7 +62,7 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
 
     elif target_group in ['poor_near_poor1.25', 'poor_near_poor2.0']:
         multiplier = 1.25 if target_group == 'poor_near_poor1.25' else 2.0
-        condition = f'is_poor or (not is_poor and aeexp < {multiplier} * @poverty_line_adjusted)'
+        condition = f'is_poor or (not is_poor and aeexp < {multiplier} * @povline_adjusted)'
         beneficiaries = affected_households.query(condition)
 
     else:

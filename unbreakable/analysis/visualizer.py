@@ -145,7 +145,8 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             #                                                                            horizontalalignment='left', size='small', color='black',
             #                                                                            transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
 
-        # Remove last subplot
+        # Remove 2 last subplots
+        ax[3, 1].set_visible(False)
         ax[3, 2].set_visible(False)
         fig.tight_layout()
         if savefig:

@@ -230,10 +230,6 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
         column = 'NAME'
         gdf = gpd.read_file(
             '../../data/raw/shapefiles/Dominica/dma_admn_adm1_py_s1_dominode_v2.shp')
-        gdf['NAME'] = gdf['NAME'].replace(
-            {'St. Paul': 'St Paul', 'St. Peter': 'St Peter'})
-        outcomes['district'] = outcomes['district'].replace(
-            {'City of Roseau': 'St. George', 'Rest of St George': 'St. George'})
 
     if len(outcomes_of_interest) == 0:
         outcomes_of_interest = ['total_asset_loss',
