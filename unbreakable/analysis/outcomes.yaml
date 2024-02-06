@@ -6,7 +6,7 @@
 - expected_loss_frac
 - n_affected_people
 - annual_average_consumption
-- poverty_line_adjusted
+- povline_adjusted
 - district_pml
 - n_poor_initial
 - n_poor_affected

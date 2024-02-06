@@ -1,30 +1,10 @@
-"""This module is the core of the model. 
-It contains a set of functions that are used to calculate the impact of a disaster on households."""
-
-
 import pandas as pd
 import numpy as np
 
 
-# What happens here is that we
-def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calc_exposure_params: dict) -> pd.DataFrame:
-    '''Calculate exposure of households to the disaster.
-
-    Exposure is a function of poverty bias, effective capital stock, 
-    vulnerability and probable maximum loss.
-
-    Args:
-        households (pd.DataFrame): Households.
-        poverty_bias (float): Poverty bias.
-        calc_exposure_params (dict): Parameters for calculating exposure function.
-
-    Returns:
-        pd.DataFrame: Households with calculated exposure (`fa` column).
-    '''
-    district_pml = households['pml'].iloc[0]
-
+def estimate_impact(households: pd.DataFrame, region_pml: float, pov_bias: float, calc_exposure_params: dict) -> pd.DataFrame:
     # Random value for poverty bias
-    if poverty_bias == 'random':
+    if pov_bias == 'random':
         if calc_exposure_params['pov_bias_rnd_distr'] == 'uniform':
             # default 0.5
             low = calc_exposure_params['pov_bias_rnd_low']
@@ -34,51 +14,51 @@ def calculate_exposure(households: pd.DataFrame, poverty_bias: float, calc_expos
         else:
             raise ValueError("Only uniform distribution is supported yet.")
     else:
-        povbias = poverty_bias
+        povbias = pov_bias
 
     # Set poverty bias to 1 for all households
-    households['poverty_bias'] = 1
+    households['pov_bias'] = 1
 
     # Set poverty bias to povbias for poor households
-    households.loc[households['is_poor'] == True, 'poverty_bias'] = povbias
+    households.loc[households['is_poor'] == True, 'pov_bias'] = povbias
 
-    # !: Get rid of keff
+    # !: If keff is just k_house_ae, why not just use k_house_ae?
     households['keff'] = households['k_house_ae'].copy()
 
-    delimiter = households[['keff', 'v', 'poverty_bias', 'wgt']].prod(
+    # Calculate the exposure of each household
+    normalization_factor = households[['keff', 'v', 'pov_bias', 'wgt']].prod(
         axis=1).sum()
 
-    fa0 = district_pml / delimiter
-    households['fa'] = fa0 * households[['poverty_bias']]
-    households.drop('poverty_bias', axis=1, inplace=True)
+    # Distribute the impact of the disaster across households
+    households['fa'] = (region_pml / normalization_factor) * \
+        households[['pov_bias']]
+
     return households
 
 
-def identify_affected(households: pd.DataFrame, ident_affected_params: dict) -> tuple:
+def identify_affected(households: pd.DataFrame, region_pml: float, ident_affected_params: dict) -> pd.DataFrame:
     '''Determines affected households.
 
-    We assume that all households have the same probability of being affected, 
-    but based on `fa` value calculated in `calculate_exposure`.
+    We assume that all households have the same chance of being affected, 
+    but based on `fa` value calculated in `estimate_impact`.
 
     Args:
         households (pd.DataFrame): Households.
+        district_pml (float): Region PML.
         ident_affected_params (dict): Parameters for determining affected households function.
 
     Returns:
-        tuple: Households with `is_affected` and `asset_loss` columns.
+        pd.DataFrame: Households with `is_affected` and `asset_loss` columns.
 
     Raises:
         ValueError: If no mask was found.
     '''
-    # Get PML, it is the same for all households
-    district_pml = households['pml'].iloc[0]
-
     # Allow for a relatively small error
-    delta = district_pml * ident_affected_params['delta_pct']  # default 0.025
+    delta = region_pml * ident_affected_params['delta_pct']  # default 0.025
 
     # Check if total asset is less than PML
     tot_asset_stock = households[['keff', 'wgt']].prod(axis=1).sum()
-    if tot_asset_stock < district_pml:
+    if tot_asset_stock < region_pml:
         raise ValueError(
             'Total asset stock is less than PML.')
 
@@ -95,8 +75,8 @@ def identify_affected(households: pd.DataFrame, ident_affected_params: dict) -> 
         masks * households[['keff', 'v', 'wgt']].values.prod(axis=1)).sum(axis=1)
 
     # Find the first mask that yields a total_asset_loss within the desired range
-    mask_index = np.where((asset_losses >= district_pml - delta) &
-                          (asset_losses <= district_pml + delta))
+    mask_index = np.where((asset_losses >= region_pml - delta) &
+                          (asset_losses <= region_pml + delta))
 
     # Raise an error if no mask was found
     if mask_index is None:
@@ -126,7 +106,7 @@ def identify_affected(households: pd.DataFrame, ident_affected_params: dict) -> 
 
     # Check whether the total asset loss is within the desired range
     tot_asset_loss = households['asset_loss'].sum()
-    if (tot_asset_loss < district_pml - delta) or (tot_asset_loss > district_pml + delta):
+    if (tot_asset_loss < region_pml - delta) or (tot_asset_loss > region_pml + delta):
         raise ValueError(
             f'Total asset loss ({tot_asset_loss}) is not within the desired range.')
 

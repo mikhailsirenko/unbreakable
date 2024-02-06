@@ -24,7 +24,7 @@ import logging
 from pathlib import Path
 
 
-def read_disaster_risk_data(country: str, base_path: str = "../data/processed/disaster_risk_assessment", file_extension: str = "xlsx") -> pd.DataFrame:
+def read_risk_and_damage(country: str, base_path: str = "../data/processed/disaster_risk", file_extension: str = "xlsx") -> pd.DataFrame:
     '''
     Read disaster risk assessment data from a file.
 

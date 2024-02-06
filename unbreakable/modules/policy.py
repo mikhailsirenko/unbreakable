@@ -33,7 +33,7 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
 
     Args:
         households (pd.DataFrame): Households.
-            Required columns: 'is_affected', 'is_poor', 'aeexp', 'povline_adjusted', 'keff', 'v', 'aesav'
+            Required columns: 'is_affected', 'is_poor', 'exp', 'povline_adjusted', 'keff', 'v', 'sav'
         my_policy (str): Policy to apply. Format: "<target_group>+<top_up>". Example: "poor+100".
 
     Returns:
@@ -62,14 +62,14 @@ def apply_policy(households: pd.DataFrame, my_policy: str) -> pd.DataFrame:
 
     elif target_group in ['poor_near_poor1.25', 'poor_near_poor2.0']:
         multiplier = 1.25 if target_group == 'poor_near_poor1.25' else 2.0
-        condition = f'is_poor or (not is_poor and aeexp < {multiplier} * @povline_adjusted)'
+        condition = f'is_poor or (not is_poor and exp < {multiplier} * @povline_adjusted)'
         beneficiaries = affected_households.query(condition)
 
     else:
         raise ValueError(f"Unknown target group: {target_group}")
 
     # Apply top-up
-    households.loc[beneficiaries.index, 'aesav'] += (
+    households.loc[beneficiaries.index, 'sav'] += (
         beneficiaries.eval('keff*v') * top_up / 100
     )
 

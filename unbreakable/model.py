@@ -22,7 +22,7 @@ def model(**params) -> dict:
     Returns:
         dict: A dictionary of outcomes. The key is a district and value is a dictionary of outcomes.
     '''
-    # Validate parameters
+    # Make sure that we have all required global parameters
     validate_params(params)
 
     # If a policy is not provided, use the default policy
@@ -33,47 +33,73 @@ def model(**params) -> dict:
     np.random.seed(params['random_seed'])
 
     # Read household survey and damage files
-    all_households = read_household_survey(params['country'])
-    all_risk_and_damage = read_disaster_risk_data(params['country'])
+    country_households = read_household_survey(params['country'])
+    risk_and_damage = read_risk_and_damage(params['country'])
 
-    # Store average productivity in the household dataframe for the sake of simplicity
-    all_households['average_productivity'] = params['average_productivity']
+    # Save random seed for reproducibility
+    country_households['random_seed'] = params['random_seed']
 
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
+    # TODO: Rename, move to a function or to a module
     # Calculate w factor
-    w = (np.sum(all_households['aeexp'] * all_households['wgt']
-                ) / np.sum(all_households['wgt']))**(-params['consump_util'])
+    w = (np.sum(country_households['exp'] * country_households['wgt']
+                ) / np.sum(country_households['wgt']))**(-params['cons_util'])
 
-    for district in params['districts']:
-        # Select households in a specific district
-        district_households = all_households[all_households['district'] == district].copy(
+    conflict_regions = ['Kaduna', 'Plateau', 'Benue']
+
+    # Unpack global parameters
+    avg_prod = params['avg_prod']
+    cons_util = params['cons_util']
+    disc_rate = params['disc_rate']
+    inc_exp_growth = params['inc_exp_growth']
+    yrs_to_rec = params['yrs_to_rec']
+    add_inc_loss = params['add_inc_loss']
+
+    for region in params['regions']:
+        # Select households in a specific region
+        region_households = country_households[country_households['region'] == region].copy(
         )
 
-        # Get disaster data for the district and return period
-        exposed_stock, loss_fraction, pml = get_stock_and_loss_fraction(
-            all_risk_and_damage, district, params['return_period'])
+        # Check whether the region was affected by a conflict
+        if region in conflict_regions:
+            # Adjust global parameters for conflict regions
+            avg_prod = 0.15
+            cons_util = 1.1
+            disc_rate = 0.02
+            inc_exp_growth = 0.01
+            yrs_to_rec = 20
 
-        # Store pml in the household dataframe for the sake of simplicity
-        district_households['pml'] = pml
+        else:
+            # Reset global parameters
+            avg_prod = params['avg_prod']
+            cons_util = params['cons_util']
+            disc_rate = params['disc_rate']
+            inc_exp_growth = params['inc_exp_growth']
+            yrs_to_rec = params['yrs_to_rec']
+
+        # Get disaster data for the region and return period
+        exposed_stock, loss_fraction, region_pml = get_region_damage(
+            risk_and_damage, region, params['return_per'])
 
         # For the dynamic policy
         # cash_transfer = {52: 1000, 208: 5000}
         cash_transfer = {}
 
-        district_households = (district_households.pipe(calculate_exposure, params['poverty_bias'], params['calc_exposure_params'])
-                                                  .pipe(identify_affected, params['ident_affected_params'])
-                                                  .pipe(apply_policy, my_policy)
-                                                  .pipe(calculate_recovery_rate, params['consump_util'], params['discount_rate'], params['lambda_increment'], params['years_to_recover'])
-                                                  .pipe(calculate_wellbeing, params['consump_util'], params['discount_rate'], params['income_and_expenditure_growth'], params['years_to_recover'], params['add_income_loss'], cash_transfer))
+        region_households = (region_households
+                             .pipe(estimate_impact, region_pml, params['pov_bias'], params['calc_exposure_params'])
+                             .pipe(identify_affected, region_pml, params['identify_aff_params'])
+                             .pipe(apply_policy, my_policy)
+                             .pipe(calc_recovery_rate, avg_prod, cons_util, disc_rate, params['lambda_incr'], yrs_to_rec)
+                             .pipe(calc_wellbeing, avg_prod, cons_util, disc_rate, inc_exp_growth, yrs_to_rec, add_inc_loss,  cash_transfer))
 
         if params['save_households']:
             save_households(
-                district_households, params['country'], district, params['random_seed'])
+                region_households, params['country'], region, params['random_seed'])
 
-        outcomes[district] = np.array(list(calculate_outcomes(
-            district_households, exposed_stock, loss_fraction, params['years_to_recover'], w).values()))
+        outcomes[region] = np.array(list(calculate_outcomes(
+            region_households, exposed_stock, loss_fraction, region_pml, params['yrs_to_rec'], w).values()))
 
     return outcomes
 
@@ -90,10 +116,10 @@ def validate_params(params: dict) -> None:
     '''
 
     required_keys = [
-        'country', 'districts', 'return_period', 'years_to_recover', 'average_productivity',
-        'consump_util', 'discount_rate', 'lambda_increment', 'income_and_expenditure_growth',
-        'add_income_loss', 'random_seed', 'atol', 'poverty_bias', 'calc_exposure_params',
-        'ident_affected_params', 'save_households'
+        'country', 'regions', 'return_per', 'yrs_to_rec', 'avg_prod',
+        'cons_util', 'disc_rate', 'lambda_incr', 'inc_exp_growth',
+        'add_inc_loss', 'random_seed', 'atol', 'pov_bias', 'calc_exposure_params',
+        'identify_aff_params', 'save_households'
     ]
 
     missing_keys = [key for key in required_keys if key not in params]
@@ -168,8 +194,8 @@ def setup_model(config: dict) -> Model:
         key, values) for key, values in levers.items()]
 
     # Outcomes
-    my_model.outcomes = [ArrayOutcome(district)
-                         for district in constants.get('districts', [])]
+    my_model.outcomes = [ArrayOutcome(region)
+                         for region in constants.get('regions', [])]
 
     return my_model
 
