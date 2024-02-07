@@ -65,11 +65,11 @@ def model(**params) -> dict:
         # Check whether the region was affected by a conflict
         if region in conflict_regions:
             # Adjust global parameters for conflict regions
-            avg_prod = 0.15
-            cons_util = 1.1
-            disc_rate = 0.02
-            inc_exp_growth = 0.01
-            yrs_to_rec = 20
+            avg_prod = 0.175  # default 0.35, decrease by 50%
+            inc_exp_growth = 0.01  # default 0.02, decrease by 50%
+            cons_util = 1.1  # default 1.5
+            disc_rate = 0.04  # default 0.04
+            yrs_to_rec = 10  # default 10
 
         else:
             # Reset global parameters
