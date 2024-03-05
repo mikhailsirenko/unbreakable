@@ -1,0 +1,105 @@
+# --------------------------------- Constants -------------------------------- #
+constants:
+  country: Nigeria
+  regions:
+  - 'Abia'
+  - 'Abuja Federal Capital Territory'
+  - 'Adamawa'
+  - 'Akwa Ibom'
+  - 'Anambra'
+  - 'Bauchi'
+  - 'Bayelsa'
+  - 'Benue'
+  - 'Cross River'
+  - 'Delta'
+  - 'Ebonyi'
+  - 'Edo'
+  - 'Ekiti'
+  - 'Enugu'
+  - 'Gombe'
+  - 'Imo'
+  - 'Jigawa'
+  - 'Kaduna'
+  - 'Kano'
+  - 'Katsina'
+  - 'Kebbi'
+  - 'Kogi'
+  - 'Kwara'
+  - 'Lagos'
+  - 'Nasarawa'
+  - 'Niger'
+  - 'Ogun'
+  - 'Ondo'
+  - 'Osun'
+  - 'Oyo'
+  - 'Plateau'
+  - 'Rivers'
+  - 'Sokoto'
+  - 'Taraba'
+  - 'Yobe'
+  - 'Zamfara'
+  return_per: 10
+  add_inc_loss: false 
+  pov_bias: 1.0
+  calc_exposure_params:
+    pov_bias_rnd_distr: uniform
+    pov_bias_rnd_high: 1.5
+    pov_bias_rnd_low: 0.5
+  identify_aff_params:
+    delta_pct: 0.075
+    distr: uniform
+    high: 1.0
+    low: 0
+    num_masks: 10000
+  avg_prod: 0.35
+  inc_exp_growth: 0.02
+  cons_util: 1.5
+  disc_rate: 0.04
+  atol: 100000
+  lambda_incr: 0.01
+  yrs_to_rec: 10
+  save_households: False
+  
+# ------------------------------- Policy levers ------------------------------ #
+# The naming convention is: <target group> + <top up percentage>
+# The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
+# There are no limitations on the top-up percentage
+# Top-up percentage is added to `aeexp` or adult equivalent expenditure of a household
+# It is applied as a multiplier to `keff*v`: households['aeexp'] += households.eval('keff*v') * top_up / 100
+# where `v` is the vulnerability of the household and `keff` is the effective capital stock
+levers:
+  0: all+0
+  1: all+10
+  2: all+30
+  3: all+50
+  4: all+100
+  5: poor+0
+  6: poor+10
+  7: poor+30
+  8: poor+50
+  9: poor+100
+  10: poor_near_poor1.25+0
+  11: poor_near_poor1.25+10
+  12: poor_near_poor1.25+30
+  13: poor_near_poor1.25+50
+  14: poor_near_poor1.25+100
+  15: poor_near_poor2.0+0
+  16: poor_near_poor2.0+10
+  17: poor_near_poor2.0+30
+  18: poor_near_poor2.0+50
+  19: poor_near_poor2.0+100
+
+# ------------------------------- Uncertainties ------------------------------ #
+uncertainties:
+  avg_prod:
+  - 0.2
+  - 0.4
+  cons_util:
+  - 1.0
+  - 1.5
+  disc_rate:
+  - 0.04
+  - 0.07
+  inc_exp_growth:
+  - 0.01
+  - 0.03

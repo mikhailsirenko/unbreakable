@@ -15,14 +15,12 @@ from mycolorpy import colorlist as mcp
 # import contextily as ctx
 
 
-def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [], x_titles: list = [], color_palette: str = 'Set2', sharex: bool = True):
+def raincloud_plot(outcomes: pd.DataFrame, savefig: bool, color_palette: str = 'Set2', sharex: bool = True):
     '''Visualize the outcomes using a raincloud plot.
 
     Args:
         outcomes (pd.DataFrame): The outcomes dataframe.
         savefig (bool): Whether to save the figure or not.
-        x_columns (list, optional): The columns to plot. Defaults to [].
-        x_titles (list, optional): The titles of the columns to plot. Defaults to [].
         color_palette (str, optional): The color palette to use. Defaults to 'Set2'.
         sharex (bool, optional): Whether to share the x-axis or not. Defaults to True.
 
@@ -30,53 +28,43 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
         None
     '''
 
-    if savefig:
-        outcomes['district'].replace(
-            {'Anse-La-Raye & Canaries': 'Anse-La-Raye \& Canaries'}, inplace=True)
-        pct_symbol = '\%'
-    else:
-        pct_symbol = '%'
-
     districts = outcomes['district'].unique().tolist()
     n_districts = len(districts)
     colors = sns.color_palette(color_palette, n_colors=len(districts))
 
-    if len(x_columns) == 0:
-        x_columns = [
-            'n_affected_people',
-            'n_new_poor_increase_pp',
-            'n_new_poor',
-            'annual_average_consumption_loss_pct',
-            'r',
-            'new_poverty_gap_initial',
-            'new_poverty_gap_all',
-        ]
+    x_columns = [
+        'n_affected_people',
+        'n_new_poor_increase_pp',
+        'n_new_poor',
+        'annual_average_consumption_loss_pct',
+        'r',
+        'new_poverty_gap_initial',
+        'new_poverty_gap_all',
+    ]
 
-    if len(x_titles) == 0:
-        x_titles = [
-            'Affected People',
-            'New Poor Increase (p.p.)',
-            'New Poor',
-            f'Wt. Ann. Avg. Consump. Loss p.c. ({pct_symbol})',
-            'Socio-Economic Resilience',
-            'New Poverty Gap Initial Poor',
-            'New Poverty Gap All Poor',
-        ]
-
-    is_years_in_poverty = False
+    x_titles = [
+        'Affected People',
+        'New Poor Increase (p.p.)',
+        'New Poor',
+        f'Wt. Ann. Avg. Consump. Loss p.c. (%)',
+        'Socio-Economic Resilience',
+        'New Poverty Gap Initial Poor',
+        'New Poverty Gap All Poor']
 
     for x_column, x_title in zip(x_columns, x_titles):
         fig, ax = plt.subplots(ncols=3, nrows=4, figsize=(
             4 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
 
         for district in districts:
+            # Select the district
             df = outcomes[outcomes['district'] == district].copy()
 
+            # Convert to float
             df[x_column] = df[x_column].astype(float)
 
             # Make a half violin plot
             pt.half_violinplot(x=x_column,
-                               y='policy',  # hue='scenario',
+                               y='policy',
                                data=df,
                                color=colors[districts.index(district)],
                                bw=.2,
@@ -88,7 +76,7 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
 
             # Add stripplot
             sns.stripplot(x=x_column,
-                          y='policy',  # hue='scenario',
+                          y='policy',
                           data=df,
                           color=colors[districts.index(district)],
                           edgecolor='white',
@@ -100,7 +88,7 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
 
             # Add boxplot
             sns.boxplot(x=x_column,
-                        y='policy',  # hue='scenario',
+                        y='policy',
                         data=df,
                         color="black",
                         width=.15,
@@ -136,16 +124,8 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool,  x_columns: list = [],
             ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].median(), 0.2,
                                                                                    f'M={df[x_column].median():.2f}',
                                                                                    horizontalalignment='left', size='small', color='black')
-
-            # initial_poverty_gap = df['initial_poverty_gap'].iloc[0]
-            # Add initial poverty gap as in the legend to the plot
-            # if x_column == 'new_poverty_gap_all' or x_column == 'new_poverty_gap_initial':
-            #     ax[districts.index(district) // 3, districts.index(district) % 3].text(0.025, 0.9,
-            #                                                                            f'Poverty gap before disaster={initial_poverty_gap:.2f}',
-            #                                                                            horizontalalignment='left', size='small', color='black',
-            #                                                                            transform=ax[districts.index(district) // 3, districts.index(district) % 3].transAxes)
-
-        # Remove last subplot
+        # Remove 2 last subplots
+        ax[3, 1].set_visible(False)
         ax[3, 2].set_visible(False)
         fig.tight_layout()
         if savefig:
@@ -498,7 +478,7 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
                     dpi=300, bbox_inches='tight')
 
 
-def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd") -> None:
+def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd", legend: bool = True) -> None:
     '''Make colored density plots for each district. Color here matches the color of the choropleth map.
 
     Args:
@@ -568,15 +548,16 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
             # ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
             ax.set_xlabel('Annual Average Consumption Loss PC (%)')
         else:
-            ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+            ax.set_xlabel('Ann. Avg. Consump. Loss PC (%)')
         ax.set_ylabel('Run density')
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.set_facecolor('lightgray')
-    # ax.set_xlim(0, 50)
-    ax.legend(districts, title='District', frameon=False)
+    # ax.set_xlim(5, 12.5)
+    if legend:
+        ax.legend(districts, title='District', frameon=False)
     fig.tight_layout()
 
     if savefig:

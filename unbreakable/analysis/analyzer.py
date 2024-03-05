@@ -38,7 +38,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         print('WARNING! Random seeds are not unique.')
         # raise ValueError('Random seeds are not unique')
 
-    policy_names = ['my_policy']
+    policy_names = ['current_policy']
 
     if add_policies:
         if add_uncertainties:
@@ -159,7 +159,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                        'expected_loss_frac',
                        'n_affected_people',
                        'annual_average_consumption',
-                       'poverty_line_adjusted',
+                       'povline_adjusted',
                        'district_pml',
                        'n_poor_initial',
                        'n_poor_affected',
@@ -183,6 +183,8 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
     outcomes['new_poverty_gap_all'] = outcomes['new_poverty_gap_all'] * 100
     outcomes['new_poverty_gap_initial'] = outcomes['new_poverty_gap_initial'] * 100
+    outcomes['n_poor_ratio'] = outcomes['n_poor_initial'].div(
+        outcomes['total_population']).round(2) * 100
 
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
@@ -230,13 +232,18 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
         column = 'NAME'
         gdf = gpd.read_file(
             '../../data/raw/shapefiles/Dominica/dma_admn_adm1_py_s1_dominode_v2.shp')
-        gdf['NAME'] = gdf['NAME'].replace(
-            {'St. Paul': 'St Paul', 'St. Peter': 'St Peter'})
-        outcomes['district'] = outcomes['district'].replace(
-            {'City of Roseau': 'St. George', 'Rest of St George': 'St. George'})
+
+    elif country == 'Nigeria':
+        column = 'shapeName'
+        gdf = gpd.read_file(
+            '../../data/raw/shapefiles/Nigeria/geoBoundaries-NGA-ADM1-all/geoBoundaries-NGA-ADM1.shp')
+
+    else:
+        raise ValueError('Country not supported')
 
     if len(outcomes_of_interest) == 0:
         outcomes_of_interest = ['total_asset_loss',
+                                'district_pml',
                                 'tot_exposed_asset',
                                 'total_consumption_loss',
                                 'n_affected_people',
@@ -245,6 +252,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
                                 'annual_average_consumption_loss',
                                 'annual_average_consumption_loss_pct',
                                 'n_new_poor_increase_pp',
+                                'n_poor_ratio',
                                 'r']
 
     # Aggregate outcomes

@@ -6,25 +6,25 @@ import numpy as np
 import yaml
 
 
-def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, years_to_recover: int, wprime: float) -> dict:
+def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, district_pml: float, years_to_recover: int, welfare: float) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
         households (pd.DataFrame): Households.
         tot_exposed_asset (float): Total exposed asset stock.
         expected_loss_fraction (float): Expected loss fraction.
+        district_pml (float): Probable maximum loss for a district.
         years_to_recover (float): Number of years cut-off parameter when calculating consumption loss. Default is 10.
-        wprime (float): A factor that converts an abstract concept of wellbeing loss into consumption loss in monetary terms.
+        welfare (float): Welfare parameter.
 
     Returns:
         dict: Outcomes of interest, where the key is the name of the outcome and value is the outcome.
     '''
     # Save some values for verification. There are not going to be used for the analysis.
     total_population = households['wgt'].sum()
-    district_pml = households['pml'].iloc[0]
     tot_asset_surv = households['tot_asset_surv'].iloc[0]
     annual_average_consumption = (
-        households['aeexp'] * households['wgt']).sum() / households['wgt'].sum()
+        households['exp'] * households['wgt']).sum() / households['wgt'].sum()
 
     affected_households = households[households['is_affected'] == True]
     n_affected_people = affected_households['wgt'].sum()
@@ -38,21 +38,21 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
 
     # Poverty line adjusted (see `match_assets_and_expenditures` function in `households.py`)
     # Poverty line ois the same for all households
-    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
+    povline_adjusted = households['povline_adjusted'].values[0]
 
     # Get the model outcomes
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
-        households, poverty_line_adjusted, years_to_recover)
+        households, povline_adjusted, years_to_recover)
 
     years_in_poverty = get_people_by_years_in_poverty(new_poor)
 
     initial_poverty_gap, new_poverty_gap_initial, new_poverty_gap_all = calculate_poverty_gap(
-        poor_initial, new_poor, poverty_line_adjusted, years_to_recover)
+        poor_initial, new_poor, povline_adjusted, years_to_recover)
 
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
         affected_households, years_to_recover)
 
-    tot_consum_equiv_loss = - affected_households['wellbeing'].div(wprime).multiply(
+    tot_consum_equiv_loss = - affected_households['wellbeing'].div(welfare).multiply(
         affected_households['wgt']).sum()
 
     r = calculate_resilience(affected_households, tot_consum_equiv_loss)
@@ -70,7 +70,7 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
         'expected_loss_frac': expected_loss_frac,
         'n_affected_people': n_affected_people,
         'annual_average_consumption': annual_average_consumption,
-        'poverty_line_adjusted': poverty_line_adjusted,
+        'povline_adjusted': povline_adjusted,
         'district_pml': district_pml,
         'n_poor_initial': n_poor_initial,
         'n_poor_affected': n_poor_affected,
@@ -88,7 +88,7 @@ def get_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_lo
     }
 
     # Save outcome names in a yaml file to pick up in preprocessing
-    with open('analysis/outcome_names.yaml', 'w') as f:
+    with open('analysis/outcomes.yaml', 'w') as f:
         yaml.dump(list(outcomes.keys()), f)
 
     return outcomes
@@ -114,7 +114,7 @@ def find_poor(households: pd.DataFrame, poverty_line: float, years_to_recover: i
     # Second, find the new poor at the end of the simulation (`years_to_recover`)
     not_poor = households[households['is_poor'] == False]
     not_poor_affected = not_poor[not_poor['is_affected'] == True]
-    x = not_poor_affected['aeexp'] - \
+    x = not_poor_affected['exp'] - \
         not_poor_affected['consumption_loss_NPV'] / years_to_recover
     new_poor = not_poor_affected.loc[x < poverty_line, :]
     new_poor = new_poor.assign(is_poor=True)
@@ -158,10 +158,13 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
         Exception: If the index is duplicated
         Exception: If the poverty gap is greater than 1
     '''
+    # !: Current implementation doesn't work
+    # !: We got to negatives
+
     # First we need to calculate the poverty gap at the beginning of the simulation
     # Get the weighted average expenditure
     average_expenditure_poor_initial = (
-        poor_initial['aeexp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
+        poor_initial['exp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
 
     # Calculate the poverty gap at the beginning of the simulation
     initial_poverty_gap = (
@@ -172,11 +175,11 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
 
     # Expenditure of both were affected by the disaster
     all_poor = all_poor.assign(
-        aeexp=all_poor['aeexp'] - all_poor['consumption_loss_NPV'] / years_to_recover)
+        exp=all_poor['exp'] - all_poor['consumption_loss_NPV'] / years_to_recover)
 
     # Now, get the average expenditure of the poor at the end of the simulation
     average_expenditure_poor_all = (
-        all_poor['aeexp'] * all_poor['wgt']).sum() / all_poor['wgt'].sum()
+        all_poor['exp'] * all_poor['wgt']).sum() / all_poor['wgt'].sum()
 
     # Calculate the poverty gap at the end of the simulation
     new_poverty_gap_all = (
@@ -184,10 +187,10 @@ def calculate_poverty_gap(poor_initial: pd.DataFrame, new_poor: pd.DataFrame, po
 
     # However, we also want to know the poverty gap for old poor
     poor_initial = poor_initial.assign(
-        aeexp=poor_initial['aeexp'] - poor_initial['consumption_loss_NPV'] / years_to_recover)
+        exp=poor_initial['exp'] - poor_initial['consumption_loss_NPV'] / years_to_recover)
 
     average_expenditure_poor_initial = (
-        poor_initial['aeexp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
+        poor_initial['exp'] * poor_initial['wgt']).sum() / poor_initial['wgt'].sum()
 
     new_poverty_gap_initial = (
         poverty_line - average_expenditure_poor_initial) / poverty_line
@@ -226,7 +229,7 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
 
     annual_average_consumption_loss_pct = (affected_households['consumption_loss_NPV']
                                            .div(years_to_recover)
-                                           .div(affected_households['aeexp'])
+                                           .div(affected_households['exp'])
                                            .multiply(affected_households['wgt']).sum())\
         / affected_households['wgt'].sum()
 

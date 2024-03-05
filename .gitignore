@@ -99,8 +99,7 @@ target/
 
 # 
 .idea/
-chache/
-*./*./cache
+cache/
 
 # Raw country-specific experiment results
 experiments/Dominica
@@ -132,3 +131,6 @@ TODO.md
 
 # Exclude reports
 /reports
+
+# Exclude experiment results
+/experiments
