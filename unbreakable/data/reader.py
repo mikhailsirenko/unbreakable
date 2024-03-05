@@ -67,3 +67,25 @@ def read_household_survey(country: str, base_path: str = "../data/processed/hous
         logging.error(
             f"Error reading household survey data from {file_path}: {e}")
         raise
+
+
+def read_conflict_data(country: str, base_path: str = "../data/processed/conflict/", file_extension: str = "csv") -> pd.DataFrame:
+    '''
+    Reads conflict data from a file.
+
+    Args:
+        country (str): Country name.
+        base_path (str): Base path to the conflict data directory.
+        file_extension (str): File extension (default is 'csv').
+
+    Returns:
+        pd.DataFrame: Conflict data.
+    '''
+    file_path = Path(base_path) / f"{country}.{file_extension}"
+    try:
+        data = pd.read_csv(file_path)
+        return data
+    except Exception as e:
+        logging.error(
+            f"Error reading conflict data from {file_path}: {e}")
+        raise

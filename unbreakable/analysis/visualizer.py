@@ -478,7 +478,7 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
                     dpi=300, bbox_inches='tight')
 
 
-def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd") -> None:
+def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd", legend: bool = True) -> None:
     '''Make colored density plots for each district. Color here matches the color of the choropleth map.
 
     Args:
@@ -555,8 +555,9 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.set_facecolor('lightgray')
-    ax.set_xlim(5, 12.5)
-    ax.legend(districts, title='District', frameon=False)
+    # ax.set_xlim(5, 12.5)
+    if legend:
+        ax.legend(districts, title='District', frameon=False)
     fig.tight_layout()
 
     if savefig:

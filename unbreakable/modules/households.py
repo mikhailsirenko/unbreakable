@@ -5,11 +5,11 @@ import numpy as np
 def estimate_impact(households: pd.DataFrame, region_pml: float, pov_bias: float, calc_exposure_params: dict) -> pd.DataFrame:
     # Random value for poverty bias
     if pov_bias == 'random':
-        if calc_exposure_params['pov_bias_rnd_distr'] == 'uniform':
+        if calc_exposure_params['distr'] == 'uniform':
             # default 0.5
-            low = calc_exposure_params['pov_bias_rnd_low']
+            low = calc_exposure_params['low']
             # default 1.5
-            high = calc_exposure_params['pov_bias_rnd_high']
+            high = calc_exposure_params['high']
             povbias = np.random.uniform(low, high)
         else:
             raise ValueError("Only uniform distribution is supported yet.")
@@ -22,8 +22,8 @@ def estimate_impact(households: pd.DataFrame, region_pml: float, pov_bias: float
     # Set poverty bias to povbias for poor households
     households.loc[households['is_poor'] == True, 'pov_bias'] = povbias
 
-    # !: If keff is just k_house_ae, why not just use k_house_ae?
-    households['keff'] = households['k_house_ae'].copy()
+    # !: If keff is just k_house, why not just use k_house?
+    households['keff'] = households['k_house'].copy()
 
     # Calculate the exposure of each household
     normalization_factor = households[['keff', 'v', 'pov_bias', 'wgt']].prod(
@@ -36,7 +36,7 @@ def estimate_impact(households: pd.DataFrame, region_pml: float, pov_bias: float
     return households
 
 
-def identify_affected(households: pd.DataFrame, region_pml: float, ident_affected_params: dict) -> pd.DataFrame:
+def identify_affected(households: pd.DataFrame, region_pml: float, ident_affected_params: dict, random_seed: int) -> pd.DataFrame:
     '''Determines affected households.
 
     We assume that all households have the same chance of being affected, 
@@ -53,6 +53,9 @@ def identify_affected(households: pd.DataFrame, region_pml: float, ident_affecte
     Raises:
         ValueError: If no mask was found.
     '''
+    # BUG: For whatever reason fixing random seed in the model.py doesn't work here
+    np.random.seed(random_seed)
+
     # Allow for a relatively small error
     delta = region_pml * ident_affected_params['delta_pct']  # default 0.025
 
@@ -111,3 +114,11 @@ def identify_affected(households: pd.DataFrame, region_pml: float, ident_affecte
             f'Total asset loss ({tot_asset_loss}) is not within the desired range.')
 
     return households
+
+
+def calculate_welfare(country_households: pd.DataFrame, cons_util: float) -> float:
+    # TODO: Make sure that the function name and what is returns is correct
+    # TODO: Add a docstring
+    welfare = (np.sum(country_households['exp'] * country_households['wgt']) / np.sum(
+        country_households['wgt'])) ** (-cons_util)
+    return welfare

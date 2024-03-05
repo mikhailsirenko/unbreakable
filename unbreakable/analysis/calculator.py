@@ -6,7 +6,7 @@ import numpy as np
 import yaml
 
 
-def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, district_pml: float, years_to_recover: int, wprime: float) -> dict:
+def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, district_pml: float, years_to_recover: int, welfare: float) -> dict:
     '''Calculate outcomes of interest from the simulation model.
 
     Args:
@@ -15,7 +15,7 @@ def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expec
         expected_loss_fraction (float): Expected loss fraction.
         district_pml (float): Probable maximum loss for a district.
         years_to_recover (float): Number of years cut-off parameter when calculating consumption loss. Default is 10.
-        wprime (float): A factor that converts an abstract concept of wellbeing loss into consumption loss in monetary terms.
+        welfare (float): Welfare parameter.
 
     Returns:
         dict: Outcomes of interest, where the key is the name of the outcome and value is the outcome.
@@ -52,7 +52,7 @@ def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expec
     annual_average_consumption_loss, annual_average_consumption_loss_pct = calculate_average_annual_consumption_loss(
         affected_households, years_to_recover)
 
-    tot_consum_equiv_loss = - affected_households['wellbeing'].div(wprime).multiply(
+    tot_consum_equiv_loss = - affected_households['wellbeing'].div(welfare).multiply(
         affected_households['wgt']).sum()
 
     r = calculate_resilience(affected_households, tot_consum_equiv_loss)

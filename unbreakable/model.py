@@ -1,16 +1,17 @@
 import numpy as np
-import random
 from pathlib import Path
 import pandas as pd
 import yaml
 from pathlib import Path
 from ema_workbench import *
 from unbreakable.data.reader import *
+from unbreakable.data.randomizer import *
 from unbreakable.analysis.calculator import *
 from unbreakable.modules.disaster import *
 from unbreakable.modules.households import *
 from unbreakable.modules.policy import *
 from unbreakable.modules.recovery import *
+from unbreakable.modules.conflict import *
 
 
 def model(**params) -> dict:
@@ -26,62 +27,58 @@ def model(**params) -> dict:
     validate_params(params)
 
     # If a policy is not provided, use the default policy
-    my_policy = params.get('my_policy', 'all+0')
+    current_policy = params.get('current_policy', 'none')
+    country = params['country']
 
-    # Fix random seed
-    random.seed(params['random_seed'])
-    np.random.seed(params['random_seed'])
+    # Fix random seed for reproducibility
+    random_seed = params['random_seed']
+    np.random.seed(random_seed)
 
     # Read household survey and damage files
-    country_households = read_household_survey(params['country'])
+    all_households = read_household_survey(params['country'])
     risk_and_damage = read_risk_and_damage(params['country'])
 
+    # Randomize households survey data
+    all_households = randomize(
+        all_households, risk_and_damage, params, random_seed=random_seed)
+
     # Save random seed for reproducibility
-    country_households['random_seed'] = params['random_seed']
+    all_households['random_seed'] = random_seed
 
     # Store outcomes in a dictionary, where the key is a district and value is a dictionary of outcomes
     outcomes = {}
 
-    # TODO: Rename, move to a function or to a module
-    # Calculate w factor
-    w = (np.sum(country_households['exp'] * country_households['wgt']
-                ) / np.sum(country_households['wgt']))**(-params['cons_util'])
+    # Whether country has a conflict
+    is_conflict = params['is_conflict']
 
-    conflict_regions = ['Kaduna', 'Plateau', 'Benue']
+    welfare = calculate_welfare(all_households, params['cons_util'])
 
-    # Unpack global parameters
-    avg_prod = params['avg_prod']
-    cons_util = params['cons_util']
-    disc_rate = params['disc_rate']
-    inc_exp_growth = params['inc_exp_growth']
-    yrs_to_rec = params['yrs_to_rec']
-    add_inc_loss = params['add_inc_loss']
+    # If there is a conflict, read conflict data and calculate its effect on the economy
+    if is_conflict:
+        conflict_impact = read_conflict_data(params['country'])
+        affected_economy = affect_economy(
+            conflict_impact, params['avg_prod'], params['inc_exp_growth'])
+
+    # If there is no conflict, use the base values specified in the config file
+    else:
+        avg_prod = params['avg_prod']
+        inc_exp_growth = params['inc_exp_growth']
 
     for region in params['regions']:
         # Select households in a specific region
-        region_households = country_households[country_households['region'] == region].copy(
+        region_households = all_households[all_households['region'] == region].copy(
         )
-
-        # Check whether the region was affected by a conflict
-        if region in conflict_regions:
-            # Adjust global parameters for conflict regions
-            avg_prod = 0.175  # default 0.35, decrease by 50%
-            inc_exp_growth = 0.01  # default 0.02, decrease by 50%
-            cons_util = 1.1  # default 1.5
-            disc_rate = 0.04  # default 0.04
-            yrs_to_rec = 10  # default 10
-
-        else:
-            # Reset global parameters
-            avg_prod = params['avg_prod']
-            cons_util = params['cons_util']
-            disc_rate = params['disc_rate']
-            inc_exp_growth = params['inc_exp_growth']
-            yrs_to_rec = params['yrs_to_rec']
 
         # Get disaster data for the region and return period
         exposed_stock, loss_fraction, region_pml = get_region_damage(
             risk_and_damage, region, params['return_per'])
+
+        # Get affected average productivity and income and expenditure growth for the region
+        if is_conflict:
+            avg_prod = affected_economy[affected_economy['region']
+                                        == region]['avg_prod'].values[0]
+            inc_exp_growth = affected_economy[affected_economy['region']
+                                              == region]['inc_exp_growth'].values[0]
 
         # For the dynamic policy
         # cash_transfer = {52: 1000, 208: 5000}
@@ -89,17 +86,17 @@ def model(**params) -> dict:
 
         region_households = (region_households
                              .pipe(estimate_impact, region_pml, params['pov_bias'], params['calc_exposure_params'])
-                             .pipe(identify_affected, region_pml, params['identify_aff_params'])
-                             .pipe(apply_policy, my_policy)
-                             .pipe(calc_recovery_rate, avg_prod, cons_util, disc_rate, params['lambda_incr'], yrs_to_rec)
-                             .pipe(calc_wellbeing, avg_prod, cons_util, disc_rate, inc_exp_growth, yrs_to_rec, add_inc_loss,  cash_transfer))
+                             .pipe(identify_affected, region_pml, params['identify_aff_params'], random_seed=random_seed)
+                             .pipe(apply_policy, country, current_policy, random_seed)
+                             .pipe(calc_rec_rate, avg_prod, params['cons_util'], params['disc_rate'], params['lambda_incr'], params['yrs_to_rec'])
+                             .pipe(calc_wellbeing, avg_prod, params['cons_util'], params['disc_rate'], inc_exp_growth, params['yrs_to_rec'], params['add_inc_loss'], cash_transfer, is_conflict))
 
         if params['save_households']:
             save_households(
-                region_households, params['country'], region, params['random_seed'])
+                region_households, params['country'], region, random_seed)
 
         outcomes[region] = np.array(list(calculate_outcomes(
-            region_households, exposed_stock, loss_fraction, region_pml, params['yrs_to_rec'], w).values()))
+            region_households, exposed_stock, loss_fraction, region_pml, params['yrs_to_rec'], welfare).values()))
 
     return outcomes
 
@@ -119,7 +116,7 @@ def validate_params(params: dict) -> None:
         'country', 'regions', 'return_per', 'yrs_to_rec', 'avg_prod',
         'cons_util', 'disc_rate', 'lambda_incr', 'inc_exp_growth',
         'add_inc_loss', 'random_seed', 'atol', 'pov_bias', 'calc_exposure_params',
-        'identify_aff_params', 'save_households'
+        'identify_aff_params', 'is_conflict', 'save_households'
     ]
 
     missing_keys = [key for key in required_keys if key not in params]
@@ -161,27 +158,30 @@ def load_config(country: str) -> dict:
         return yaml.safe_load(file)
 
 
-def setup_model(config: dict) -> Model:
+def setup_model(config: dict, n_replications: int = None) -> Model:
     """
     Set up the EMA Workbench model based on the provided configuration.
 
     Args:
         config (dict): Configuration dictionary loaded from the YAML file.
+        n_replications (int): Number of replications for the model. Defaults to None.
 
     Returns:
         Model: Configured EMA Workbench model.
     """
     # Initialize the EMA Workbench model
     my_model = Model(name="model", function=model)
+    # my_model = ReplicatorModel(name="model", function=model)
 
     # Extract and set up uncertainties, constants, and levers from the config
-    uncertainties = config.get("uncertainties", {})
+    # uncertainties = config.get("uncertainties", {})
     constants = config.get("constants", {})
     levers = config.get("levers", {})
 
     # Define seed as an uncertainty for multiple runs
     seed_start = 0
     seed_end = 1000000000
+
     my_model.uncertainties = [IntegerParameter("random_seed", seed_start, seed_end)]\
         #   + [RealParameter(key, values[0], values[1]) for key, values in uncertainties.items()]
 
@@ -191,11 +191,13 @@ def setup_model(config: dict) -> Model:
 
     # Levers
     my_model.levers = [CategoricalParameter(
-        key, values) for key, values in levers.items()]
+        'current_policy', [values for _, values in levers.items()])]
 
     # Outcomes
     my_model.outcomes = [ArrayOutcome(region)
                          for region in constants.get('regions', [])]
+
+    # my_model.replications = n_replications
 
     return my_model
 
@@ -222,5 +224,15 @@ def run_experiments(model: Model, n_scenarios: int, n_policies: int, country: st
 
     results_path = Path(f'../experiments/{country}')
     results_path.mkdir(parents=True, exist_ok=True)
-    save_results(results, results_path /
-                 f"scenarios={n_scenarios}, policies={n_policies}.tar.gz")
+
+    try:
+        is_conflict = model.constants._data['is_conflict'].value
+    except KeyError:
+        is_conflict = False
+
+    if is_conflict:
+        save_results(results, results_path /
+                     f"scenarios={n_scenarios}, policies={n_policies}, conflict=True.tar.gz")
+    else:
+        save_results(results, results_path /
+                     f"scenarios={n_scenarios}, policies={n_policies}.tar.gz")

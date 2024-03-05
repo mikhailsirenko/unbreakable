@@ -38,7 +38,7 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         print('WARNING! Random seeds are not unique.')
         # raise ValueError('Random seeds are not unique')
 
-    policy_names = ['my_policy']
+    policy_names = ['current_policy']
 
     if add_policies:
         if add_uncertainties:
