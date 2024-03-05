@@ -209,18 +209,18 @@ def recalculate_house_vulnerability(country: str, households: pd.DataFrame) -> p
         v_roof_scores = {
             'default': 0.75,
             'Concrete': 0.2,
-            'Sheet metal (galvanize, galvalume)': 0.35,
-            'Shingle (wood)': 0.5,
-            'Shingle (asphalt)': 0.5,
-            'Shingle (other)': 0.5,
+            'Sheet metal (galvanize, galvalume)': 0.5,
+            'Shingle (wood)': 0.6,
+            'Shingle (asphalt)': 0.6,
+            'Shingle (other)': 0.6,
             'Other': 0.75,
         }
 
         v_walls_scores = {
-            'default': 0.6,
-            'Wood & Concrete': 0.2,
-            'Brick/Blocks': 0.25,
-            'Concrete/Concrete blocks': 0.25,
+            'default': 0.8,
+            'Brick/Blocks': 0.35,
+            'Concrete/Concrete blocks': 0.35,
+            'Wood & Concrete': 0.5,
             'Wood/Timber': 0.6,
             'Plywood': 0.7,
             'Makeshift': 0.8,
