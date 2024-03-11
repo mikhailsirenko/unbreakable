@@ -1,5 +1,3 @@
-"""This module contains functions to prepare the results of the experiments for analysis."""
-
 import pandas as pd
 import numpy as np
 import ast
@@ -23,44 +21,39 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     with open("../../unbreakable/analysis/outcomes.yaml", "r") as f:
         outcome_names = yaml.safe_load(f)
 
-    # TODO: Read uncertainty names from results
-    # uncertainty_names = ['consump_util',
-    #                      'discount_rate',
-    #                      'income_and_expenditure_growth',
-    #                      'poverty_bias']
+    policy_names = ['current_policy']
     uncertainty_names = []
 
     experiments, _ = results
     experiments['random_seed'] = experiments['random_seed'].astype(int)
     experiments['scenario'] = experiments['scenario'].astype(int)
+
     if len(experiments['random_seed'].unique()) != experiments['scenario'].max() - experiments['scenario'].min() + 1:
-        # print(experiments['random_seed'].value_counts())
-        print('WARNING! Random seeds are not unique.')
-        # raise ValueError('Random seeds are not unique')
+        print('Warning! Random seeds are not unique.')
 
-    policy_names = ['current_policy']
-
+    base_columns = ['scenario', 'policy', 'region', 'random_seed']
     if add_policies:
         if add_uncertainties:
-            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+            columns = base_columns + \
                 policy_names + uncertainty_names + outcome_names
         else:
-            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+            columns = base_columns + \
                 policy_names + outcome_names
     else:
         if add_uncertainties:
-            columns = ['scenario', 'policy', 'district', 'random_seed'] + \
+            columns = base_columns + \
                 uncertainty_names + outcome_names
         else:
-            columns = ['scenario', 'policy', 'district',
-                       'random_seed'] + outcome_names
+            columns = base_columns + outcome_names
 
     scenarios = results[0]['scenario'].values
     n_scenarios = results[0]['scenario'].unique().size
+
     policies = results[0]['policy'].values
-    random_seeds = results[0]['random_seed'].values
     n_policies = results[0]['policy'].unique().size
-    n_districts = len(results[1].keys())
+
+    random_seeds = results[0]['random_seed'].values
+    n_regions = len(results[1].keys())
 
     if add_policies:
         policy_values = results[0][policy_names].values
@@ -69,19 +62,19 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
         uncertainty_values = results[0][uncertainty_names].values
 
     n_columns = len(columns)
-    n_rows = n_scenarios * n_policies * n_districts
+    n_rows = n_scenarios * n_policies * n_regions
     outcomes = np.zeros((n_rows, n_columns), dtype=object)
 
-    i = 0  # To iterate over rows = scenarios * policies * districts
-    for district, district_outcomes in results[1].items():
+    i = 0  # To iterate over rows = scenarios * policies * regions
+    for region, region_outcomes in results[1].items():
         # To iterate over rows = scenarios * policies (experiments dataframe)
         k = 0
-        # We reset k every time we change district
-        for arr in district_outcomes:
-            # The first 3 rows for scenario, policy and district
+        # We reset k every time we change region
+        for arr in region_outcomes:
+            # The first 3 rows for scenario, policy and region
             outcomes[i, 0] = scenarios[k]
             outcomes[i, 1] = policies[k]
-            outcomes[i, 2] = district
+            outcomes[i, 2] = region
             outcomes[i, 3] = random_seeds[k]
 
             if add_policies:
@@ -147,48 +140,28 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
                         else:
                             outcomes[i, l] = v
                         l += 1
-            k += 1  # increase row index to get next experiment for the current district
+            k += 1  # increase row index to get next experiment for the current region
             i += 1  # increase row index of the outcomes dataframe
     outcomes = pd.DataFrame(outcomes, columns=columns)
 
-    numeric_columns = ['total_population',
-                       'total_asset_loss',
-                       'total_consumption_loss',
-                       'tot_exposed_asset',
-                       'tot_asset_surv',
-                       'expected_loss_frac',
-                       'n_affected_people',
-                       'annual_average_consumption',
-                       'povline_adjusted',
-                       'district_pml',
-                       'n_poor_initial',
-                       'n_poor_affected',
-                       'n_new_poor',
-                       'initial_poverty_gap',
-                       'new_poverty_gap_initial',
-                       'new_poverty_gap_all',
-                       'annual_average_consumption_loss',
-                       'annual_average_consumption_loss_pct',
-                       'mean_recovery_rate',
-                       'r']
-
-    outcomes[numeric_columns] = outcomes[numeric_columns].apply(pd.to_numeric)
-
-    # Rename a district
-    outcomes['district'].replace(
-        {'AnseLaRayeCanaries': 'Anse-La-Raye & Canaries'}, inplace=True)
+    # Iterate over the columns and try to convert them to numeric if possible
+    for col in outcomes.columns:
+        try:
+            outcomes[col] = pd.to_numeric(outcomes[col])
+        except:
+            pass
 
     # Convert pct columns to percentage
-    outcomes['annual_average_consumption_loss_pct'] = outcomes['annual_average_consumption_loss_pct'] * 100
+    outcomes['annual_avg_consum_loss_pct'] = outcomes['annual_avg_consum_loss_pct'] * 100
     outcomes['initial_poverty_gap'] = outcomes['initial_poverty_gap'] * 100
     outcomes['new_poverty_gap_all'] = outcomes['new_poverty_gap_all'] * 100
     outcomes['new_poverty_gap_initial'] = outcomes['new_poverty_gap_initial'] * 100
     outcomes['n_poor_ratio'] = outcomes['n_poor_initial'].div(
-        outcomes['total_population']).round(2) * 100
+        outcomes['tot_pop']).round(2) * 100
 
     # Calculate the percentage of new poor
     outcomes = outcomes.assign(n_new_poor_increase_pp=outcomes['n_new_poor'].div(
-        outcomes['total_population']).multiply(100))
+        outcomes['tot_pop']).multiply(100))
 
     # Move years_in_poverty column to the end of the data frame
     outcomes = outcomes[[c for c in outcomes if c not in [
@@ -210,7 +183,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
         gpd.GeoDataFrame: Spatial outcomes.
     '''
 
-    # Align district names with the ones in the outcomes
+    # Align region names with the ones in the outcomes
     if country == 'Saint Lucia':
         column = 'NAME_1'
         gdf = gpd.read_file(
@@ -226,7 +199,7 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
         # Add it to the dataframe
         gdf.loc[len(gdf)] = [None, None, 'LCA.11_1', 'Anse-La-Raye & Canaries',
                              None, None, None, None, None, None, geometry]
-        gdf = gdf[gdf['NAME_1'].isin(outcomes['district'].unique())]
+        gdf = gdf[gdf['NAME_1'].isin(outcomes['region'].unique())]
 
     elif country == 'Dominica':
         column = 'NAME'
@@ -242,26 +215,27 @@ def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_inter
         raise ValueError('Country not supported')
 
     if len(outcomes_of_interest) == 0:
-        outcomes_of_interest = ['total_asset_loss',
-                                'district_pml',
-                                'tot_exposed_asset',
-                                'total_consumption_loss',
-                                'n_affected_people',
-                                'n_new_poor',
-                                'new_poverty_gap_all',
-                                'annual_average_consumption_loss',
-                                'annual_average_consumption_loss_pct',
-                                'n_new_poor_increase_pp',
-                                'n_poor_ratio',
-                                'r']
+        outcomes_of_interest = [
+            'tot_asset_loss',
+            'region_pml',
+            'tot_exposed_asset',
+            'tot_consum_loss_npv',
+            'n_aff_people',
+            'n_new_poor',
+            'new_poverty_gap_all',
+            'annual_avg_consum_loss',
+            'annual_avg_consum_loss_pct',
+            'n_new_poor_increase_pp',
+            'n_poor_ratio',
+            'r']
 
     # Aggregate outcomes
     if aggregation == 'mean':
-        aggregated = outcomes[['district'] +
-                              outcomes_of_interest].groupby('district').mean()
+        aggregated = outcomes[['region'] +
+                              outcomes_of_interest].groupby('region').mean()
     elif aggregation == 'median':
-        aggregated = outcomes[['district'] +
-                              outcomes_of_interest].groupby('district').median()
+        aggregated = outcomes[['region'] +
+                              outcomes_of_interest].groupby('region').median()
     else:
         raise ValueError('Aggregation must be either mean or median')
 
@@ -311,7 +285,7 @@ def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
                                                                   '10% to poor and near poor (1.25)', '30% to poor and near poor (1.25)', '50% to poor and near poor (1.25)', '100% to poor and near poor (1.25)',
                                                                   '10% to poor and near poor (2.0)', '30% to poor and near poor (2.0)', '50% to poor and near poor (2.0)', '100% to poor and near poor (2.0)'], ordered=True)
     df.rename(columns={'my_policy': 'Policy',
-                       'district': 'District'}, inplace=True)
+                       'region': 'Region'}, inplace=True)
     df.rename(columns={'annual_average_consumption_loss_pct': 'Annual average consumption loss (%)',
                        'n_new_poor': 'Number of new poor'},
               inplace=True)
@@ -320,21 +294,21 @@ def get_policy_effectiveness_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
-    '''Get the average across scenarios number of weeks in poverty for each district.
+    '''Get the average across scenarios number of weeks in poverty for each region.
 
     Args:
         outcomes (pd.DataFrame): Outcomes.
 
     Returns:
-        pd.DataFrame: Average number of weeks in poverty for each district.
+        pd.DataFrame: Average number of weeks in poverty for each region.
     '''
-    # Specify the districts
-    districts = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
-                 'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
-    districts = outcomes['district'].unique()
+    # Specify the regions
+    regions = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
+               'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+    regions = outcomes['region'].unique()
 
     # Keep track of the averages
-    district_average = {}
+    region_average = {}
 
     # Get the number of scenarios
     n_scenarios = outcomes['scenario'].unique().size
@@ -343,10 +317,10 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
     column_name = 'years_in_poverty'
     all_keys = outcomes[column_name][0].keys()
 
-    # Iterate through the districts
-    for district in districts:
-        # Subset the outcomes for a specific district
-        df = outcomes[outcomes['district'] == district]
+    # Iterate through the regions
+    for region in regions:
+        # Subset the outcomes for a specific region
+        df = outcomes[outcomes['region'] == region]
 
         # Get the dictionaries from the column
         dicts = df[column_name].tolist()
@@ -363,12 +337,12 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
                     sums[key] += 0
 
         # Calculate the average
-        district_average[district] = {
+        region_average[region] = {
             key: sums[key] / n_scenarios for key in all_keys}
 
     # Convert the dictionary to a dataframe
-    result = pd.DataFrame(district_average).T
-    result.index.name = 'District'
+    result = pd.DataFrame(region_average).T
+    result.index.name = 'Region'
     result.columns = [i for i in range(0, len(all_keys))]
     # result.columns = [int(x) if int(x) < len(
     #     all_keys) else f'>{len(all_keys)}' for x in range(1, len(all_keys) + 1)]
@@ -376,21 +350,21 @@ def get_weeks_in_poverty_tab(outcomes: pd.DataFrame) -> pd.DataFrame:
 
 
 def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -> pd.DataFrame:
-    '''Get the average weighted vulnerability for each district.
+    '''Get the average weighted vulnerability for each region.
 
     Args:
         outcomes (pd.DataFrame): Outcomes.
         quintile (bool): Whether to calculate the average weighted vulnerability by quintile or decile.
 
     Returns:
-        pd.DataFrame: Average weighted vulnerability for each district.
+        pd.DataFrame: Average weighted vulnerability for each region.
     '''
-    # Specify the districts
-    districts = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
-                 'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
+    # Specify the regions
+    regions = ['Anse-La-Raye & Canaries', 'Castries', 'Choiseul',
+               'Dennery', 'Gros Islet', 'Laborie', 'Micoud', 'Soufriere', 'Vieuxfort']
 
     # Keep track of the averages
-    district_average = {}
+    region_average = {}
 
     # Get the number of scenarios
     n_scenarios = outcomes['scenario'].unique().size
@@ -402,10 +376,10 @@ def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -
         column_name = 'weighted_vuln_dec'
         all_keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
-    # Iterate through the districts
-    for district in districts:
-        # Subset the outcomes for a specific district
-        df = outcomes[outcomes['district'] == district]
+    # Iterate through the regions
+    for region in regions:
+        # Subset the outcomes for a specific region
+        df = outcomes[outcomes['region'] == region]
 
         # Get the dictionaries from the column
         dicts = df[column_name].tolist()
@@ -422,14 +396,14 @@ def get_average_weighted_vulnerability(outcomes: pd.DataFrame, quintile: bool) -
                     sums[key] += 0
 
         # Calculate the average
-        district_average[district] = {
+        region_average[region] = {
             key: sums[key] / n_scenarios for key in all_keys}
 
     # Convert the dictionary to a dataframe
-    result = pd.DataFrame(district_average).T
+    result = pd.DataFrame(region_average).T
 
     # Rename the index and columns
-    result.index.name = 'District'
+    result.index.name = 'region'
     if quintile:
         result.columns.name = 'Quintile'
     else:
@@ -463,3 +437,34 @@ def calculate_resilience(affected_households: pd.DataFrame, tot_wellbeing_loss: 
         # r = total_asset_damage / tot_wellbeing_loss
 
     return r
+
+
+def split_policies(outcomes: pd.DataFrame) -> tuple:
+    # TODO: Make the function more flexible and allow for different top ups and target groups
+    # Split ASP policies
+    asp = outcomes[outcomes['current_policy'].str.contains('asp')].copy()
+    asp[['target_group', 'top_up']] = asp['current_policy'].str.split(
+        '+', expand=True)
+    asp['target_group'] = asp['target_group'].str.split(':', expand=True)[1]
+
+    # Make top_up a categorical variable to ensure it is ordered correctly
+    asp['top_up'] = pd.Categorical(asp['top_up'], categories=['0', '10', '50'])
+    asp['target_group'] = pd.Categorical(asp['target_group'], categories=[
+                                         'poor_near_poor2.0', 'all'])
+
+    # Append None policy to ASP
+    none = outcomes[outcomes['current_policy'] == 'none'].copy()
+    none['target_group'] = 'none'
+    none['top_up'] = 'none'
+    none['current_policy'] = 'none'
+    asp = pd.concat([asp, none])
+
+    # Split retrofit policies
+    retrofit = outcomes[outcomes['current_policy'].str.contains(
+        'retrofit')].copy()
+    retrofit[['target_group', 'houses_pct']
+             ] = retrofit['current_policy'].str.split('+', expand=True)
+    retrofit['target_group'] = retrofit['target_group'].str.split(':', expand=True)[
+        1]
+    retrofit = pd.concat([retrofit, none])
+    return asp, retrofit
