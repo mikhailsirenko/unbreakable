@@ -19,6 +19,11 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
     # Ensure reproducibility
     if random_seed is not None:
         np.random.seed(random_seed)
+        households['random_seed'] = random_seed
+
+    # Save country and return period
+    households['country'] = params['country']
+    households['return_period'] = params['return_period']
 
     # Extra necessary parameters
     rnd_inc_params = params['rnd_inc_params']
@@ -29,19 +34,19 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
     min_households = params['min_households']
 
     # Step 1: Randomize income
-    households = rnd_income(households, rnd_inc_params, random_seed)
+    households = rnd_income(households, rnd_inc_params)
 
     # Step 2: Randomize savings
-    households = rnd_savings(households, rnd_sav_params, random_seed)
+    households = rnd_savings(households, rnd_sav_params)
 
     # Step 3: Randomize rent
-    households = rnd_rent(households, rnd_rent_params, random_seed)
+    households = rnd_rent(households, rnd_rent_params)
 
     # Step 4: Calculate dwelling value
     households = calc_dwelling_value(households, avg_prod)
 
     # Step 5: Randomize house vulnerability
-    households = rnd_house_vuln(households, rnd_house_vuln_params, random_seed)
+    households = rnd_house_vuln(households, rnd_house_vuln_params)
 
     # Step 6: Resample households to ensure representativeness
     households = resample_households(households, min_households, random_seed)
@@ -78,9 +83,8 @@ def rnd_inc_mult(size: int, **params) -> np.ndarray:
             f"Distribution '{distr}' is not supported yet.")
 
 
-def rnd_income(households: pd.DataFrame, rnd_income_params: dict, random_seed: int) -> pd.DataFrame:
+def rnd_income(households: pd.DataFrame, rnd_income_params: dict) -> pd.DataFrame:
     '''Randomize household income.'''
-    np.random.seed(random_seed)
     households = households.copy()
     size = households.shape[0]
 
@@ -103,6 +107,10 @@ def rnd_income(households: pd.DataFrame, rnd_income_params: dict, random_seed: i
     else:
         raise ValueError("No income multiplier found.")
 
+    assert not households['inc'].isna().any(), "Income cannot be NaN"
+    assert not (households['inc'] < 0).any(), "Income cannot be negative"
+    assert not (households['inc'] == 0).any(), "Income cannot be 0"
+
     return households
 
 
@@ -123,11 +131,8 @@ def rnd_sav_mult(size: int, **params):
         raise ValueError(f"Distribution '{distr}' is not supported yet.")
 
 
-def rnd_savings(households: pd.DataFrame, rnd_savings_params: dict, random_seed: int) -> pd.DataFrame:
+def rnd_savings(households: pd.DataFrame, rnd_savings_params: dict) -> pd.DataFrame:
     '''Randomize household savings.'''
-    # Set random seed for reproducibility
-    np.random.seed(random_seed)
-
     # Get function parameters
     distr = rnd_savings_params['distr']
     size = households.shape[0]
@@ -148,6 +153,11 @@ def rnd_savings(households: pd.DataFrame, rnd_savings_params: dict, random_seed:
 
     # Estimate savings as a product of income and savings multiplier
     households['sav'] = households['inc'] * sav_mult_rnd
+
+    assert not households['sav'].isna().any(), "Savings cannot be NaN"
+    assert not (households['sav'] < 0).any(), "Savings cannot be negative"
+    assert not (households['sav'] == 0).any(), "Savings cannot be 0"
+
     return households
 
 
@@ -168,11 +178,8 @@ def rnd_rent_mult(size: int, **params):
         raise ValueError(f"Distribution '{distr}' is not supported yet.")
 
 
-def rnd_rent(households: pd.DataFrame, rnd_rent_params: dict, random_seed: int) -> pd.DataFrame:
+def rnd_rent(households: pd.DataFrame, rnd_rent_params: dict) -> pd.DataFrame:
     '''Randomize household rent.'''
-    # Set random seed for reproducibility
-    np.random.seed(random_seed)
-
     # Get function parameters
     distr = rnd_rent_params['distr']
     size = households.shape[0]
@@ -191,20 +198,38 @@ def rnd_rent(households: pd.DataFrame, rnd_rent_params: dict, random_seed: int) 
     # Generate savings using the distribution-specific function
     rent_mult_rnd = rnd_rent_mult(size, **rnd_rent_params)
 
-    # Estimate rent as a product of income and rent multiplier
-    households['rent'] = households['inc'] * rent_mult_rnd
+    # Assign rent as a product of exp and rent multiplier to each of the rows
+    households['exp_house'] = households['exp'].mul(rent_mult_rnd)
+
+    assert not households['exp_house'].isna().any(), "Rent cannot be NaN"
+    assert not (households['exp_house'] < 0).any(), "Rent cannot be negative"
+    assert not (households['exp_house'] == 0).any(), "Rent cannot be 0"
+
+    # Remove rent for the households that own
+    households.loc[households['own_rent'] == 'own', 'exp_house'] = 0
 
     return households
 
 
 def calc_dwelling_value(households: pd.DataFrame, avg_prod: float) -> pd.DataFrame:
     '''Calculate dwelling value based on the average productivity.'''
+    # Get the dwelling value for the households that own
     households.loc[households['own_rent'] == 'own',
                    'k_house'] = households['inc'] / avg_prod
+
+    # Set the dwelling value to 0 for the households that rent
+    households.loc[households['own_rent'] == 'rent',
+                   'k_house'] = 0
+
+    assert not households['k_house'].isna(
+    ).any(), "Dwelling value cannot be NaN"
+    assert not (households['k_house'] < 0).any(
+    ), "Dwelling value cannot be negative"
+
     return households
 
 
-def rnd_house_vuln(households: pd.DataFrame, rnd_house_vuln_params: dict, random_seed: int) -> pd.DataFrame:
+def rnd_house_vuln(households: pd.DataFrame, rnd_house_vuln_params: dict) -> pd.DataFrame:
     '''
     Randomize house vulnerability.
 
@@ -212,7 +237,6 @@ def rnd_house_vuln(households: pd.DataFrame, rnd_house_vuln_params: dict, random
         households: Households
             Required columns: 'v_init' (initial vulnerability)
         rnd_house_vuln_params: Dictionary with parameters for randomization.
-        random_seed: Random seed.
 
     Returns:
         households: Households with randomized vulnerability.
@@ -220,14 +244,12 @@ def rnd_house_vuln(households: pd.DataFrame, rnd_house_vuln_params: dict, random
     Raises:
         ValueError: If the distribution is not supported.
     '''
-
-    np.random.seed(random_seed)
     distr = rnd_house_vuln_params['distr']
     if distr == 'uniform':
         # Unpack parameters
-        low = rnd_house_vuln_params['low']  # default 0.7
+        low = rnd_house_vuln_params['low']  # default 0.8
         high = rnd_house_vuln_params['high']  # default 1.0
-        thresh = rnd_house_vuln_params['thresh']  # default 0.99
+        thresh = rnd_house_vuln_params['thresh']  # default 0.9
 
         # Multiply initial vulnerability by a random value
         households['v'] = households['v_init'] * \
@@ -250,10 +272,10 @@ def resample_households(households: pd.DataFrame, min_households: int, random_se
     Args:
         households (pd.DataFrame): Households.
         min_households (int): Minimum number of households for the country sample to be representative.
-        random_seed (int): Random seed.
+        random_seed (int): Random seed for reproducibility.
 
     Returns:
-        pd.DataFrame: Resampled households.
+        pd.DataFrame: Resampled households.f
     '''
     sample = pd.DataFrame()
     households['id_orig'] = households['id']
@@ -268,12 +290,13 @@ def resample_households(households: pd.DataFrame, min_households: int, random_se
     return sample
 
 
-def resample_region(households: pd.DataFrame, min_households: int, random_state: int) -> pd.DataFrame:
+def resample_region(households: pd.DataFrame, min_households: int, random_seed: int) -> pd.DataFrame:
     '''Weighted resampling with adjustment for household representation within a given region.
 
     Args:
         households (pd.DataFrame): Households of a specific region.
         min_households (int): Minimum number of households for the region sample to be representative.
+        random_seed (int): Random seed for reproducibility.
 
     Returns:
         pd.DataFrame: Resampled households of a specific region.
@@ -297,8 +320,13 @@ def resample_region(households: pd.DataFrame, min_households: int, random_state:
         if delta == 1:
             delta = 2
 
-        sample = households.sample(
-            n=delta, replace=True, random_state=random_state)
+        # ?: Check if fixing np random seed is affecting pandas random sampling
+        if random_seed is not None:
+            sample = households.sample(
+                n=delta, replace=True, random_state=random_seed)
+        else:
+            sample = households.sample(
+                n=delta, replace=True)
 
         # Keep how many duplicates by index
         duplicates = sample.index.value_counts()
@@ -454,8 +482,8 @@ def adjust_poverty_line(households: pd.DataFrame, scaling_factor: float) -> pd.D
     Returns:
         pd.DataFrame: Households data with adjusted poverty line.
     '''
-    poverty_line = households['povline'].iloc[0]
-    households['povline_adjusted'] = poverty_line * scaling_factor
+    poverty_line = households['poverty_line'].iloc[0]
+    households['poverty_line_adjusted'] = poverty_line * scaling_factor
 
     return households
 
