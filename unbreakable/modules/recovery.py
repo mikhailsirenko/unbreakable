@@ -4,268 +4,194 @@ import pickle
 import os
 
 
-def calc_rec_rate(households: pd.DataFrame, avg_prod: float, cons_util: float, disc_rate: float, lambda_incr: float, yrs_to_rec: int) -> pd.DataFrame:
-    '''Calculate recovery rate for each affected household.
-
-    Recovery rate is a function of the household vulnerability (v), 
-    consumption utility, discount rate, average productivity and years to recover.    
-
-    Args:
-        households (pd.DataFrame): Households data frame.
-        cons_util (float): Consumption utility.
-        disc_rate (float): Discount rate.
-        lambda_incr (float): Lambda increment for the integration.
-        yrs_to_rec (int): Number of years to recover.
-
-    Returns:
-        pd.DataFrame: Households data frame with the recovery rate for each affected household.
-    '''
-    # Subset households that are affected by the disaster
-    affected_households = households[households['is_affected'] == True].copy()
-
-    # Set effective capital stock to zero for renters, since they don't own the house
-    # TODO: Come up with a better solution, if we assume damage to public infrastructure
-    affected_households.loc[affected_households['own_rent']
-                            == 'rent', 'keff'] = 0
-
-    # Prepare a data frame to store integration results
-    data = {'exp': -1, 'exp_house': -1, 'keff': -1, 'v': -
-            1, 'sav': -1, 'solution': None, 'bankrupt': None}
-
-    results = pd.DataFrame(data, index=[0])
-    index = ['exp', 'exp_house', 'keff', 'v', 'sav']
-    results = results.reset_index(drop=True).set_index(index)
-
-    # Calculate the recovery rate for each affected household
-    affected_households['recovery_rate'] = affected_households['v'].apply(lambda x: integrate_and_find_recovery_rate(
-        x, results, cons_util, disc_rate, avg_prod, lambda_incr, yrs_to_rec))
-
-    # Set recovery rate to zero for unaffected households
+def calculate_recovery_rate(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int):
+    # Assign initial value to recovery_rate
     households['recovery_rate'] = 0
 
-    # Update the recovery rate in the households data frame for affected households
-    households.loc[households['is_affected'] == True,
-                   'recovery_rate'] = affected_households['recovery_rate']
+    # Subset households that are affected by the disaster
+    aff_households = households[households['is_affected'] == True].copy()
+
+    # Search for the recovery rate for each affected household
+    aff_households['recovery_rate'] = aff_households['v'].apply(
+        lambda x: find_recovery_rate(x, average_productivity, consumption_utility, discount_rate, lambda_increment, years_to_recover))
+
+    households.loc[aff_households.index,
+                   'recovery_rate'] = aff_households['recovery_rate']
 
     return households
 
 
-def integrate_and_find_recovery_rate(v: float, results: pd.DataFrame, cons_util: float, disc_rate: float, avg_prod: float, lambda_incr: float, yrs_to_rec: int) -> float:
-    '''Find recovery rate (lambda) given the value of `v` (household vulnerability).
+def find_recovery_rate(v: float, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int) -> float:
+    totaL_weeks = 52 * years_to_recover
+    dt = 1 / 52
 
-    Args:
-        v (float): Household vulnerability.
-        results (pd.DataFrame): Data frame to store integration results.
-        cons_util (float): Consumption utility.
-        disc_rate (float): Discount rate.
-        avg_prod (float): Average productivity.
-        lambda_incr (float): Lambda increment for the integration.
-        yrs_to_rec (int): Number of years to recover.
+    lambda_value = 0
+    last_derivative_lambda = 0
 
-    Returns:
-        float: Recovery rate (lambda).
-    '''
-    rounded_v = round(v, 3)
-    rounded_average_productivity = round(avg_prod, 3)
+    while True:
+        derivative_lambda = 0
+        for time in np.linspace(0, years_to_recover, totaL_weeks):
+            factor = average_productivity + lambda_value
+            part1 = (average_productivity - factor * v *
+                     np.exp(-lambda_value * time)) ** (-consumption_utility)
+            part2 = time * factor - 1
+            part3 = np.exp(-time * (discount_rate + lambda_value))
+            derivative_lambda += part1 * part2 * part3 * dt
 
-    try:
-        # Look for the existing solution
-        solution = results.loc[(
-            0, 0, 0, rounded_v, rounded_average_productivity), 'solution']
-        return solution
+        if (last_derivative_lambda < 0 and derivative_lambda > 0) or (last_derivative_lambda > 0 and derivative_lambda < 0) or lambda_value > years_to_recover:
+            return lambda_value
 
-    except KeyError:
-        # No existing solution found, so we need to optimize
-        tot_weeks = 52 * yrs_to_rec
-        dt = yrs_to_rec / tot_weeks
-
-        _lambda = 0
-        last_dwdlambda = 0
-
-        while True:
-            dwdlambda = 0
-            for _t in np.linspace(0, yrs_to_rec, tot_weeks):
-                factor = avg_prod + _lambda
-                part1 = avg_prod - \
-                    factor * v * np.e**(-_lambda * _t)
-                part1 = part1**(-cons_util)
-                part2 = _t * factor - 1
-                part3 = np.e**(-_t * (disc_rate + _lambda))
-                dwdlambda += part1 * part2 * part3 * dt
-
-            if (last_dwdlambda < 0 and dwdlambda > 0) or (last_dwdlambda > 0 and dwdlambda < 0) or _lambda > 10:
-                results.loc[(0, 0, 0, rounded_v, rounded_average_productivity), [
-                    'solution', 'bankrupt']] = [_lambda, False]
-                results = results.sort_index()
-                return _lambda
-
-            last_dwdlambda = dwdlambda
-            _lambda += lambda_incr
+        last_derivative_lambda = derivative_lambda
+        lambda_value += lambda_increment
 
 
-def calc_wellbeing(households: pd.DataFrame, avg_prod: float, cons_util: float, disc_rate: float, inc_exp_growth: float, yrs_to_rec: int, add_inc_loss: bool, cash_transfer: dict = {}, is_conflict: bool = False) -> pd.DataFrame:
-    '''Calculates consumption loss and well-being for each affected household.
+def calculate_wellbeing(households: pd.DataFrame,
+                        average_productivity: float,
+                        consumption_utility: float,
+                        discount_rate: float,
+                        income_and_expenditure_growth: float,
+                        years_to_recover: int,
+                        add_income_loss: bool,
+                        save_consumption_recovery: bool,
+                        is_conflict: bool = False,
+                        conflict_intensity: str = None) -> pd.DataFrame:
 
-    Args:
-        households (pd.DataFrame): Households data frame.
-        cons_util (float): Consumption utility.
-        disc_rate (float): Discount rate.
-        inc_exp_growth (float): Income and expenditure growth.
-        yrs_to_rec (int): Number of years to recover.
-        add_inc_loss (bool): Whether to add income loss or not.
-        cash_transfer (dict, optional): Cash transfer. Defaults to {}, where key is the week number and value is the amount.
-        is_conflict (bool, optional): Whether the country has a conflict. Defaults to False.
+    # Get the adjusted poverty line for the region
+    poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
 
-    Returns:
-        pd.DataFrame: Households data frame with consumption loss and well-being for each affected household.
-    '''
-    # Get the poverty line. It is the same for all households
-    povline_adjusted = households['povline_adjusted'].values[0]
+    # Add new columns with initial values
+    new_columns = ['consumption_loss', 'consumption_loss_npv', 'net_consumption_loss',
+                   'net_consumption_loss_npv', 'c_t', 'c_t_unaffected', 'weeks_in_poverty', 'wellbeing']
 
-    # Add new columns
-    columns = ['consumption_loss',
-               'consumption_loss_NPV',
-               'net_consumption_loss',
-               'net_consumption_loss_NPV',
-               'c_t',
-               'c_t_unaffected',
-               'weeks_pov',
-               'wellbeing']
-
-    # Set values to zero
-    households[columns] = 0
+    households[new_columns] = 0
 
     # Subset households that are affected by the disaster
     affected_households = households[households['is_affected'] == True].copy()
 
     # Define the number of weeks given the number of years
-    tot_weeks = 52 * yrs_to_rec
-    dt = yrs_to_rec / tot_weeks
+    totaL_weeks = 52 * years_to_recover
+    dt = 1 / 52
 
-    # NOTE: Store consumption recovery in a dict for verification and debugging purposes
     consumption_recovery = {}
+    conflict_intensity_mapper = {
+        'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
 
-    # We need to adjust the cash transfer to the timestep of the integration
-    if cash_transfer != {}:  # If there is a cash transfer
-        cash_transfer_transformed = {np.linspace(0, yrs_to_rec, tot_weeks)[
-            t]: cash_transfer[t] for t in list(cash_transfer.keys())}
+    if is_conflict:
+        intensity_value = conflict_intensity_mapper[conflict_intensity]
+        affected_households['recovery_rate'] = affected_households['recovery_rate'] * \
+            (1 - intensity_value)
+        income_and_expenditure_growth *= (1 - intensity_value)
+        average_productivity *= (1 - intensity_value)
+        vulnerability_increase_factor = 1 + intensity_value
     else:
-        cash_transfer_transformed = {}
+        vulnerability_increase_factor = 1
 
     # Integrate consumption loss and well-being
-    for _t in np.linspace(0, yrs_to_rec, tot_weeks):
-        # TODO: Add an extra condition about to whom the transfer is given
-        # A "dynamic policy"
-        if _t in list(cash_transfer_transformed.keys()):
-            affected_households['sav'] += cash_transfer_transformed[_t]
-
-        # !: Should c_t_unaffected continue to grow every time step?
-        growth_factor = (1 + inc_exp_growth)**_t
-
-        expenditure_growth = growth_factor * affected_households['exp']
-
+    for time in np.linspace(0, years_to_recover, totaL_weeks):
         exponential_multiplier = np.e**(
-            -affected_households['recovery_rate']*_t)
+            -affected_households['recovery_rate']*time)
 
-        # ?: Why growth_factor and recovery rate are part of the savings and asset_loss?
+        growth_factor = (1 + income_and_expenditure_growth)**time
+
+        expenditure = growth_factor * \
+            affected_households['exp']
+
         savings = growth_factor * \
-            affected_households['sav'] * affected_households['recovery_rate']
+            affected_households['sav'] * affected_households['recovery_rate'] * \
+            vulnerability_increase_factor
 
         asset_loss = growth_factor * \
-            affected_households[['v', 'keff', 'recovery_rate']].prod(axis=1)
+            affected_households['v'] * affected_households['keff'] * \
+            affected_households['recovery_rate'] * \
+            vulnerability_increase_factor
 
-        # savings = growth_factor * \
-        #     affected_households['sav']  # * affected_households['recovery_rate']
+        vulnerability_increase_factor
 
-        # asset_loss = growth_factor * \
-        #     affected_households[['v', 'keff'  # , 'recovery_rate'
-        #                          ]].prod(axis=1)
-
-        # NOTE: That was initial implementation
         # asset_loss = growth_factor * affected_households['v'] * \
         #     (affected_households['exp_house'] +
         #      affected_households[['keff', 'recovery_rate']].prod(axis=1))
 
-        # NOTE: In most of the case country we didn't have delta_tax_safety column
-        # Therefore, I remove it from the equation for now
-        # income_loss = growth_factor * (1 - affected_households['delta_tax_safety']) * \
-        #     avg_prod * \
-        #     affected_households['keff'] * affected_households['v']
-
-        income_loss = growth_factor * avg_prod * \
+        income_loss = growth_factor * average_productivity * \
             affected_households['keff'] * affected_households['v']
 
-        if add_inc_loss == False:
-            affected_households['c_t'] = (expenditure_growth +
+        if add_income_loss == False:
+            affected_households['c_t'] = (expenditure +
                                           exponential_multiplier * (savings - asset_loss))
         else:
-            affected_households['c_t'] = (expenditure_growth +
+            affected_households['c_t'] = (expenditure +
                                           exponential_multiplier * (savings - asset_loss - income_loss))
 
-        affected_households['c_t_unaffected'] = expenditure_growth
+        affected_households['c_t_unaffected'] = expenditure
 
-        # Check if any of the households has a negative consumption
-        # It may happen if a household have very low savings or expenditure
         if (affected_households['c_t'] < 0).any():
-            # If so, then set the consumption to 1
-            # We must have 1 to to avoid -inf in the wellbeing integration
-            # TODO: Experiment with 0.1 instead of 1
-            # This could be relevant if we do daily consumption/integration
             affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 1
 
-        # Consumption after the disaster should be lower than or equal to consumption before the disaster
         if (affected_households['c_t'] > affected_households['c_t_unaffected']).any():
-            # In some cases there is a very small difference between the two
-            # E.g. 2408.7431 vs 2408.0711
             affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'],
                                     'c_t'] = affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'], 'c_t_unaffected']
 
-        # Total consumption loss
+        # Calculate consumption loss
         affected_households['consumption_loss'] += dt * \
             (affected_households['c_t_unaffected'] -
                 affected_households['c_t'])
 
-        affected_households['consumption_loss_NPV'] += dt * \
+        affected_households['consumption_loss_npv'] += dt * \
             (affected_households['c_t_unaffected'] -
-                affected_households['c_t'])*np.e**(-disc_rate*_t)
+                affected_households['c_t'])*np.e**(-discount_rate*time)
 
-        # Net consumption loss
+        # BUG: That's wrong, if exp_house = 0 then then net_consumption_loss is 0
         affected_households['net_consumption_loss'] += dt * \
-            np.e**(-affected_households['recovery_rate']*_t) * \
+            np.e**(-affected_households['recovery_rate']*time) * \
             affected_households['v'] * growth_factor * \
             affected_households['exp_house']
 
-        affected_households['net_consumption_loss_NPV'] += dt * \
-            np.e**(-affected_households['recovery_rate']*_t) * affected_households['v'] * growth_factor * \
+        # BUG: That's wrong, if exp_house = 0 then then net_consumption_loss_npv is 0
+        affected_households['net_consumption_loss_npv'] += dt * \
+            np.e**(-affected_households['recovery_rate']*time) * affected_households['v'] * growth_factor * \
             affected_households['exp_house'] * \
-            np.e**(-disc_rate*_t)
+            np.e**(-discount_rate*time)
 
         # Increase the number of weeks in poverty
         affected_households.loc[affected_households['c_t']
-                                < povline_adjusted, 'weeks_pov'] += 1
+                                < poverty_line_adjusted, 'weeks_in_poverty'] += 1
 
-        # Integrate well-being
-        affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - cons_util)\
-            / (1 - cons_util) * dt\
+        # Calculate wellbeing
+        affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consumption_utility)\
+            / (1 - consumption_utility) * dt\
             * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
-                * np.e**(-affected_households['recovery_rate'] * _t))**(1 - cons_util) - 1)\
-            * np.e**(-disc_rate * _t)
+                * np.e**(-affected_households['recovery_rate'] * time))**(1 - consumption_utility) - 1)\
+            * np.e**(-discount_rate * time)
 
-        # Save consumption recovery value at the time _t
-        data = affected_households.loc[:, [
-            'is_poor', 'recovery_rate', 'c_t_unaffected', 'c_t']]
-        # Every household has a unique weight
-        data.index = affected_households['wgt']
-        consumption_recovery[_t] = data
+        # Store the consumption recovery for each time step
+        if save_consumption_recovery:
+            consumption_recovery[time] = affected_households.loc[:, [
+                'wgt', 'is_poor', 'recovery_rate', 'c_t_unaffected', 'c_t']].set_index('wgt')
 
-    country = 'Nigeria'
-    region = households['region'].values[0]
-    random_seed = households['random_seed'].values[0]
+    # Save the content of the columns for affected_households into households data frame
+    households.loc[affected_households.index,
+                   new_columns] = affected_households[new_columns]
 
-    # if is_conflict:
-    folder = f'../experiments/{country}/cons_rec_conflict={is_conflict}/{random_seed}'
-    # else:
-    #     folder = f'../experiments/{country}/cons_rec/{random_seed}'
+    # Save consumption recovery as a pickle file
+    if save_consumption_recovery:
+        country = households['country'].values[0]
+        region = households['region'].values[0]
+        return_period = households['return_period'].values[0]
+        try:
+            random_seed = households['random_seed'].values[0]
+        except:
+            random_seed = None
+
+        save_consumption_recovery_to_file(consumption_recovery,
+                                          country, region, return_period, is_conflict, random_seed)
+
+    return households
+
+
+def save_consumption_recovery_to_file(consumption_recovery: dict, country: str, region: str, return_period: str, is_conflict: bool, random_seed: int):
+    if is_conflict:
+        folder = f'../experiments/{country}/consumption_recovery/return_period={return_period}/conflict={is_conflict}/{random_seed}'
+    else:
+        folder = f'../experiments/{country}/consumption_recovery/return_period={return_period}/{random_seed}'
 
     # Create a folder if it does not exist
     if not os.path.exists(folder):
@@ -275,9 +201,3 @@ def calc_wellbeing(households: pd.DataFrame, avg_prod: float, cons_util: float, 
     with open(folder + f'/{region}.pickle', 'wb') as handle:
         pickle.dump(consumption_recovery, handle,
                     protocol=pickle.HIGHEST_PROTOCOL)
-
-    # Save the content of the columns for affected_households into households data frame
-    households.loc[affected_households.index,
-                   columns] = affected_households[columns]
-
-    return households
