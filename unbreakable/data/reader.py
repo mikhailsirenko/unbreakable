@@ -1,24 +1,3 @@
-"""This module provides functions for reading and processing data related to disaster impact analysis and recovery planning.
-
-It includes two primary functions:
-1. `read_asset_damage`: Reads asset damage data from a specified file location. This data is essential for assessing the physical and monetary losses incurred by assets in different districts due to disasters.
-2. `read_household_survey`: Reads household survey data from a specified file location. This data provides insights into the demographics, economic conditions, and vulnerabilities of households, which are crucial for effective disaster response and recovery planning.
-
-Both functions are designed to handle common file formats such as CSV and Excel, and include error handling for robust data processing.
-
-Example usage:
-    import pandas as pd
-    from your_module_name import read_asset_damage, read_household_survey
-
-    # Load asset damage data
-    asset_damage = read_asset_damage('CountryName')
-
-    # Load household survey data
-    household_survey = read_household_survey('CountryName')
-
-    # Now asset_damage and household_survey are pandas DataFrames containing the respective data.
-"""
-
 import pandas as pd
 import logging
 from pathlib import Path
@@ -89,3 +68,10 @@ def read_conflict_data(country: str, base_path: str = "../data/processed/conflic
         logging.error(
             f"Error reading conflict data from {file_path}: {e}")
         raise
+
+
+def load_data(country):
+    '''Load all data for a given country.'''
+    all_households = read_household_survey(country)
+    risk_and_damage = read_risk_and_damage(country)
+    return all_households, risk_and_damage
