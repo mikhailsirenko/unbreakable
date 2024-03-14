@@ -19,7 +19,7 @@ def model(**params) -> dict:
     '''Simulation model.
 
     Args:
-        params (dict): A dictionary of parameters. For a complete list of parameters, see `config/SaintLucia.yaml`.
+        params (dict): A dictionary of parameters. For a complete list of parameters, see, e.g., `config/Nigeria.yaml`.
 
     Returns:
         dict: A dictionary of outcomes. The key is a district and value is a dictionary of outcomes.
@@ -38,8 +38,8 @@ def model(**params) -> dict:
 
     if params['is_conflict']:
         conflict = read_conflict_data(params['country'])
-    else:
-        conflict = None
+        households = get_conflict_intensity(
+            households, conflict)
 
     welfare = calculate_welfare(households, params['cons_util'])
 
@@ -52,18 +52,12 @@ def model(**params) -> dict:
         total_exposed_stock, expected_loss_fraction, region_pml = get_region_damage(
             risk_and_damage, region, params['return_period'])
 
-        if params['is_conflict']:
-            conflict_intensity = conflict[conflict['region']
-                                          == region]['Bin'].values[0]
-        else:
-            conflict_intensity = None
-
         region_households = (region_households
                              .pipe(calculate_exposure, region_pml, params['pov_bias'], params['calc_exposure_params'])
                              .pipe(identify_affected, region_pml, params['identify_aff_params'], random_seed=random_seed)
                              .pipe(apply_policy, params['country'], params.get('current_policy', 'none'), params['disaster_type'], random_seed=random_seed)
-                             .pipe(calculate_recovery_rate, params['avg_prod'], params['cons_util'], params['disc_rate'], params['lambda_incr'], params['yrs_to_rec'])
-                             .pipe(calculate_wellbeing, params['avg_prod'], params['cons_util'], params['disc_rate'], params['inc_exp_growth'], params['yrs_to_rec'], params['add_inc_loss'], params['save_consumption_recovery'], params['is_conflict'], conflict_intensity))
+                             .pipe(calculate_recovery_rate, params['avg_prod'], params['cons_util'], params['disc_rate'], params['lambda_incr'], params['yrs_to_rec'], params['is_conflict'])
+                             .pipe(calculate_wellbeing, params['avg_prod'], params['cons_util'], params['disc_rate'], params['inc_exp_growth'], params['yrs_to_rec'], params['add_inc_loss'], params['save_consumption_recovery'], params['is_conflict']))
 
         if params['save_households']:
             save_households(
@@ -100,7 +94,7 @@ def save_households(households: pd.DataFrame, params: dict, random_seed: int):
     households.to_csv(file_path)
 
 
-def load_config(country: str, return_period: int) -> dict:
+def load_config(country: str, return_period: int, conflict: bool = False) -> dict:
     '''Load configuration for the specified case country.'''
     config_path = Path(f"../config/{country}.yaml")
     if not config_path.exists():
@@ -113,6 +107,10 @@ def load_config(country: str, return_period: int) -> dict:
         raise ValueError(
             f"Return period {return_period} not in available return periods: {return_periods}")
     config['constants']['return_period'] = return_period
+    if conflict:
+        config['constants']['is_conflict'] = True
+    else:
+        config['constants']['is_conflict'] = False
     return config
 
 
