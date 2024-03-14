@@ -281,8 +281,10 @@ def resample_households(households: pd.DataFrame, min_households: int, random_se
     households['id_orig'] = households['id']
     for rgn in households['region'].unique():
         rgn_households = households[households['region'] == rgn]
-        rgn_households = resample_region(
-            rgn_households, min_households, random_seed)
+        # TODO: Remove this condition when the data is fixed
+        if rgn != 'Borno':
+            rgn_households = resample_region(
+                rgn_households, min_households, random_seed)
         sample = pd.concat(
             [sample, rgn_households])
     sample['id'] = range(1, len(sample) + 1)
