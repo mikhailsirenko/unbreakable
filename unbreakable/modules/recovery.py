@@ -4,19 +4,28 @@ import pickle
 import os
 
 
-def calculate_recovery_rate(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int):
+def calculate_recovery_rate(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int, is_conflict: bool):
     # Assign initial value to recovery_rate
     households['recovery_rate'] = 0
 
     # Subset households that are affected by the disaster
-    aff_households = households[households['is_affected'] == True].copy()
+    affected_households = households[households['is_affected'] == True].copy()
 
     # Search for the recovery rate for each affected household
-    aff_households['recovery_rate'] = aff_households['v'].apply(
+    affected_households['recovery_rate'] = affected_households['v'].apply(
         lambda x: find_recovery_rate(x, average_productivity, consumption_utility, discount_rate, lambda_increment, years_to_recover))
 
-    households.loc[aff_households.index,
-                   'recovery_rate'] = aff_households['recovery_rate']
+    # If the region is affected by a conflict, decrease the recovery rate
+    if is_conflict:
+        conflict_intensity_mapper = {
+            'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
+        region_conflict_intensity = households['conflict_intensity'].values[0]
+        region_intensity_value = conflict_intensity_mapper[region_conflict_intensity]
+        affected_households['recovery_rate'] = affected_households['recovery_rate'] * \
+            (1 - region_intensity_value)
+
+    households.loc[affected_households.index,
+                   'recovery_rate'] = affected_households['recovery_rate']
 
     return households
 
@@ -53,8 +62,7 @@ def calculate_wellbeing(households: pd.DataFrame,
                         years_to_recover: int,
                         add_income_loss: bool,
                         save_consumption_recovery: bool,
-                        is_conflict: bool = False,
-                        conflict_intensity: str = None) -> pd.DataFrame:
+                        is_conflict: bool = False) -> pd.DataFrame:
 
     # Get the adjusted poverty line for the region
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
@@ -73,16 +81,17 @@ def calculate_wellbeing(households: pd.DataFrame,
     dt = 1 / 52
 
     consumption_recovery = {}
-    conflict_intensity_mapper = {
-        'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
 
+    # If conflict affect the region, decrease the income and expenditure growth and the average productivity
+    # And increase the vulnerability
     if is_conflict:
-        intensity_value = conflict_intensity_mapper[conflict_intensity]
-        affected_households['recovery_rate'] = affected_households['recovery_rate'] * \
-            (1 - intensity_value)
-        income_and_expenditure_growth *= (1 - intensity_value)
-        average_productivity *= (1 - intensity_value)
-        vulnerability_increase_factor = 1 + intensity_value
+        conflict_intensity_mapper = {
+            'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
+        region_conflict_intensity = households['conflict_intensity'].values[0]
+        region_intensity_value = conflict_intensity_mapper[region_conflict_intensity]
+        income_and_expenditure_growth *= (1 - region_intensity_value)
+        average_productivity *= (1 - region_intensity_value)
+        vulnerability_increase_factor = 1 + region_intensity_value
     else:
         vulnerability_increase_factor = 1
 
@@ -104,8 +113,6 @@ def calculate_wellbeing(households: pd.DataFrame,
             affected_households['v'] * affected_households['keff'] * \
             affected_households['recovery_rate'] * \
             vulnerability_increase_factor
-
-        vulnerability_increase_factor
 
         # asset_loss = growth_factor * affected_households['v'] * \
         #     (affected_households['exp_house'] +
@@ -191,7 +198,7 @@ def save_consumption_recovery_to_file(consumption_recovery: dict, country: str, 
     if is_conflict:
         folder = f'../experiments/{country}/consumption_recovery/return_period={return_period}/conflict={is_conflict}/{random_seed}'
     else:
-        folder = f'../experiments/{country}/consumption_recovery/return_period={return_period}/{random_seed}'
+        folder = f'../experiments/{country}/consumption_recovery/return_period={return_period}/conflict={is_conflict}/{random_seed}'
 
     # Create a folder if it does not exist
     if not os.path.exists(folder):
