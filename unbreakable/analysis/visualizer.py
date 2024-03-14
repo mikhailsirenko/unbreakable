@@ -1,5 +1,3 @@
-"""This module contains functions to visualize outcomes of the simulation model."""
-
 import geopandas as gpd
 import matplotlib
 import matplotlib.pyplot as plt
@@ -28,15 +26,15 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool, color_palette: str = '
         None
     '''
 
-    districts = outcomes['district'].unique().tolist()
-    n_districts = len(districts)
-    colors = sns.color_palette(color_palette, n_colors=len(districts))
+    regions = outcomes['region'].unique().tolist()
+    n_regions = len(regions)
+    colors = sns.color_palette(color_palette, n_colors=len(regions))
 
     x_columns = [
-        'n_affected_people',
+        'n_aff_people',
         'n_new_poor_increase_pp',
         'n_new_poor',
-        'annual_average_consumption_loss_pct',
+        'annual_avg_consum_loss_pct',
         'r',
         'new_poverty_gap_initial',
         'new_poverty_gap_all',
@@ -53,11 +51,11 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool, color_palette: str = '
 
     for x_column, x_title in zip(x_columns, x_titles):
         fig, ax = plt.subplots(ncols=3, nrows=4, figsize=(
-            4 * n_districts / 3, 3 * n_districts / 3), sharex=sharex)
+            4 * n_regions / 3, 3 * n_regions / 3), sharex=sharex)
 
-        for district in districts:
-            # Select the district
-            df = outcomes[outcomes['district'] == district].copy()
+        for region in regions:
+            # Select the region
+            df = outcomes[outcomes['region'] == region].copy()
 
             # Convert to float
             df[x_column] = df[x_column].astype(float)
@@ -66,25 +64,25 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool, color_palette: str = '
             pt.half_violinplot(x=x_column,
                                y='policy',
                                data=df,
-                               color=colors[districts.index(district)],
+                               color=colors[regions.index(region)],
                                bw=.2,
                                cut=0.,
                                scale="area",
                                width=.6,
                                inner=None,
-                               ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+                               ax=ax[regions.index(region) // 3, regions.index(region) % 3])
 
             # Add stripplot
             sns.stripplot(x=x_column,
                           y='policy',
                           data=df,
-                          color=colors[districts.index(district)],
+                          color=colors[regions.index(region)],
                           edgecolor='white',
                           size=3,
                           jitter=1,
                           zorder=0,
                           orient='h',
-                          ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+                          ax=ax[regions.index(region) // 3, regions.index(region) % 3])
 
             # Add boxplot
             sns.boxplot(x=x_column,
@@ -99,31 +97,31 @@ def raincloud_plot(outcomes: pd.DataFrame, savefig: bool, color_palette: str = '
                         whiskerprops={'linewidth': 2, "zorder": 10},
                         saturation=1,
                         orient='h',
-                        ax=ax[districts.index(district) // 3, districts.index(district) % 3])
+                        ax=ax[regions.index(region) // 3, regions.index(region) % 3])
 
             # Set title
-            title = district
-            ax[districts.index(district) // 3,
-               districts.index(district) % 3].set_title(title)
-            ax[districts.index(district) // 3,
-               districts.index(district) % 3].set_ylabel('')
-            ax[districts.index(district) // 3,
-               districts.index(district) % 3].set_xlabel(x_title)
+            title = region
+            ax[regions.index(region) // 3,
+               regions.index(region) % 3].set_title(title)
+            ax[regions.index(region) // 3,
+               regions.index(region) % 3].set_ylabel('')
+            ax[regions.index(region) // 3,
+               regions.index(region) % 3].set_xlabel(x_title)
 
             # Remove y ticks and labels
-            ax[districts.index(district) // 3,
-               districts.index(district) % 3].set_yticklabels([])
-            ax[districts.index(district) // 3,
-               districts.index(district) % 3].set_yticks([])
+            ax[regions.index(region) // 3,
+               regions.index(region) % 3].set_yticklabels([])
+            ax[regions.index(region) // 3,
+               regions.index(region) % 3].set_yticks([])
 
             # Do not display floats in the x-axis
-            ax[districts.index(district) // 3, districts.index(district) %
+            ax[regions.index(region) // 3, regions.index(region) %
                3].xaxis.set_major_locator(MaxNLocator(integer=True))
 
             # Add text close to the boxplot's median
-            ax[districts.index(district) // 3, districts.index(district) % 3].text(df[x_column].median(), 0.2,
-                                                                                   f'M={df[x_column].median():.2f}',
-                                                                                   horizontalalignment='left', size='small', color='black')
+            ax[regions.index(region) // 3, regions.index(region) % 3].text(df[x_column].median(), 0.2,
+                                                                           f'M={df[x_column].median():.2f}',
+                                                                           horizontalalignment='left', size='small', color='black')
         # Remove 2 last subplots
         ax[3, 1].set_visible(False)
         ax[3, 2].set_visible(False)
@@ -438,34 +436,34 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
     Returns:
         None
     '''
-    sns.histplot(outcomes['annual_average_consumption_loss_pct'])
+    sns.histplot(outcomes['annual_avg_consum_loss_pct'])
     # plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
     plt.xlabel('Annual Average Consumption Loss PC (%)')
     plt.ylabel('Run count')
     # plt.xlim(0, 50)
-    plt.axvline(outcomes['annual_average_consumption_loss_pct'].min(
+    plt.axvline(outcomes['annual_avg_consum_loss_pct'].min(
     ), color='red', linestyle='dashed', linewidth=1)
-    plt.axvline(outcomes['annual_average_consumption_loss_pct'].max(
+    plt.axvline(outcomes['annual_avg_consum_loss_pct'].max(
     ), color='red', linestyle='dashed', linewidth=1)
-    plt.axvline(outcomes['annual_average_consumption_loss_pct'].median(
+    plt.axvline(outcomes['annual_avg_consum_loss_pct'].median(
     ), color='black', linestyle='dashed', linewidth=1)
     if annotate:
-        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].min():.2f}%",
-                     xy=(outcomes['annual_average_consumption_loss_pct'].min(), 0),
+        plt.annotate(f"{outcomes['annual_avg_consum_loss_pct'].min():.2f}%",
+                     xy=(outcomes['annual_avg_consum_loss_pct'].min(), 0),
                      xytext=(
-                         outcomes['annual_average_consumption_loss_pct'].min() - 5, 100),
+                         outcomes['annual_avg_consum_loss_pct'].min() - 5, 100),
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      horizontalalignment='right', verticalalignment='top')
-        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].max():.2f}%",
-                     xy=(outcomes['annual_average_consumption_loss_pct'].max(), 0),
+        plt.annotate(f"{outcomes['annual_avg_consum_loss_pct'].max():.2f}%",
+                     xy=(outcomes['annual_avg_consum_loss_pct'].max(), 0),
                      xytext=(
-                         outcomes['annual_average_consumption_loss_pct'].max() + 5, 100),
+                         outcomes['annual_avg_consum_loss_pct'].max() + 5, 100),
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      horizontalalignment='left', verticalalignment='top')
-        plt.annotate(f"{outcomes['annual_average_consumption_loss_pct'].median():.2f}%",
-                     xy=(outcomes['annual_average_consumption_loss_pct'].median(), 0),
+        plt.annotate(f"{outcomes['annual_avg_consum_loss_pct'].median():.2f}%",
+                     xy=(outcomes['annual_avg_consum_loss_pct'].median(), 0),
                      xytext=(
-                         outcomes['annual_average_consumption_loss_pct'].median() + 5, 100),
+                         outcomes['annual_avg_consum_loss_pct'].median() + 5, 100),
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      horizontalalignment='left', verticalalignment='top')
     plt.tight_layout()
@@ -479,7 +477,7 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
 
 
 def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd", legend: bool = True) -> None:
-    '''Make colored density plots for each district. Color here matches the color of the choropleth map.
+    '''Make colored density plots for each region. Color here matches the color of the choropleth map.
 
     Args:
         outcomes (pd.DataFrame): The outcomes dataframe.
@@ -494,12 +492,12 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
     # Let's make colors of density plots match the colors of the choropleth map
 
     if savefig:
-        outcomes['district'].replace(
+        outcomes['region'].replace(
             {'Anse-La-Raye & Canaries': 'Anse-La-Raye \& Canaries'}, inplace=True)
 
-    # Choropleth map uses median values to classify the districts, we're going to do the same
-    median_outcomes = outcomes.groupby('district').median(numeric_only=True)[
-        ['annual_average_consumption_loss_pct']]
+    # Choropleth map uses median values to classify the regions, we're going to do the same
+    median_outcomes = outcomes.groupby('region').median(numeric_only=True)[
+        ['annual_avg_consum_loss_pct']]
 
     # The map used equalinterval scheme, but it would be beneficial to allow for other schemes
     if scheme == 'equal_intervals':
@@ -514,35 +512,35 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
     bin_edges = classifier.bins
     bin_labels = classifier.yb
 
-    # Map the district to the bin label
-    district_to_label_mapper = dict(zip(median_outcomes.index, bin_labels))
+    # Map the region to the bin label
+    region_to_label_mapper = dict(zip(median_outcomes.index, bin_labels))
 
     # Map the bin label to a color
     colors = mcp.gen_color(cmap=cmap, n=k)
     label_color_mapper = dict(zip(np.arange(0, k), colors))
 
-    districts = outcomes['district'].unique().tolist()
+    regions = outcomes['region'].unique().tolist()
     fig, ax = plt.subplots()
 
-    # Get districts with min and max values
-    descr = outcomes.iloc[:, 2:-1].groupby('district').describe()[
-        ['annual_average_consumption_loss_pct']]
-    min_distr = descr['annual_average_consumption_loss_pct']['50%'].idxmin()
-    max_distr = descr['annual_average_consumption_loss_pct']['50%'].idxmax()
+    # Get regions with min and max values
+    descr = outcomes.iloc[:, 2:-1].groupby('region').describe()[
+        ['annual_avg_consum_loss_pct']]
+    min_distr = descr['annual_avg_consum_loss_pct']['50%'].idxmin()
+    max_distr = descr['annual_avg_consum_loss_pct']['50%'].idxmax()
 
     # Now make the density plots
-    for district in districts:
-        df = outcomes[outcomes['district'] == district]
-        district_label = district_to_label_mapper[district]
-        label_color = label_color_mapper[district_label]
+    for region in regions:
+        df = outcomes[outcomes['region'] == region]
+        region_label = region_to_label_mapper[region]
+        label_color = label_color_mapper[region_label]
         color = label_color
 
-        # Make the line thicker for districts with min and max values
-        if district in [min_distr, max_distr]:
+        # Make the line thicker for regions with min and max values
+        if region in [min_distr, max_distr]:
             linewidth = 5
         else:
             linewidth = 1
-        sns.kdeplot(data=df, x='annual_average_consumption_loss_pct',
+        sns.kdeplot(data=df, x='annual_avg_consum_loss_pct',
                     ax=ax, color=color, linewidth=linewidth, alpha=1)
         if savefig:
             # ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
@@ -555,9 +553,9 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         ax.spines['left'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.set_facecolor('lightgray')
-    # ax.set_xlim(5, 12.5)
+
     if legend:
-        ax.legend(districts, title='District', frameon=False)
+        ax.legend(regions, title='Parish', frameon=False)
     fig.tight_layout()
 
     if savefig:

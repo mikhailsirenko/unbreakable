@@ -1,29 +1,6 @@
-"""This module provides a function to apply a specific monetary policy to a set of households, based on their economic status and the impact of external factors.
-
-The main function in this module is `apply_policy`, which takes a DataFrame representing households and a policy string as input. The policy is defined by a target group and a top-up percentage, indicating the increase in savings or assets for the selected households. The target group can be 'all', 'poor', 'poor_near_poor1.25', or 'poor_near_poor2.0'. The function modifies the 'aesav' column of the DataFrame, representing the adjusted savings or assets after applying the policy.
-
-Example usage:
-    import pandas as pd
-    from your_module_name import apply_policy
-
-    # Load household data
-    households_data = pd.read_csv('households.csv')
-
-    # Define a policy to apply - for instance, increasing assets by 100% for poor households
-    policy = 'poor+100'
-
-    # Apply the policy to the household data
-    updated_households = apply_policy(households_data, policy)
-
-    # The updated_households DataFrame now contains the adjusted 'aesav' values for the targeted households
-"""
-# TODO: Update module description
-
-
 import pandas as pd
+import numpy as np
 
-
-# TODO: Allow to specify dynamic policies
 
 def cash_transfer(households: pd.DataFrame, current_policy: str) -> pd.DataFrame:
     '''
@@ -33,7 +10,7 @@ def cash_transfer(households: pd.DataFrame, current_policy: str) -> pd.DataFrame
 
     Args:
         households (pd.DataFrame): Households.
-            Required columns: 'is_affected', 'is_poor', 'exp', 'povline_adjusted', 'keff', 'v', 'sav'
+            Required columns: 'is_affected', 'is_poor', 'exp', 'poverty_line_adjusted', 'keff', 'v', 'sav'
         policy (str): Policy to apply. Format: "<target_group>+<top_up>". Example: "poor+100".
 
     Returns:
@@ -47,7 +24,7 @@ def cash_transfer(households: pd.DataFrame, current_policy: str) -> pd.DataFrame
             "policy should be in the format '<target_group>+<top_up>'")
 
     # Get the adjusted poverty line
-    povline_adjusted = households['povline_adjusted'].iloc[0]
+    poverty_line_adjusted = households['poverty_line_adjusted'].iloc[0]
 
     # Filter affected households
     affected_households = households.query('is_affected')
@@ -63,13 +40,13 @@ def cash_transfer(households: pd.DataFrame, current_policy: str) -> pd.DataFrame
         if len(beneficiaries) == 0:
             return households
 
-    # FIXME: These must be different policies, poor and near poor
+    # TODO: Split into separate policies poor and near_poor
     elif target_group in ['poor_near_poor1.25', 'poor_near_poor2.0']:
         multiplier = 1.25 if target_group == 'poor_near_poor1.25' else 2.0
         # Define conditions for poor and near poor households
         poor_condition = affected_households['is_poor'] == True
         near_poor_condition = (~affected_households['is_poor']) & (
-            affected_households['exp'] < multiplier * povline_adjusted)
+            affected_households['exp'] < multiplier * poverty_line_adjusted)
 
         # Combine conditions to identify beneficiaries
         beneficiary_condition = poor_condition | near_poor_condition
@@ -91,7 +68,7 @@ def cash_transfer(households: pd.DataFrame, current_policy: str) -> pd.DataFrame
     return households
 
 
-def retrofitting(country: str, households: pd.DataFrame, current_policy: str, random_seed: int) -> pd.DataFrame:
+def retrofitting(country: str, households: pd.DataFrame, current_policy: str, disaster_type: str, random_seed: int) -> pd.DataFrame:
     '''
     Apply retrofitting to a specific target group.
 
@@ -102,6 +79,7 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
         households (pd.DataFrame): Households.
             Required columns: 'roof', 'walls', 'is_poor', 'exp'
         policy (str): Policy to apply. Format: "<target_group>+<houses_pct>". Example: "poor_40+100".
+        disaster_type (str): Type of disaster. Example: "hurricane".
         random_seed (int): Random seed for reproducibility.
 
     Returns:
@@ -110,6 +88,10 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
     Raises:
         ValueError: If the policy format is incorrect or the households DataFrame does not contain the required columns.   
     '''
+    if random_seed is not None:
+        # Set random seed for reproducibility
+        np.random.seed(random_seed)
+
     try:
         target_group, houses_pct = current_policy.split('+')
         houses_pct = int(houses_pct)
@@ -136,6 +118,9 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
         vulnerable_houses = households[households['walls'].isin(
             v_walls_types) | households['roof'].isin(v_roof_types)]
 
+        # Select only the ones that own
+        vulnerable_houses = vulnerable_houses[vulnerable_houses['own_rent'] == 'own']
+
         if len(vulnerable_houses) == 0:
             return households
 
@@ -145,8 +130,13 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
 
         # Apply the policy to a percentage of the vulnerable houses
         if houses_pct != 100:
-            vulnerable_houses = vulnerable_houses.sample(
-                frac=houses_pct/100, random_state=random_seed)
+            if random_seed is not None:
+                # ?: Check if fixing the np random seed affects the sampling
+                vulnerable_houses = vulnerable_houses.sample(
+                    frac=houses_pct/100, random_state=random_seed)
+            else:
+                vulnerable_houses = vulnerable_houses.sample(
+                    frac=houses_pct/100)
 
         # Search for poor households  if the target group is not 'all'
         if target_group != 'all':
@@ -164,12 +154,15 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
                 return households
 
             # Keep only the poor houses
-            vulnerable_houses = vulnerable_houses.loc[poor_houses.index]
+            vulnerable_houses = vulnerable_houses.loc[poor_houses.  index]
 
         # Apply retrofitting to the vulnerable houses
         households['retrofitted'] = False
 
         # Retrofit roofs
+        # current_roofs = households.loc[vulnerable_houses.index, 'roof']
+        # current_walls = households.loc[vulnerable_houses.index, 'walls']
+
         households.loc[vulnerable_houses.index, 'roof'] = households.loc[vulnerable_houses.index, 'roof'].apply(
             lambda x: robust_roof if x in v_roof_types else x
         )
@@ -177,10 +170,19 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
         households.loc[vulnerable_houses.index, 'walls'] = households.loc[vulnerable_houses.index, 'walls'].apply(
             lambda x: robust_walls if x in v_walls_types else x
         )
+
+        # retrofitted_roofs = households.loc[vulnerable_houses.index, 'roof']
+        # retrofitted_walls = households.loc[vulnerable_houses.index, 'walls']
+
+        # Print how many roofs and walls were retrofitted
+        # print(
+        #     f"Retrofitting {len(vulnerable_houses)} houses: {len(vulnerable_houses[retrofitted_roofs != current_roofs])} roofs and {len(vulnerable_houses[retrofitted_walls != current_walls])} walls")
+
         households.loc[vulnerable_houses.index, 'retrofitted'] = True
 
         # Calculate the new vulnerability score
-        households = recalculate_house_vulnerability(country, households)
+        households = recalculate_house_vulnerability(
+            country, households, disaster_type)
 
         # NOTE: After retrofitting we do not randomize the vulnerability score
         return households
@@ -189,67 +191,112 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, ra
         raise ValueError(f"Country '{country}' not yet supported")
 
 
-def recalculate_house_vulnerability(country: str, households: pd.DataFrame) -> pd.DataFrame:
+def recalculate_house_vulnerability(country: str, households: pd.DataFrame, disaster_type: str) -> pd.DataFrame:
     '''Recalculate vulnerability of a house based on its new retrofitted roof and walls material.
 
     Args:
         country (str): Country name.
         households (pd.DataFrame): Households.
             Required columns: 'roof', 'walls'
+        disaster_type (str): Type of disaster. Example: "hurricane".
 
     Returns:
         pd.DataFrame: Households with recalculated vulnerability scores.
 
     Raises:
         ValueError: If the country is not supported.
+        ValueError: If the disaster type is not supported.
     '''
     # Each country has different roof and wall materials and their respective vulnerability scores
     if country == 'Dominica':
         # Define vulnerability scores in dictionaries for easy mapping
         v_roof_scores = {
-            'default': 0.75,
             'Concrete': 0.2,
-            'Sheet metal (galvanize, galvalume)': 0.35,
-            'Shingle (wood)': 0.5,
-            'Shingle (asphalt)': 0.5,
-            'Shingle (other)': 0.5,
+            'Sheet metal (galvanize, galvalume)': 0.4,
+            'Shingle (wood)': 0.6,
+            'Shingle (asphalt)': 0.6,
+            'Shingle (other)': 0.6,
             'Other': 0.75,
         }
 
         v_walls_scores = {
-            'default': 0.6,
-            'Wood & Concrete': 0.2,
-            'Brick/Blocks': 0.25,
-            'Concrete/Concrete blocks': 0.25,
+            'Brick/Blocks': 0.2,
+            'Concrete/Concrete Blocks': 0.2,
+            'Concrete/Concrete blocks': 0.2,
+            'Wood & Concrete': 0.4,
             'Wood/Timber': 0.6,
             'Plywood': 0.7,
             'Makeshift': 0.8,
             "Other/Don't know": 0.8,
+            "Other/Don't Know": 0.8,
+            'Other': 0.8,
+        }
+
+    elif country == 'Nigeria':
+        v_roof_scores = {
+            'Finished – Concrete': 0.2,
+            'Finished – Asbestos': 0.25,
+            'Finished – Metal tile': 0.35,
+            'Finished – Tile': 0.5,
+            'Other – Specific': 0.75,
+            'Rudimentary – Other': 0.75,
+            'Other': 0.75,
+            'Natural – Thatch/palm leaf': 0.9
+        }
+
+        v_walls_scores = {
+            'Finished – Cement blocks': 0.2,
+            'Finished – Stone with lime/cement': 0.4,
+            'Finished – Woven Bamboo': 0.6,
+            'Rudimentary – Bamboo with mud': 0.8,
             'Other': 0.8,
         }
 
     else:
         raise ValueError(f"Country '{country}' not yet supported")
 
-    # Apply default scores
-    households['v_roof'] = households['roof'].apply(
-        lambda x: v_roof_scores.get(x, v_roof_scores['default']))
-    households['v_walls'] = households['walls'].apply(
-        lambda x: v_walls_scores.get(x, v_walls_scores['default']))
+    # Save current vulnerability score
+    # current_v = households['v'].copy()
+    # current_v_roof = households['v_roof'].copy()
+    # current_v_walls = households['v_walls'].copy()
 
-    # Calculate initial vulnerability score
-    v_roof_multiplier = 0.3
-    v_walls_multiplier = 0.7
+    # Calculate the vulnerability scores for the roof and walls
+    households['v_roof'] = households['roof'].map(v_roof_scores)
+    households['v_walls'] = households['walls'].map(v_walls_scores)
+
+    # Count how many v values changed
+    # print(
+    #     f'Changed {len(households[households["v_roof"] != current_v_roof])} roofs')
+    # print(
+    #     f'Changed {len(households[households["v_walls"] != current_v_walls])} walls')
+
+    # Calculate the new vulnerability score
+    if disaster_type == 'hurricane':
+        v_roof_multiplier = 0.6
+        v_walls_multiplier = 0.4
+    elif disaster_type == 'earthquake':
+        v_roof_multiplier = 0.3
+        v_walls_multiplier = 0.7
+    elif disaster_type == 'flood':
+        v_roof_multiplier = 0.2
+        v_walls_multiplier = 0.8
+    else:
+        raise ValueError(f"Disaster type '{disaster_type}' not yet supported")
 
     # NOTE: Since it is for a retrofitting policy,
     # we immediately assign the new values to `v` and not `v_init` column
     households['v'] = v_roof_multiplier * \
         households['v_roof'] + v_walls_multiplier * households['v_walls']
 
+    # Assertions to check values are within expected range
+    assert households[['v_roof', 'v_walls', 'v']].apply(
+        lambda x: (x >= 0).all() and (x <= 1).all()).all()
+    assert households['v'].isna().sum() == 0
+
     return households
 
 
-def apply_policy(households: pd.DataFrame, country: str, current_policy: str, random_seed: int) -> pd.DataFrame:
+def apply_policy(households: pd.DataFrame, country: str, current_policy: str, disaster_type: str, random_seed: int) -> pd.DataFrame:
     '''
     Apply a specific policy to a set of households.
 
@@ -260,6 +307,7 @@ def apply_policy(households: pd.DataFrame, country: str, current_policy: str, ra
         households (pd.DataFrame): Households.
             Required columns: 'is_affected', 'is_poor', 'exp', 'povline_adjusted', 'keff', 'v', 'sav', 'roof', 'walls'
         policy (str): Policy to apply. Format: "<policy_type>:<policy_details>". Example: "asp:poor+100".
+        disaster_type (str): Type of disaster. Example: "hurricane".
         random_seed (int): Random seed for reproducibility.
 
     Returns:
@@ -275,7 +323,7 @@ def apply_policy(households: pd.DataFrame, country: str, current_policy: str, ra
     if policy_type == 'asp':
         return cash_transfer(households, current_policy.split(':')[1])
     elif policy_type == 'retrofit':
-        return retrofitting(country, households, current_policy.split(':')[1], random_seed)
+        return retrofitting(country, households, current_policy.split(':')[1], disaster_type, random_seed)
     elif policy_type == 'none':
         return households
     else:

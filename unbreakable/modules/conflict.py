@@ -1,27 +1,38 @@
 import pandas as pd
 
 
-def affect_economy(conflict_impact: pd.DataFrame, avg_prod: float, inc_exp_growth: float) -> pd.DataFrame:
-    '''Calculate the effect of conflict on average productivity and income and expenditure growth.
+# def calculate_conflict_impact(conflict: pd.DataFrame, avg_prod: float, inc_exp_growth: float) -> tuple:
+#     '''Calculate the effect of a conflict on average productivity and income and expenditure growth by region.
+
+#     Args:
+#         conflict (pd.DataFrame): Conflict data.
+#         avg_prod (float): Base average productivity.
+#         inc_exp_growth (float): Base income and expenditure growth.
+
+#     Returns:
+#         pd.DataFrame: Affected average productivity and income and expenditure growth.
+#     '''
+#     # Decrease the average productivity by Avg. prod. decrease %
+#     conflict['avg_prod'] = avg_prod - \
+#         conflict['Avg. prod. decrease'] * avg_prod
+
+#     # Decrease the income and expenditure growth by Inc. exp. growth decrease %
+#     conflict['inc_exp_growth'] = inc_exp_growth - \
+#         conflict['Inc. and exp. growth decrease'] * inc_exp_growth
+
+#     return conflict.set_index('region')['avg_prod'], conflict.set_index('region')['inc_exp_growth']
+
+def get_conflict_intensity(households: pd.DataFrame, conflict: pd.DataFrame) -> pd.DataFrame:
+    '''Assign conflict intensity to each region.
 
     Args:
-        conflict_impact (pd.DataFrame): Conflict impact data.
-        avg_prod (float): Average productivity.
-        inc_exp_growth (float): Income and expenditure growth.
+        households (pd.DataFrame): Households data.
+        conflict (pd.DataFrame): Conflict data.
 
     Returns:
-        pd.DataFrame: Affected economy.
+        pd.DataFrame: Households data with conflict intensity.
     '''
-    # Make a copy of the conflict impact data
-    df = conflict_impact.copy()
+    households['conflict_intensity'] = households['region'].map(
+        conflict.set_index('region')['Bin'])
 
-    # Decrease the average productivity by Avg. prod. decrease %
-    df['avg_prod'] = avg_prod - \
-        df['Avg. prod. decrease'] * avg_prod
-
-    # Decrease the income and expenditure growth by Inc. exp. growth decrease %
-    df['inc_exp_growth'] = inc_exp_growth - \
-        df['Inc. and exp. growth decrease'] * inc_exp_growth
-
-    # Return affected economy
-    return df
+    return households
