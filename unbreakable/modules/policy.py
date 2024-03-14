@@ -160,9 +160,8 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, di
         households['retrofitted'] = False
 
         # Retrofit roofs
-
-        current_roofs = households.loc[vulnerable_houses.index, 'roof']
-        current_walls = households.loc[vulnerable_houses.index, 'walls']
+        # current_roofs = households.loc[vulnerable_houses.index, 'roof']
+        # current_walls = households.loc[vulnerable_houses.index, 'walls']
 
         households.loc[vulnerable_houses.index, 'roof'] = households.loc[vulnerable_houses.index, 'roof'].apply(
             lambda x: robust_roof if x in v_roof_types else x
@@ -172,8 +171,8 @@ def retrofitting(country: str, households: pd.DataFrame, current_policy: str, di
             lambda x: robust_walls if x in v_walls_types else x
         )
 
-        retrofitted_roofs = households.loc[vulnerable_houses.index, 'roof']
-        retrofitted_walls = households.loc[vulnerable_houses.index, 'walls']
+        # retrofitted_roofs = households.loc[vulnerable_houses.index, 'roof']
+        # retrofitted_walls = households.loc[vulnerable_houses.index, 'walls']
 
         # Print how many roofs and walls were retrofitted
         # print(
@@ -258,8 +257,8 @@ def recalculate_house_vulnerability(country: str, households: pd.DataFrame, disa
 
     # Save current vulnerability score
     # current_v = households['v'].copy()
-    current_v_roof = households['v_roof'].copy()
-    current_v_walls = households['v_walls'].copy()
+    # current_v_roof = households['v_roof'].copy()
+    # current_v_walls = households['v_walls'].copy()
 
     # Calculate the vulnerability scores for the roof and walls
     households['v_roof'] = households['roof'].map(v_roof_scores)
