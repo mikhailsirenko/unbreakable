@@ -5,6 +5,7 @@ import yaml
 from pathlib import Path
 from typing import NamedTuple
 from ema_workbench import *
+from unbreakable.data.saver import *
 from unbreakable.data.reader import *
 from unbreakable.data.randomizer import *
 from unbreakable.analysis.calculator import *
@@ -45,7 +46,9 @@ def model(**params) -> dict:
 
     outcomes = {}
 
-    for region in params['regions']:
+    regions = households['region'].sort_values().unique()
+
+    for region in regions:
         region_households = households[households['region'] == region].copy(
         )
 
@@ -71,12 +74,8 @@ def model(**params) -> dict:
 
 def check_params(params: dict) -> None:
     '''Check that all config parameters for a case study are present.'''
-    required_params = ['country', 'regions', 'avg_prod',
-                       'cons_util', 'disc_rate',
-                       'calc_exposure_params', 'identify_aff_params',
-                       'add_inc_loss', 'pov_bias', 'lambda_incr', 'yrs_to_rec',
-                       'rnd_house_vuln_params', 'rnd_inc_params', 'rnd_sav_params',
-                       'rnd_rent_params', 'min_households', 'atol', 'save_households']
+    required_params = ['country', 'avg_prod', 'inc_exp_growth', 'cons_util', 'disc_rate', 'disaster_type', 'calc_exposure_params', 'identify_aff_params', 'add_inc_loss', 'pov_bias',
+                       'lambda_incr', 'yrs_to_rec', 'rnd_inc_params', 'rnd_sav_params', 'rnd_rent_params', 'rnd_house_vuln_params', 'min_households', 'atol', 'save_households', 'save_consumption_recovery']
     missing_params = [
         param for param in required_params if param not in params]
     if missing_params:
@@ -84,33 +83,30 @@ def check_params(params: dict) -> None:
             f"Missing essential parameters: {', '.join(missing_params)}")
 
 
-def save_households(households: pd.DataFrame, params: dict, random_seed: int):
-    '''Save region households data to a CSV file.'''
-    country = params['country']
-    region = params['region']
-    output_dir = Path(f'../experiments/{country}/households/')
-    output_dir.mkdir(parents=True, exist_ok=True)
-    file_path = output_dir / f'{region}_{random_seed}.csv'
-    households.to_csv(file_path)
-
-
 def load_config(country: str, return_period: int, conflict: bool = False) -> dict:
     '''Load configuration for the specified case country.'''
+
     config_path = Path(f"../config/{country}.yaml")
+
     if not config_path.exists():
         raise FileNotFoundError(
             f"Config file for {country} not found at {config_path}")
+
     with open(config_path, "r") as file:
         config = yaml.safe_load(file)
+
     return_periods = [10, 50, 100, 250, 500, 1000]
+
     if return_period not in return_periods:
         raise ValueError(
             f"Return period {return_period} not in available return periods: {return_periods}")
     config['constants']['return_period'] = return_period
+
     if conflict:
         config['constants']['is_conflict'] = True
     else:
         config['constants']['is_conflict'] = False
+
     return config
 
 
@@ -129,8 +125,12 @@ def setup_model(config: dict, replicator: bool) -> Model:
         # Set up the ReplicatorModel to iterate over multiple seeds
         my_model = ReplicatorModel(name="model", function=model)
 
+        # Remove is_conflict from constants to make it later an uncertainty
+        constants.pop('is_conflict', None)
+
         # Extract and set up uncertainties, constants, and levers from the config
         # uncertainties = config.get("uncertainties", {})
+
         constants = config.get("constants", {})
         levers = config.get("levers", {})
 
@@ -203,16 +203,3 @@ def run_experiments(experimental_setup: dict) -> None:
 
     save_experiment_results(country, return_period, model,
                             results, n_scenarios, n_policies)
-
-
-def save_experiment_results(country: str, return_period: int, model: Model, results, n_scenarios, n_policies):
-    """Saves experiment results to a file, taking into account if there was a conflict."""
-    results_path = Path(f'../experiments/{country}')
-    results_path.mkdir(parents=True, exist_ok=True)
-
-    is_conflict = getattr(model.constants._data.get(
-        'is_conflict'), 'value', False)
-
-    conflict_str = ", conflict=True" if is_conflict else ""
-    filename = f"return_period={return_period}, scenarios={n_scenarios}, policies={n_policies}{conflict_str}.tar.gz"
-    save_results(results, results_path / filename)
