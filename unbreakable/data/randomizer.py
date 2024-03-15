@@ -32,6 +32,7 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
     avg_prod = params['avg_prod']
     rnd_house_vuln_params = params['rnd_house_vuln_params']
     min_households = params['min_households']
+    atol = params['atol']
 
     # Step 1: Randomize income
     households = rnd_income(households, rnd_inc_params)
@@ -53,7 +54,7 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
 
     # Step 7: Match the survey with risk data
     households = match_survey_with_risk_data(
-        households, risk_and_damage, print_statistics)
+        households, risk_and_damage, atol, print_statistics)
 
     return households
 
@@ -371,7 +372,7 @@ def resample_region(households: pd.DataFrame, min_households: int, random_seed: 
 # ---------------------------------------------------------------------------- #
 
 
-def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.DataFrame, print_statistics: bool = False) -> pd.DataFrame:
+def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.DataFrame, atol: int, print_statistics: bool = False) -> pd.DataFrame:
     # Initialize list to store matched households
     matched = []
 
@@ -397,7 +398,7 @@ def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.Da
 
         # Match households with disaster risk assessment data
         df = match_assets(
-            region_households, exposed_assets, atol=100000)
+            region_households, exposed_assets, atol=atol)
 
         # Recalculate survey assets
         df['survey_assets'] = df[['k_house', 'wgt']].prod(axis=1)
