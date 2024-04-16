@@ -5,7 +5,7 @@ import pandas as pd
 def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
               params: dict, random_seed: int, print_statistics: bool = False) -> pd.DataFrame:
     '''
-    Randomizes household data and matches it with risk data.
+    Randomize household data, resample it and match it with risk data.
 
     Args:
         households: Households.
@@ -14,7 +14,7 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
         print_statistics: Whether to print statistics.
 
     Returns:
-        households: Randomized households.
+        households: Randomized and resampled households.
     '''
     # Ensure reproducibility
     if random_seed is not None:
@@ -32,28 +32,21 @@ def randomize(households: pd.DataFrame, risk_and_damage: pd.DataFrame,
     avg_prod = params['avg_prod']
     rnd_house_vuln_params = params['rnd_house_vuln_params']
     min_households = params['min_households']
+    atol = params['atol']
 
-    # Step 1: Randomize income
+    # Randomize household data
     households = rnd_income(households, rnd_inc_params)
-
-    # Step 2: Randomize savings
     households = rnd_savings(households, rnd_sav_params)
-
-    # Step 3: Randomize rent
     households = rnd_rent(households, rnd_rent_params)
-
-    # Step 4: Calculate dwelling value
     households = calc_dwelling_value(households, avg_prod)
-
-    # Step 5: Randomize house vulnerability
     households = rnd_house_vuln(households, rnd_house_vuln_params)
 
-    # Step 6: Resample households to ensure representativeness
+    # Resample households to be more representative
     households = resample_households(households, min_households, random_seed)
 
-    # Step 7: Match the survey with risk data
+    # Match household survey assets with risk and asset damage data
     households = match_survey_with_risk_data(
-        households, risk_and_damage, print_statistics)
+        households, risk_and_damage, atol, print_statistics)
 
     return households
 
@@ -85,33 +78,37 @@ def rnd_inc_mult(size: int, **params) -> np.ndarray:
 
 def rnd_income(households: pd.DataFrame, rnd_income_params: dict) -> pd.DataFrame:
     '''Randomize household income.'''
-    households = households.copy()
-    size = households.shape[0]
+    if rnd_income_params['randomize']:
+        households = households.copy()
+        size = households.shape[0]
 
-    # Apply income generation for regions or country as applicable
-    if households['rgn_inc_mult'].notna().any():
-        for region in households['region'].unique():
-            mask = households['region'] == region
-            rnd_income_params['inc_mult'] = households.loc[mask,
-                                                           'rgn_inc_mult'].iloc[0]
-            size = mask.sum()
+        # Apply income generation for regions or country as applicable
+        if households['rgn_inc_mult'].notna().any():
+            for region in households['region'].unique():
+                mask = households['region'] == region
+                rnd_income_params['inc_mult'] = households.loc[mask,
+                                                               'rgn_inc_mult'].iloc[0]
+                size = mask.sum()
+                inc_mult_rnd = rnd_inc_mult(size, **rnd_income_params)
+
+                # Estimate income as a product of expenditure and income multiplier
+                households.loc[mask, 'inc'] = households.loc[mask,
+                                                             'exp'] * inc_mult_rnd
+        elif households['ctry_inc_mult'].notna().any():
+            rnd_income_params['inc_mult'] = households['ctry_inc_mult'].iloc[0]
             inc_mult_rnd = rnd_inc_mult(size, **rnd_income_params)
             # Estimate income as a product of expenditure and income multiplier
-            households.loc[mask, 'inc'] = households.loc[mask,
-                                                         'exp'] * inc_mult_rnd
-    elif households['ctry_inc_mult'].notna().any():
-        rnd_income_params['inc_mult'] = households['ctry_inc_mult'].iloc[0]
-        inc_mult_rnd = rnd_inc_mult(size, **rnd_income_params)
-        # Estimate income as a product of expenditure and income multiplier
-        households['inc'] = households['exp'] * inc_mult_rnd
+            households['inc'] = households['exp'] * inc_mult_rnd
+        else:
+            raise ValueError("No income multiplier found.")
+
+        assert not households['inc'].isna().any(), "Income cannot be NaN"
+        assert not (households['inc'] < 0).any(), "Income cannot be negative"
+        assert not (households['inc'] == 0).any(), "Income cannot be 0"
+        return households
+
     else:
-        raise ValueError("No income multiplier found.")
-
-    assert not households['inc'].isna().any(), "Income cannot be NaN"
-    assert not (households['inc'] < 0).any(), "Income cannot be negative"
-    assert not (households['inc'] == 0).any(), "Income cannot be 0"
-
-    return households
+        return households
 
 
 def rnd_sav_mult(size: int, **params):
@@ -133,32 +130,37 @@ def rnd_sav_mult(size: int, **params):
 
 def rnd_savings(households: pd.DataFrame, rnd_savings_params: dict) -> pd.DataFrame:
     '''Randomize household savings.'''
-    # Get function parameters
-    distr = rnd_savings_params['distr']
-    size = households.shape[0]
+    if rnd_savings_params['randomize']:
+        # Get function parameters
+        distr = rnd_savings_params['distr']
+        size = households.shape[0]
 
-    # Ensure that the distribution is supported
-    if distr == 'uniform':
-        low = rnd_savings_params.get('avg') - rnd_savings_params.get('delta')
-        high = rnd_savings_params.get('avg') + rnd_savings_params.get('delta')
-        if low < 0:
-            raise ValueError("Low savings cannot be negative.")
-        rnd_savings_params.update({'low': low, 'high': high})
+        # Ensure that the distribution is supported
+        if distr == 'uniform':
+            low = rnd_savings_params.get(
+                'avg') - rnd_savings_params.get('delta')
+            high = rnd_savings_params.get(
+                'avg') + rnd_savings_params.get('delta')
+            if low < 0:
+                raise ValueError("Low savings cannot be negative.")
+            rnd_savings_params.update({'low': low, 'high': high})
 
+        else:
+            raise ValueError(f"Distribution '{distr}' is not supported yet.")
+
+        # Randomize savings multiplier using the distribution-specific function
+        sav_mult_rnd = rnd_sav_mult(size, **rnd_savings_params)
+
+        # Estimate savings as a product of income and savings multiplier
+        households['sav'] = households['inc'] * sav_mult_rnd
+
+        assert not households['sav'].isna().any(), "Savings cannot be NaN"
+        assert not (households['sav'] < 0).any(), "Savings cannot be negative"
+        assert not (households['sav'] == 0).any(), "Savings cannot be 0"
+
+        return households
     else:
-        raise ValueError(f"Distribution '{distr}' is not supported yet.")
-
-    # Randomize savings multiplier using the distribution-specific function
-    sav_mult_rnd = rnd_sav_mult(size, **rnd_savings_params)
-
-    # Estimate savings as a product of income and savings multiplier
-    households['sav'] = households['inc'] * sav_mult_rnd
-
-    assert not households['sav'].isna().any(), "Savings cannot be NaN"
-    assert not (households['sav'] < 0).any(), "Savings cannot be negative"
-    assert not (households['sav'] == 0).any(), "Savings cannot be 0"
-
-    return households
+        return households
 
 
 def rnd_rent_mult(size: int, **params):
@@ -180,35 +182,39 @@ def rnd_rent_mult(size: int, **params):
 
 def rnd_rent(households: pd.DataFrame, rnd_rent_params: dict) -> pd.DataFrame:
     '''Randomize household rent.'''
-    # Get function parameters
-    distr = rnd_rent_params['distr']
-    size = households.shape[0]
+    if rnd_rent_params['randomize']:
+        # Get function parameters
+        distr = rnd_rent_params['distr']
+        size = households.shape[0]
 
-    # Ensure that the distribution is supported
-    if distr == 'uniform':
-        low = rnd_rent_params.get('avg') - rnd_rent_params.get('delta')
-        high = rnd_rent_params.get('avg') + rnd_rent_params.get('delta')
-        if low < 0:
-            raise ValueError("Low rent cannot be negative.")
-        rnd_rent_params.update({'low': low, 'high': high})
+        # Ensure that the distribution is supported
+        if distr == 'uniform':
+            low = rnd_rent_params.get('avg') - rnd_rent_params.get('delta')
+            high = rnd_rent_params.get('avg') + rnd_rent_params.get('delta')
+            if low < 0:
+                raise ValueError("Low rent cannot be negative.")
+            rnd_rent_params.update({'low': low, 'high': high})
 
+        else:
+            raise ValueError(f"Distribution '{distr}' is not supported yet.")
+
+        # Generate savings using the distribution-specific function
+        rent_mult_rnd = rnd_rent_mult(size, **rnd_rent_params)
+
+        # Assign rent as a product of exp and rent multiplier to each of the rows
+        households['exp_house'] = households['exp'].mul(rent_mult_rnd)
+
+        assert not households['exp_house'].isna().any(), "Rent cannot be NaN"
+        assert not (households['exp_house'] <
+                    0).any(), "Rent cannot be negative"
+        assert not (households['exp_house'] == 0).any(), "Rent cannot be 0"
+
+        # Remove rent for the households that own
+        households.loc[households['own_rent'] == 'own', 'exp_house'] = 0
+
+        return households
     else:
-        raise ValueError(f"Distribution '{distr}' is not supported yet.")
-
-    # Generate savings using the distribution-specific function
-    rent_mult_rnd = rnd_rent_mult(size, **rnd_rent_params)
-
-    # Assign rent as a product of exp and rent multiplier to each of the rows
-    households['exp_house'] = households['exp'].mul(rent_mult_rnd)
-
-    assert not households['exp_house'].isna().any(), "Rent cannot be NaN"
-    assert not (households['exp_house'] < 0).any(), "Rent cannot be negative"
-    assert not (households['exp_house'] == 0).any(), "Rent cannot be 0"
-
-    # Remove rent for the households that own
-    households.loc[households['own_rent'] == 'own', 'exp_house'] = 0
-
-    return households
+        return households
 
 
 def calc_dwelling_value(households: pd.DataFrame, avg_prod: float) -> pd.DataFrame:
@@ -244,22 +250,27 @@ def rnd_house_vuln(households: pd.DataFrame, rnd_house_vuln_params: dict) -> pd.
     Raises:
         ValueError: If the distribution is not supported.
     '''
-    distr = rnd_house_vuln_params['distr']
-    if distr == 'uniform':
-        # Unpack parameters
-        low = rnd_house_vuln_params['low']  # default 0.8
-        high = rnd_house_vuln_params['high']  # default 1.0
-        thresh = rnd_house_vuln_params['thresh']  # default 0.9
+    if rnd_house_vuln_params['randomize']:
+        distr = rnd_house_vuln_params['distr']
+        if distr == 'uniform':
+            # Unpack parameters
+            low = rnd_house_vuln_params['low']  # default 0.8
+            high = rnd_house_vuln_params['high']  # default 1.0
+            max_thresh = rnd_house_vuln_params['max_thresh']  # default 0.9
+            min_thresh = rnd_house_vuln_params['min_thresh']  # default 0.2
 
-        # Multiply initial vulnerability by a random value
-        households['v'] = households['v_init'] * \
-            np.random.uniform(low, high, households.shape[0])
+            # Multiply initial vulnerability by a random value
+            households['v'] = households['v_init'] * \
+                np.random.uniform(low, high, households.shape[0])
 
-        # Limit vulnerability to a threshold
-        households.loc[households['v'] > thresh, 'v'] = thresh
+            # Limit vulnerability to a threshold, since under extreme values, recovery rate skyrockets
+            households.loc[households['v'] > max_thresh, 'v'] = max_thresh
+            households.loc[households['v'] < min_thresh, 'v'] = min_thresh
+        else:
+            raise ValueError("Only uniform distribution is supported yet.")
+        return households
     else:
-        raise ValueError("Only uniform distribution is supported yet.")
-    return households
+        return households
 
 # ---------------------------------------------------------------------------- #
 #                         Duplicate households-related                         #
@@ -371,7 +382,7 @@ def resample_region(households: pd.DataFrame, min_households: int, random_seed: 
 # ---------------------------------------------------------------------------- #
 
 
-def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.DataFrame, print_statistics: bool = False) -> pd.DataFrame:
+def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.DataFrame, atol: int, print_statistics: bool = False) -> pd.DataFrame:
     # Initialize list to store matched households
     matched = []
 
@@ -397,7 +408,7 @@ def match_survey_with_risk_data(households: pd.DataFrame, risk_and_damage: pd.Da
 
         # Match households with disaster risk assessment data
         df = match_assets(
-            region_households, exposed_assets, atol=100000)
+            region_households, exposed_assets, atol=atol)
 
         # Recalculate survey assets
         df['survey_assets'] = df[['k_house', 'wgt']].prod(axis=1)

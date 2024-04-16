@@ -111,26 +111,17 @@ experiments/Saint Lucia
 # Input data preparation scripts
 /scripts
 
-# Temporary files
-/temp
-
-# WIP notebooks
-/wip
-
-# Internal notes
-NOTES.md
-
-# Internal TODOs
-TODO.md
-
 # Exclude Dominica-specific config
 /config/Dominica.yaml
 
 # Exclude Saint-Lucia specific config
 /config/SaintLucia.yaml
 
+# Exclude Nigeria specific config
+/config/Nigeria.yaml
+
 # Exclude reports
 /reports
 
 # Exclude experiment results
-/experiments
+/results

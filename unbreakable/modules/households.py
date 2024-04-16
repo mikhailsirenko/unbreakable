@@ -3,9 +3,9 @@ import numpy as np
 
 
 def calculate_exposure(households: pd.DataFrame, region_pml: float, pov_bias: float, calc_exposure_params: dict) -> pd.DataFrame:
-    '''Calculate the exposure of each household to the disaster.
+    '''Calculate how much each of the households is exposed to the disaster.
 
-    Households have either have an equal change of being affected by the disaster or a change based on their poverty bias. `fa` stands for `fraction affected` and represents the impact of the disaster on each household. 
+    Households can be either equally exposed to the disaster or the exposure can be re-distributed between poor and non-poor households with the use of `poverty_bias`.
 
     Args:
         households (pd.DataFrame): Households.
@@ -41,7 +41,7 @@ def calculate_exposure(households: pd.DataFrame, region_pml: float, pov_bias: fl
 
     # Keff is the effective capital stock of the household
     # Physical assets such as land, housing, and durable goods
-    # Currently, only the dwelling value k_house is considered
+    # NOTE: Currently, only the dwelling value k_house is considered
     households['keff'] = households['k_house'].copy()
 
     # How much each household is affected by the disaster
@@ -140,9 +140,9 @@ def identify_affected(households: pd.DataFrame, region_pml: float, ident_affecte
     return households
 
 
-def calculate_welfare(households: pd.DataFrame, cons_util: float) -> float:
+def calculate_welfare(households: pd.DataFrame, consumption_utility: float) -> float:
     '''Calculate the welfare of all households in a country based on their expenditures and a given consumption utility.'''
     weighted_average_expenditure = np.sum(households['exp'] * households['wgt']) / np.sum(
         households['wgt'])
-    welfare = weighted_average_expenditure ** (-cons_util)
+    welfare = weighted_average_expenditure ** (-consumption_utility)
     return welfare
