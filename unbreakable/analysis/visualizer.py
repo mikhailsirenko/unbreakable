@@ -425,28 +425,27 @@ def bin_data(data: gpd.GeoDataFrame, x_name: str, y_name: str, scheme: str = 'fi
     return data
 
 
-def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> None:
-    '''Plot a histogram with annotations for the median, min, and max values.
+def annotated_hist(outcomes: pd.DataFrame, annotate: bool) -> None:
+    '''Create an annotated histogram of the annual average consumption loss.
 
     Args:
-        outcomes (pd.DataFrame): The outcomes dataframe.
-        savefig (bool): Whether to save the figure or not.
-        annotate (bool): Whether to annotate the figure or not.
+        outcomes (pd.DataFrame): Outcomes data frame.
+        annotate (bool): Whether to annotate the plot or not.
 
     Returns:
         None
     '''
-    sns.histplot(outcomes['annual_avg_consum_loss_pct'])
-    # plt.xlabel('Wt. Ann. Avg. Consump. Loss p.c. (%)')
+    sns.histplot(outcomes['annual_avg_consum_loss_pct'],)
     plt.xlabel('Annual Average Consumption Loss PC (%)')
     plt.ylabel('Run count')
-    # plt.xlim(0, 50)
+
     plt.axvline(outcomes['annual_avg_consum_loss_pct'].min(
     ), color='red', linestyle='dashed', linewidth=1)
     plt.axvline(outcomes['annual_avg_consum_loss_pct'].max(
     ), color='red', linestyle='dashed', linewidth=1)
     plt.axvline(outcomes['annual_avg_consum_loss_pct'].median(
     ), color='black', linestyle='dashed', linewidth=1)
+
     if annotate:
         plt.annotate(f"{outcomes['annual_avg_consum_loss_pct'].min():.2f}%",
                      xy=(outcomes['annual_avg_consum_loss_pct'].min(), 0),
@@ -466,35 +465,22 @@ def annotated_hist(outcomes: pd.DataFrame, savefig: bool, annotate: bool) -> Non
                          outcomes['annual_avg_consum_loss_pct'].median() + 5, 100),
                      arrowprops=dict(facecolor='black', shrink=0.05),
                      horizontalalignment='left', verticalalignment='top')
-    plt.tight_layout()
-    # Remove spines
     sns.despine()
-    if savefig:
-        plt.savefig(
-            '../reports/figures/analysis/av_cons_loss.pgf', bbox_inches='tight')
-        plt.savefig('../reports/figures/analysis/av_cons_loss.png',
-                    dpi=300, bbox_inches='tight')
+    plt.tight_layout()
 
 
-def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 'equal_intervals', k: int = 4, cmap: str = "OrRd", legend: bool = True) -> None:
+def coloured_density_plots(outcomes: pd.DataFrame, scheme: str, k: int, cmap: str = "OrRd", legend: bool = True) -> None:
     '''Make colored density plots for each region. Color here matches the color of the choropleth map.
 
     Args:
-        outcomes (pd.DataFrame): The outcomes dataframe.
-        savefig (bool): Whether to save the figure or not.
-        scheme (str, optional): The scheme to use for binning the data. Defaults to 'equal_intervals'.
-        k (int, optional): The number of bins. Defaults to 4.
+        outcomes (pd.DataFrame): Outcomes data frame.
+        scheme (str, optional): The scheme to use for binning the data.
+        k (int, optional): The number of bins.
         cmap (str, optional): The name of the colormap to use. Defaults to "OrRd".
 
     Returns:
         None
     '''
-    # Let's make colors of density plots match the colors of the choropleth map
-
-    if savefig:
-        outcomes['region'].replace(
-            {'Anse-La-Raye & Canaries': 'Anse-La-Raye \& Canaries'}, inplace=True)
-
     # Choropleth map uses median values to classify the regions, we're going to do the same
     median_outcomes = outcomes.groupby('region').median(numeric_only=True)[
         ['annual_avg_consum_loss_pct']]
@@ -528,7 +514,7 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
     min_distr = descr['annual_avg_consum_loss_pct']['50%'].idxmin()
     max_distr = descr['annual_avg_consum_loss_pct']['50%'].idxmax()
 
-    # Now make the density plots
+    # Make the density plots
     for region in regions:
         df = outcomes[outcomes['region'] == region]
         region_label = region_to_label_mapper[region]
@@ -542,11 +528,8 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
             linewidth = 1
         sns.kdeplot(data=df, x='annual_avg_consum_loss_pct',
                     ax=ax, color=color, linewidth=linewidth, alpha=1)
-        if savefig:
-            # ax.set_xlabel('Wt. Ann. Avg. Consump. Loss p.c. (\%)')
-            ax.set_xlabel('Annual Average Consumption Loss PC (%)')
-        else:
-            ax.set_xlabel('Ann. Avg. Consump. Loss PC (%)')
+
+        ax.set_xlabel('Annual Average Consumption Loss PC (%)')
         ax.set_ylabel('Run density')
         ax.spines['right'].set_visible(False)
         ax.spines['top'].set_visible(False)
@@ -555,11 +538,6 @@ def coloured_density_plots(outcomes: pd.DataFrame, savefig: bool, scheme: str = 
         ax.set_facecolor('lightgray')
 
     if legend:
-        ax.legend(regions, title='Parish', frameon=False)
-    fig.tight_layout()
-
-    if savefig:
-        plt.savefig('../reports/figures/analysis/av_cons_loss_distr.png',
-                    dpi=300, bbox_inches='tight')
-        plt.savefig('../reports/figures/analysis/av_cons_loss_distr.pgf',
-                    bbox_inches='tight')
+        # Move legend outside the plot
+        ax.legend(regions, title='Region', frameon=False)
+        ax.get_legend().set_bbox_to_anchor((1, 1))

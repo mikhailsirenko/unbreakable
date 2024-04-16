@@ -170,20 +170,22 @@ def prepare_outcomes(results: tuple, add_policies: bool, add_uncertainties: bool
     return outcomes
 
 
-def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_interest: list = [], aggregation: str = 'mean') -> gpd.GeoDataFrame:
-    '''Connect outcomes of interest with the shapefile.
+def get_spatial_outcomes(outcomes: pd.DataFrame, country: str, outcomes_of_interest: list = [], aggregation: str = 'median') -> gpd.GeoDataFrame:
+    '''Connect outcomes with spatial data.
 
     Args:
-        outcomes (pd.DataFrame): Outcomes.
-        outcomes_of_interest (list, optional): Outcomes of interest. Defaults to [].
-        country (str, optional): Country name. Defaults to 'Saint Lucia'.
-        aggregation (str, optional): Aggregation method. Defaults to 'mean'.
+        outcomes (pd.DataFrame): Outcomes data frame.
+        country (str, optional): Country name.
+        outcomes_of_interest (list, optional): List of outcomes of interest. Defaults to [].
+        aggregation (str, optional): Aggregation method. Defaults to 'median'.
 
     Returns:
         gpd.GeoDataFrame: Spatial outcomes.
     '''
 
-    # Align region names with the ones in the outcomes
+    if aggregation not in ['mean', 'median']:
+        raise ValueError('Aggregation must be either mean or median')
+
     if country == 'Saint Lucia':
         column = 'NAME_1'
         gdf = gpd.read_file(

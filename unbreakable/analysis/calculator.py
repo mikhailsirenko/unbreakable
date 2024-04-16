@@ -6,15 +6,20 @@ import yaml
 def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expected_loss_frac: float, region_pml: float, years_to_recover: int, welfare: float) -> dict:
     outcomes = {}
 
+    # Get total population and poverty line
     tot_pop = households['wgt'].sum()
     pov_line_adjust = households['poverty_line_adjusted'].values[0]
+
+    # Subset affected households
     aff_households = households[households['is_affected'] == True]
 
+    # Write already precomputed outcomes
     outcomes['return_period'] = households['return_period'].iloc[0]
     outcomes['tot_pop'] = tot_pop
     outcomes['tot_households'] = households.shape[0]
     outcomes['n_aff_people'] = aff_households['wgt'].sum()
     outcomes['n_aff_households'] = aff_households.shape[0]
+
     try:
         outcomes['n_retrofitted'] = households[households['retrofitted']
                                                == True]['wgt'].sum()
@@ -23,6 +28,7 @@ def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expec
         outcomes['n_aff_retrofitted'] = aff_households[aff_households['retrofitted']
                                                        == True]['wgt'].sum()
         outcomes['n_aff_retrofitted_hh'] = aff_households[aff_households['retrofitted'] == True].shape[0]
+
     except:
         outcomes['n_retrofitted_ppl'] = 0
         outcomes['n_retrofitted_hh'] = 0
@@ -41,7 +47,7 @@ def calculate_outcomes(households: pd.DataFrame, tot_exposed_asset: float, expec
     outcomes['tot_consum_loss_npv'] = weighted_sum(
         aff_households, 'consumption_loss_npv', 'wgt')
 
-    # Get the model outcomes
+    # Calculate model outcomes
     n_poor_initial, n_new_poor, n_poor_affected, poor_initial, new_poor = find_poor(
         households, pov_line_adjust, years_to_recover)
 
@@ -213,7 +219,7 @@ def calculate_average_annual_consumption_loss(affected_households: pd.DataFrame,
 
     if annual_average_consumption_loss_pct > 1:
         raise Exception(
-            'Annual average consumption loss is greater than 1')
+            'Annual average consumption loss pct is greater than 1')
 
     return annual_average_consumption_loss, annual_average_consumption_loss_pct
 

@@ -2,76 +2,57 @@ import pandas as pd
 import logging
 from pathlib import Path
 
+# Configure logging
+logging.basicConfig(level=logging.ERROR,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-def read_risk_and_damage(country: str, base_path: str = "../data/processed/disaster_risk", file_extension: str = "xlsx") -> pd.DataFrame:
+
+def read_data_file(file_path: Path, file_type: str = 'csv', **kwargs) -> pd.DataFrame:
     '''
-    Read disaster risk assessment data from a file.
+    Generic function to read a data file.
 
     Args:
-        country (str): Country name.
-        base_path (str): Base path to the disaster risk assessment data directory.
-        file_extension (str): File extension (default is 'xlsx').
+        file_path (Path): Path object to the file.
+        file_type (str): Type of the file ('xlsx' or 'csv').
+        **kwargs: Additional keyword arguments for pandas read functions.
 
     Returns:
-        pd.DataFrame: Disaster risk assessment data.
+        pd.DataFrame: Data from the file.
+
+    Raises:
+        FileNotFoundError: If the file does not exist.
+        pd.errors.EmptyDataError: If the file is empty.
     '''
-    file_path = Path(base_path) / f"{country}.{file_extension}"
     try:
-        data = pd.read_excel(
-            file_path, index_col=None, header=0) if file_extension == 'xlsx' else pd.read_csv(file_path)
-        return data
+        if file_type == 'xlsx':
+            return pd.read_excel(file_path, **kwargs)
+        elif file_type == 'csv':
+            return pd.read_csv(file_path, **kwargs)
     except Exception as e:
-        logging.error(
-            f"Error reading disaster risk assessment data from {file_path}: {e}")
+        logging.error(f"Error reading data from {file_path}: {e}")
         raise
 
 
-def read_household_survey(country: str, base_path: str = "../data/processed/household_survey", file_extension: str = "csv") -> pd.DataFrame:
+def read_data(country: str, is_conflict: bool = False, base_path: str = "../data/processed") -> tuple:
     '''
-    Reads household survey data from a file.
+    Load all data for a given country.
 
     Args:
         country (str): Country name.
-        base_path (str): Base path to the household survey data directory.
-        file_extension (str): File extension (default is 'csv').
+        is_conflict (bool): Whether to read conflict data.
+        base_path (str): Base path to the data directories.
 
     Returns:
-        pd.DataFrame: Household survey data.
+        tuple: DataFrames of household, risk and damage, and optionally conflict data.
     '''
-    file_path = Path(base_path) / f"{country}.{file_extension}"
-    try:
-        data = pd.read_csv(file_path)
-        return data
-    except Exception as e:
-        logging.error(
-            f"Error reading household survey data from {file_path}: {e}")
-        raise
+    paths = {
+        'household': (Path(base_path) / "household_survey" / f"{country}.csv", 'csv'),
+        'risk_and_damage': (Path(base_path) / "disaster_risk" / f"{country}.xlsx", 'xlsx'),
+        'conflict': (Path(base_path) / "conflict" / f"{country}.xlsx", 'xlsx')
+    }
 
+    households = read_data_file(*paths['household'])
+    risk_and_damage = read_data_file(*paths['risk_and_damage'])
+    conflict = read_data_file(*paths['conflict']) if is_conflict else None
 
-def read_conflict_data(country: str, base_path: str = "../data/processed/conflict/", file_extension: str = "csv") -> pd.DataFrame:
-    '''
-    Reads conflict data from a file.
-
-    Args:
-        country (str): Country name.
-        base_path (str): Base path to the conflict data directory.
-        file_extension (str): File extension (default is 'csv').
-
-    Returns:
-        pd.DataFrame: Conflict data.
-    '''
-    file_path = Path(base_path) / f"{country}.{file_extension}"
-    try:
-        data = pd.read_csv(file_path)
-        return data
-    except Exception as e:
-        logging.error(
-            f"Error reading conflict data from {file_path}: {e}")
-        raise
-
-
-def load_data(country):
-    '''Load all data for a given country.'''
-    all_households = read_household_survey(country)
-    risk_and_damage = read_risk_and_damage(country)
-    return all_households, risk_and_damage
+    return households, risk_and_damage, conflict

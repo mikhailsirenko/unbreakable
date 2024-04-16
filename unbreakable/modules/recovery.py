@@ -4,25 +4,36 @@ import pickle
 import os
 
 
-def calculate_recovery_rate(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int, is_conflict: bool):
+def calculate_recovery_rate(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, lambda_increment: float, years_to_recover: int, is_conflict: bool, conflict: pd.DataFrame = None) -> pd.DataFrame:
     # Assign initial value to recovery_rate
     households['recovery_rate'] = 0
 
     # Subset households that are affected by the disaster
     affected_households = households[households['is_affected'] == True].copy()
 
+    # If there is a conflict, adjust the average productivity
+    if is_conflict:
+        region_conflict_intensity = conflict[conflict['region']
+                                             == households['region'].values[0]]['conflict_intensity'].values[0]
+
+        adjusted_average_productivity = {'Very high': 0.225,
+                                         'High': 0.25,
+                                         'Medium': 0.275,
+                                         'Low': 0.3,
+                                         'Very low': 0.325,
+                                         'None': 0.35}
+        average_productivity = adjusted_average_productivity[region_conflict_intensity]
+
     # Search for the recovery rate for each affected household
     affected_households['recovery_rate'] = affected_households['v'].apply(
         lambda x: find_recovery_rate(x, average_productivity, consumption_utility, discount_rate, lambda_increment, years_to_recover))
 
-    # If the region is affected by a conflict, decrease the recovery rate
-    if is_conflict:
-        conflict_intensity_mapper = {
-            'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
-        region_conflict_intensity = households['conflict_intensity'].values[0]
-        region_intensity_value = conflict_intensity_mapper[region_conflict_intensity]
-        affected_households['recovery_rate'] = affected_households['recovery_rate'] * \
-            (1 - region_intensity_value)
+    assert (affected_households['recovery_rate'] == years_to_recover).any(
+    ) == False, 'Recovery rate was not found for one of the households'
+    assert (affected_households['recovery_rate'] > 1).any(
+    ) == False, 'Recovery rate is greater than 1 for one of the households'
+    assert (affected_households['recovery_rate'] == 0).any(
+    ) == False, 'Recovery rate is 0 for one of the households'
 
     households.loc[affected_households.index,
                    'recovery_rate'] = affected_households['recovery_rate']
@@ -54,15 +65,7 @@ def find_recovery_rate(v: float, average_productivity: float, consumption_utilit
         lambda_value += lambda_increment
 
 
-def calculate_wellbeing(households: pd.DataFrame,
-                        average_productivity: float,
-                        consumption_utility: float,
-                        discount_rate: float,
-                        income_and_expenditure_growth: float,
-                        years_to_recover: int,
-                        add_income_loss: bool,
-                        save_consumption_recovery: bool,
-                        is_conflict: bool = False) -> pd.DataFrame:
+def calculate_wellbeing(households: pd.DataFrame, average_productivity: float, consumption_utility: float, discount_rate: float, income_and_expenditure_growth: float, years_to_recover: int, add_income_loss: bool, save_consumption_recovery: bool, is_conflict: bool = False, conflict: pd.DataFrame = None) -> pd.DataFrame:
 
     # Get the adjusted poverty line for the region
     poverty_line_adjusted = households['poverty_line_adjusted'].values[0]
@@ -70,7 +73,6 @@ def calculate_wellbeing(households: pd.DataFrame,
     # Add new columns with initial values
     new_columns = ['consumption_loss', 'consumption_loss_npv', 'net_consumption_loss',
                    'net_consumption_loss_npv', 'c_t', 'c_t_unaffected', 'weeks_in_poverty', 'wellbeing']
-
     households[new_columns] = 0
 
     # Subset households that are affected by the disaster
@@ -82,44 +84,43 @@ def calculate_wellbeing(households: pd.DataFrame,
 
     consumption_recovery = {}
 
-    # If conflict affect the region, decrease the income and expenditure growth and the average productivity
-    # And increase the vulnerability
     if is_conflict:
-        conflict_intensity_mapper = {
-            'Very high': 0.5, 'High': 0.3, 'Medium': 0.2, 'Low': 0.1, 'Very low': 0.05}
-        region_conflict_intensity = households['conflict_intensity'].values[0]
-        region_intensity_value = conflict_intensity_mapper[region_conflict_intensity]
-        income_and_expenditure_growth *= (1 - region_intensity_value)
-        average_productivity *= (1 - region_intensity_value)
-        vulnerability_increase_factor = 1 + region_intensity_value
+        region_conflict_class = households['conflict_intensity'].values[0]
+        marco_multiplier = {'Very high': 0.05,
+                            'High': 0.02997,
+                            'Medium': 0.0232,
+                            'Low': 0.01595,
+                            'Very low': 0.00725,
+                            'None': 0.0}
+        vulnerability_increase_factor = 1 + \
+            marco_multiplier[region_conflict_class]
     else:
         vulnerability_increase_factor = 1
 
     # Integrate consumption loss and well-being
     for time in np.linspace(0, years_to_recover, totaL_weeks):
         exponential_multiplier = np.e**(
-            -affected_households['recovery_rate']*time)
+            -affected_households['recovery_rate'] * time)
 
         growth_factor = (1 + income_and_expenditure_growth)**time
 
-        expenditure = growth_factor * \
-            affected_households['exp']
+        expenditure = growth_factor * affected_households['exp']
 
         savings = growth_factor * \
-            affected_households['sav'] * affected_households['recovery_rate'] * \
-            vulnerability_increase_factor
+            affected_households['sav'] * (1 / vulnerability_increase_factor)
 
         asset_loss = growth_factor * \
             affected_households['v'] * affected_households['keff'] * \
             affected_households['recovery_rate'] * \
             vulnerability_increase_factor
 
+        income_loss = growth_factor * average_productivity * \
+            affected_households['keff'] * \
+            affected_households['v'] * vulnerability_increase_factor
+
         # asset_loss = growth_factor * affected_households['v'] * \
         #     (affected_households['exp_house'] +
         #      affected_households[['keff', 'recovery_rate']].prod(axis=1))
-
-        income_loss = growth_factor * average_productivity * \
-            affected_households['keff'] * affected_households['v']
 
         if add_income_loss == False:
             affected_households['c_t'] = (expenditure +
@@ -130,9 +131,11 @@ def calculate_wellbeing(households: pd.DataFrame,
 
         affected_households['c_t_unaffected'] = expenditure
 
+        # Avoid negative consumption
         if (affected_households['c_t'] < 0).any():
-            affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 1
+            affected_households.loc[affected_households['c_t'] < 0, 'c_t'] = 0
 
+        # Make sure that consumption does not exceed the unaffected consumption
         if (affected_households['c_t'] > affected_households['c_t_unaffected']).any():
             affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'],
                                     'c_t'] = affected_households.loc[affected_households['c_t'] > affected_households['c_t_unaffected'], 'c_t_unaffected']
@@ -164,7 +167,7 @@ def calculate_wellbeing(households: pd.DataFrame,
 
         # Calculate wellbeing
         affected_households['wellbeing'] += affected_households['c_t_unaffected']**(1 - consumption_utility)\
-            / (1 - consumption_utility) * dt\
+            / (1 - consumption_utility) * dt \
             * ((1 - ((affected_households['c_t_unaffected'] - affected_households['c_t']) / affected_households['c_t_unaffected'])
                 * np.e**(-affected_households['recovery_rate'] * time))**(1 - consumption_utility) - 1)\
             * np.e**(-discount_rate * time)
