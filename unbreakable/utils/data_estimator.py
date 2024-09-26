@@ -19,35 +19,35 @@ def estimate_effective_capital_stock(
     Raises:
         ValueError: If 'inc' or 'owns_house' columns are not present in the DataFrame.
     """
-    if "inc" not in households.columns or "owns_house" not in households.columns:
+    if "inc" in households.columns and "owns_house" in households.columns:
+        households = households.copy()
+        households.loc[households["owns_house"] == True, "k_house"] = (
+            households["inc"] / params["economic_params"]["average_productivity"]
+        )
+
+        households.loc[households["owns_house"] == False, "k_house"] = 0
+
+        # NOTE
+        # Keff is the effective capital stock of the household
+        # Physical assets such as land, homes, and durable goods used to generate income
+        # For now we assume that keff is equal to the dwelling value k_house
+        households["keff"] = households["k_house"]
+
+        # TODO Estimate effective capital stock for renters in a more realistic way
+        # Estimate effective capital stock for renters based on savings rate
+        savings_rate = (households["inc"] - households["exp"]) / households["inc"]
+
+        households.loc[households["owns_house"] == False, "keff"] = (
+            households["inc"]
+            * savings_rate
+            / params["economic_params"]["average_productivity"]
+        )
+
+        return households
+    else:
         raise ValueError(
             "Both 'inc' and 'owns_house' columns must be present to estimate capital stock."
         )
-
-    households = households.copy()
-    households.loc[households["owns_house"] == True, "k_house"] = (
-        households["inc"] / params["economic_params"]["average_productivity"]
-    )
-
-    households.loc[households["owns_house"] == False, "k_house"] = 0
-
-    # NOTE
-    # Keff is the effective capital stock of the household
-    # Physical assets such as land, homes, and durable goods used to generate income
-    # For now we assume that keff is equal to the dwelling value k_house
-    households["keff"] = households["k_house"]
-
-    # TODO Estimate effective capital stock for renters in a more realistic way
-    # Estimate effective capital stock for renters based on savings rate
-    savings_rate = (households["inc"] - households["exp"]) / households["inc"]
-
-    households.loc[households["owns_house"] == False, "keff"] = (
-        households["inc"]
-        * savings_rate
-        / params["economic_params"]["average_productivity"]
-    )
-
-    return households
 
 
 def estimate_welfare(households: pd.DataFrame, params: dict) -> pd.DataFrame:
