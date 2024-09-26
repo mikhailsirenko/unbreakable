@@ -101,15 +101,15 @@ cache/
 /config/*
 !/config/Example.yaml
 
-# exclude data_preparation from source control by default
+# keep only the Example folder in data_preparation
 /data_preparation/*
 !/data_preparation/Example
 
-# exclude data_preparation from source control by default
+# Generated
 /data/generated/*
 !/data/generated/Example
 
-# exclude data but keep the Example folder or file
+# Processed
 /data/processed/asset_impacts/*
 !/data/processed/asset_impacts/Example
 
