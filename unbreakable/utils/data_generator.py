@@ -45,7 +45,7 @@ FLOOR_SCORES: Dict[str, float] = {
 
 
 def generate_households(
-    num_households: int, num_spatial_units: int, seed: int = 0
+    num_households: int, num_spatial_units: int, seed: int = 42
 ) -> pd.DataFrame:
     """
     Generate dummy households with various economic and demographic attributes based on income.
@@ -192,9 +192,11 @@ def select_material(income: float, material_scores: Dict[str, float]) -> str:
     return np.random.choice(materials, p=adjusted_probs)
 
 
-def generate_disaster_risk(disaster_type: str, num_spatial_units: int):
-    """Generate dummy disaster data for a given disaster type and number of spatial units."""
-    np.random.seed(42)  # For reproducibility
+def generate_asset_damage(
+    disaster_type: str, num_spatial_units: int, seed: int = 42
+) -> pd.DataFrame:
+    """Generate dummy asset damage data for a given disaster type and number of spatial units."""
+    np.random.seed(seed)  # For reproducibility
 
     spatial_units = [f"region_{i}" for i in range(num_spatial_units)]
     return_periods = [10, 50, 100, 250]  # Common return periods
@@ -252,9 +254,9 @@ if __name__ == "__main__":
     # Generate dummy disaster risk and household survey data
     disaster_types = ["flood", "hurricane", "earthquake"]
     for disaster in disaster_types:
-        df = generate_disaster_risk(disaster, num_spatial_units=64)
+        df = generate_asset_damage(disaster, num_spatial_units=3)
         df.to_csv(
             f"../../data/processed/asset_impacts/Example/{disaster}.csv", index=False
         )
-    households = generate_households(100, num_spatial_units=64)
+    households = generate_households(100, num_spatial_units=3)
     households.to_csv("../../data/processed/household_survey/Example.csv", index=False)
