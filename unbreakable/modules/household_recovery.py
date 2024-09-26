@@ -195,9 +195,7 @@ def precompute_reconstruction_rates(
     # Round vulnerabilities to 2 decimal places to ensure 0.01 step
     optimal_rates_df["v"] = optimal_rates_df["v"].round(2)
 
-    optimal_rates_df.to_csv(
-        "../../data/generated/optimal_reconstruction_rates.csv", index=False
-    )
+    return optimal_rates_df
 
 
 if __name__ == "__main__":
@@ -212,6 +210,14 @@ if __name__ == "__main__":
     # Generate vulnerabilities with exact 0.01 step
     dwelling_vulnerabilities = np.round(np.arange(0.2, 0.91, 0.01), 2)
 
-    precompute_reconstruction_rates(
+    optimal_rates = precompute_reconstruction_rates(
         economic_params, recovery_params, dwelling_vulnerabilities
+    )
+
+    # Save precomputed rates to CSV
+    country_name = "Example"
+
+    optimal_rates.to_csv(
+        f"../../data/generated/{country_name}/optimal_reconstruction_rates.csv",
+        index=False,
     )
