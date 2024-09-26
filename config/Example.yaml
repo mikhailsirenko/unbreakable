@@ -1,0 +1,111 @@
+# --------------------------------- Constants -------------------------------- #
+constants:
+  country: Example
+
+  # Each spatial unit has an array of outcomes that are calculated for it
+  spatial_units:
+    - region_1
+    - region_2
+    - region_3
+
+  # Global economic parameters specific to the country
+  economic_params:
+    average_productivity: 0.25  # average of cgdpo / cn for the last 5 years from the Penn World Table https://www.rug.nl/ggdc/productivity/pwt/?lang=en
+    income_and_expenditure_growth: 0.02 # assumption source: ?
+    consumption_utility: 1.5 # assumption source: Hallegatte et al. (2017) choose a standard value of 1.5 to represent the elasticity of the marginal utility of consumption
+    discount_rate: 0.04 # assumption source: ?
+
+  # Recovery parameters
+  recovery_params:
+    use_precomputed_reconstruction_rates: true
+    lambda_increment: 0.01
+    max_years: 10
+
+  # Disaster parameters
+  disaster_params:
+    impact_data_type: assets # population or assets
+    disaster_impact_params:
+      add_income_loss: true
+      poverty_bias_factor: 1.0
+      distribution: uniform
+      max_bias: 1.5
+      min_bias : 0.5
+    determine_affected_params:
+      loss_margin_pct: 0.05
+      max_random_threshold: 1.0
+      min_random_threshold: 0
+      num_simulations: 10000
+
+  # Estimation and randomization parameters
+  income_params:
+    estimate: true
+    randomize: true
+    distribution: uniform
+    inc_exp_ratio: 1.3 # assumption source?
+    delta: 0.1  # absolute deviation from the base income to expenditure ratio
+  savings_params:
+    estimate: true 
+    randomize: true
+    cap_with_max_savings_rate: false # whether to cap the savings rate with the maximum savings rate
+    distribution: uniform
+    delta: 0.01  # absolute deviation from the base savings rate
+    max_savings_rate: 0.1  # maximum savings rate to prevent unrealistic values during randomization 
+  rent_params:
+    estimate: true
+    randomize: true
+    distribution: uniform
+    pct_of_income: 0.14 # assumption source?
+    delta: 0.05  # absolute deviation from the base rent as a percentage of income
+  dwelling_vulnerability_params:
+    randomize: true
+    distribution: uniform
+    low: 0.9
+    high: 1.1
+    min_threshold: 0.2 # with vulnerability <= 0.13, recovery rate can be up to 5
+    max_threshold: 0.9 # with vulnerability >= 0.98, recovery rate skyrockets to 10
+  
+  min_households: 10000
+  atol: 100000
+
+  # Analysis parameters
+  analysis_params:
+    save_households: false
+    save_consumption_recovery: false
+    distributional_impacts: true
+    socioeconomic_attributes:
+      - female_headed
+      - urban
+      - literacy
+
+
+# ------------------------------- Policy levers ------------------------------ #
+# ASP: Adaptive social protection
+# The naming convention is: <target group> + <top up percentage>
+# The following target groups are currently specified: all, poor, poor_near_poor1.25, poor_near_poor2.0
+# There are no limitations on the top-up percentage
+
+# Retrofitting: Retrofitting of vulnerable houses
+# The naming convention is: <level of retrofitting>
+# The following levels are currently specified: Basic, Intermediate, Advanced
+# Currently, the retrofitting is available only for Dominica
+
+# levers:
+#   0: none
+#   1: asp:all+10
+#   2: asp:all+30
+#   3: asp:all+50
+#   4: asp:poor+10
+#   5: asp:poor+30
+#   6: asp:poor+50
+#   7: asp:poor_near_poor1.25+10
+#   8: asp:poor_near_poor1.25+30
+#   9: asp:poor_near_poor1.25+50
+#   10: asp:poor_near_poor2.0+10
+#   11: asp:poor_near_poor2.0+30
+#   12: asp:poor_near_poor2.0+50
+
+# ------------------------------- Uncertainties ------------------------------ #
+uncertainties:
+
+# References
+# 1. Hallegatte,Stephane; Vogt-Schilb,Adrien Camille; Bangalore,Mook; Rozenberg,Julie. Unbreakable: building the resilience of the poor in the face of natural disasters (English). Climate Change and Development Washington, D.C.: World Bank Group. http://documents.worldbank.org/curated/en/512241480487839624/Unbreakable-building-the-resilience-of-the-poor-in-the-face-of-natural-disasters

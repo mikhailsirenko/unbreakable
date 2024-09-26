@@ -77,15 +77,11 @@ target/
 
 # exclude real data from source control by default
 /data/raw
-/data/processed
 /data/interim
 /data/external
 
-# exclude figures until the paper is not on the arxiv
-/figures
-
-# exclude for now, keep later
-/features
+# exclude reports until the paper is not on the arxiv
+/reports
 
 # Mac OS-specific storage files
 .DS_Store
@@ -101,27 +97,38 @@ target/
 .idea/
 cache/
 
-# Raw country-specific experiment results
-experiments/Dominica
-experiments/Saint Lucia
+# exclude config files but keep Example.yaml
+/config/*
+!/config/Example.yaml
 
-# Internal reports
-/reports
+# exclude data_preparation from source control by default
+/data_preparation/*
+!/data_preparation/Example
 
-# Input data preparation scripts
-/scripts
+# exclude data_preparation from source control by default
+/data/generated/*
+!/data/generated/Example
 
-# Exclude Dominica-specific config
-/config/Dominica.yaml
+# exclude data but keep the Example folder or file
+/data/processed/asset_impacts/*
+!/data/processed/asset_impacts/Example
 
-# Exclude Saint-Lucia specific config
-/config/SaintLucia.yaml
+/data/processed/household_survey/*
+!/data/processed/household_survey/Example.csv
 
-# Exclude Nigeria specific config
-/config/Nigeria.yaml
+data/processed/population_impacts/*
+!/data/processed/population_impacts/Example
 
-# Exclude reports
-/reports
+# exclude drafts folder
+/drafts
 
-# Exclude experiment results
-/results
+# exclude notebooks but keep the Example folder
+/notebooks/*
+!/notebooks/Example
+
+# exclude results and keep only the Example folder
+/results/*
+!/results/Example
+
+# exlcude todo folder
+/todo
