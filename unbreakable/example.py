@@ -30,10 +30,10 @@ def main():
             "disaster_spec": disaster_spec,
             "model": model,
             "return_period": return_period,
-            "n_scenarios": 6,  # number of replications
+            "n_scenarios": 1000,  # number of replications
             "n_policies": 0,
-            "multiprocessing": False,  # use multiprocessing
-            "n_processes": 6,  # number of replications to run in parallel
+            "multiprocessing": True,  # use multiprocessing
+            "n_processes": 12,  # number of replications to run in parallel
         }
 
         run_experiments(experimental_setup)
