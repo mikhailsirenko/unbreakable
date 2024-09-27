@@ -61,9 +61,10 @@ def generate_households(
     np.random.seed(seed)
 
     # Constants
-    income_to_expenditure_ratio = 1.2
+    average_productivity = 0.25
+    income_to_expenditure_ratio = 1.3
     housing_expenditure_ratio = 0.3
-    effective_capital_stock_factor = 1 / 0.35
+    effective_capital_stock_factor = 1 / average_productivity
     home_ownership_rate = 0.7
     min_savings_rate = 0.05
 
@@ -89,7 +90,7 @@ def generate_households(
         default="Medium",
     )
 
-    owns_home = np.random.rand(num_households) < (
+    owns_house = np.random.rand(num_households) < (
         (income - 1000) / 2000 * 0.5 + home_ownership_rate - 0.25
     )
 
@@ -99,8 +100,8 @@ def generate_households(
 
     data = {
         "inc": income,
-        "owns_home": owns_home,
-        "keff": income * effective_capital_stock_factor,
+        "owns_house": owns_house,
+        "k_house": income * effective_capital_stock_factor,
         "spatial_unit": assigned_spatial_units,
         "female_headed": female_headed,
         "urban": urban,
@@ -112,18 +113,28 @@ def generate_households(
     data["floor"] = [select_material(inc, FLOOR_SCORES) for inc in income]
 
     # Calculate housing expenditure
-    data["exp_house"] = np.where(
-        data["owns_home"], 0, income * housing_expenditure_ratio
-    )
+    data["rent"] = np.where(data["owns_house"], 0, income * housing_expenditure_ratio)
 
     # Calculate total expenditure ensuring minimum savings
     max_expenditure = income * (1 - min_savings_rate)
     data["exp"] = np.minimum(
-        income / income_to_expenditure_ratio, max_expenditure - data["exp_house"]
+        income / income_to_expenditure_ratio, max_expenditure - data["rent"]
     )
 
     # Calculate savings
-    data["sav"] = income - data["exp"] - data["exp_house"]
+    data["sav"] = income - data["exp"] - data["rent"]
+
+    # Assign effective capital stock to dwelling value
+    data["keff"] = data["k_house"]
+    data["keff"] = np.where(data["owns_house"] == False, 0, data["keff"])
+
+    # Estimate effective capital stock for renters based on savings rate
+    savings_rate = (data["inc"] - data["exp"]) / data["inc"]
+    data["keff"] = np.where(
+        data["owns_house"] == False,
+        data["inc"] * savings_rate / average_productivity,
+        data["keff"],
+    )
 
     # Assign each household a unique ID and weight
     data["household_id"] = range(1, num_households + 1)
@@ -142,8 +153,9 @@ def generate_households(
         "inc",
         "exp",
         "sav",
-        "owns_home",
-        "exp_house",
+        "owns_house",
+        "rent",
+        "k_house",
         "keff",
         "roof",
         "walls",
@@ -157,11 +169,11 @@ def generate_households(
 
     # Assert conditions
     assert (
-        data["inc"] >= data["exp"] + data["exp_house"]
+        data["inc"] >= data["exp"] + data["rent"]
     ).all(), "Income should be greater than expenditure"
     assert (data["sav"] >= 0).all(), "Savings should be positive"
     assert (data["exp"] >= 0).all(), "Expenditure should be positive"
-    assert (data["exp_house"] >= 0).all(), "Housing expenditure should be positive"
+    assert (data["rent"] >= 0).all(), "Rent should be positive"
 
     return pd.DataFrame(data)[sorted_columns]
 
@@ -193,7 +205,7 @@ def select_material(income: float, material_scores: Dict[str, float]) -> str:
 
 
 def generate_asset_damage(
-    disaster_type: str, num_spatial_units: int, seed: int = 42
+    disaster_type: str, exposure_data: pd.Series, num_spatial_units: int, seed: int = 42
 ) -> pd.DataFrame:
     """Generate dummy asset damage data for a given disaster type and number of spatial units."""
     np.random.seed(seed)  # For reproducibility
@@ -203,23 +215,38 @@ def generate_asset_damage(
 
     data = []
 
+    residential_to_non_residential_ratio = (
+        0.25  # Ratio of residential to non-residential assets
+    )
+
     for rp in return_periods:
         rp_factor = rp / 250  # Normalize return period
 
         for spatial_unit in spatial_units:
-            residential = np.random.uniform(100_000_000, 250_000_000)
-            non_residential = np.random.uniform(50_000_000, 100_000_000)
-            total = residential + non_residential
+            total_exposed_stock = exposure_data.loc[
+                exposure_data["spatial_unit"] == spatial_unit, "total_exposed_stock"
+            ].iloc[0]
+
+            # Get residential and non-residential exposure
+            residential_exposure = total_exposed_stock * (
+                1 - residential_to_non_residential_ratio
+            )
+
+            non_residential_exposure = (
+                total_exposed_stock * residential_to_non_residential_ratio
+            )
+
+            total = residential_exposure + non_residential_exposure
 
             # Adjust PML and loss fraction based on disaster type and return period
             if disaster_type == "flood":
-                base_loss = 0.05
+                base_loss = 0.005
                 max_loss = 0.3
             elif disaster_type == "hurricane":
-                base_loss = 0.1
+                base_loss = 0.01
                 max_loss = 0.4
             elif disaster_type == "earthquake":
-                base_loss = 0.15
+                base_loss = 0.015
                 max_loss = 0.5
             else:
                 raise ValueError(f"Invalid disaster type: {disaster_type}")
@@ -238,8 +265,8 @@ def generate_asset_damage(
                 {
                     "disaster_type": disaster_type,
                     "spatial_unit": spatial_unit,
-                    "residential": round(residential, 2),
-                    "non_residential": round(non_residential, 2),
+                    "residential": round(residential_exposure, 2),
+                    "non_residential": round(non_residential_exposure, 2),
                     "total_exposed_stock": round(total, 2),
                     "rp": rp,
                     "pml": round(pml, 2),
@@ -251,12 +278,31 @@ def generate_asset_damage(
 
 
 if __name__ == "__main__":
+    # Specify the number of households and spatial units
+    num_households = 300
+    num_spatial_units = 3
+    seed = 42
+
+    # Generate dummy household survey data
+    households = generate_households(num_households, num_spatial_units, seed)
+    households.to_csv("../../data/processed/household_survey/Example.csv", index=False)
+
+    # Get how much stock each household is exposed to
+    households["total_exposed_stock"] = (
+        households["keff"] * households["household_weight"]
+    )
+
+    exposure_data = (
+        households.groupby("spatial_unit")["total_exposed_stock"].sum().reset_index()
+    )
+
     # Generate dummy disaster risk and household survey data
     disaster_types = ["flood", "hurricane", "earthquake"]
+
     for disaster in disaster_types:
-        df = generate_asset_damage(disaster, num_spatial_units=3)
+        df = generate_asset_damage(
+            disaster, exposure_data, num_spatial_units, seed=seed
+        )
         df.to_csv(
             f"../../data/processed/asset_impacts/Example/{disaster}.csv", index=False
         )
-    households = generate_households(100, num_spatial_units=3)
-    households.to_csv("../../data/processed/household_survey/Example.csv", index=False)

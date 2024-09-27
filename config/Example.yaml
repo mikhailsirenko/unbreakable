@@ -17,7 +17,7 @@ constants:
 
   # Recovery parameters
   recovery_params:
-    use_precomputed_reconstruction_rates: true
+    use_precomputed_reconstruction_rates: false
     lambda_increment: 0.01
     max_years: 10
 
@@ -64,7 +64,7 @@ constants:
     min_threshold: 0.2 # with vulnerability <= 0.13, recovery rate can be up to 5
     max_threshold: 0.9 # with vulnerability >= 0.98, recovery rate skyrockets to 10
   
-  min_households: 250
+  min_households: 10000
   atol: 100000
 
   # Analysis parameters
