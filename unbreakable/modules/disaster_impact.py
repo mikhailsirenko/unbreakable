@@ -217,7 +217,11 @@ def calculate_compound_impact(disaster_spec, disaster_impacts):
         # Disaster impacts have data on multiple return periods
         # Filter the disaster impacts for the return period in disaster_spec
         rp = disaster_spec[0].get("return_period")
-        filtered_impacts = disaster_impacts if rp is None else disaster_impacts[disaster_impacts["rp"] == rp]
+        filtered_impacts = (
+            disaster_impacts
+            if rp is None
+            else disaster_impacts[disaster_impacts["rp"] == rp]
+        )
         return {disaster_spec[0]["event_time"]: filtered_impacts}
 
     # Group disasters by event_time

@@ -11,7 +11,7 @@ def main():
     try:
         country = "Example"
         disaster_spec = [
-            {"type": "flood", "event_time": 0, "return_period": None},
+            {"type": "flood", "event_time": 0, "return_period": 250},
             # {"type": "flood", "event_time": 0, "return_period": 50},
             # {"type": "earthquake", "event_time": 0, "return_period": 100},
         ]
@@ -30,10 +30,10 @@ def main():
             "disaster_spec": disaster_spec,
             "model": model,
             "return_period": return_period,
-            "n_scenarios": 1000,  # number of replications
+            "n_scenarios": 6,  # number of replications
             "n_policies": 0,
             "multiprocessing": False,  # use multiprocessing
-            "n_processes": 16,  # number of replications to run in parallel
+            "n_processes": 6,  # number of replications to run in parallel
         }
 
         run_experiments(experimental_setup)
