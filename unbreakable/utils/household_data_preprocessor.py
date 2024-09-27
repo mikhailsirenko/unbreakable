@@ -36,14 +36,19 @@ def prepare_household_data(
         households, params["min_households"], random_seed
     )
 
-    # * This must be done after resampling and before matching
-    households = estimate_effective_capital_stock(households, params)
+    # Estimate the dwelling value
+    households = estimate_dwelling_value(households, params["dwelling_params"])
 
     if params["disaster_params"]["impact_data_type"] == "assets":
         # There could be a mismatch between the assets in the household data and the exposure data
         households = align_household_assets_with_exposure_data(
             households, disaster_impacts, params["atol"]
         )
+
+    # * This must be done after resampling and matching
+    households = estimate_effective_capital_stock(
+        households, params["effective_capital_stock_params"]
+    )
 
     # Estimate welfare based on consumption utility
     households = estimate_welfare(households, params)

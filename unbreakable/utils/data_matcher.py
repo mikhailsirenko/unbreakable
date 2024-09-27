@@ -62,15 +62,13 @@ def align_assets(
     Returns:
         pd.DataFrame: Households with aligned assets and adjusted values.
     """
-    survey_assets = (households["k_house"] * households["household_weight"]).sum()
+    survey_assets = (households["keff"] * households["household_weight"]).sum()
 
     if not np.isclose(exposed_assets, survey_assets, atol=atol):
         scaling_factor = exposed_assets / survey_assets
         households = scale_household_data(households, scaling_factor)
 
-    survey_assets_aligned = (
-        households["k_house"] * households["household_weight"]
-    ).sum()
+    survey_assets_aligned = (households["keff"] * households["household_weight"]).sum()
 
     assert round(exposed_assets) == round(
         survey_assets_aligned

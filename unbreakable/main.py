@@ -30,9 +30,9 @@ def main():
             "disaster_spec": disaster_spec,
             "model": model,
             "return_period": return_period,
-            "n_scenarios": 2,
+            "n_scenarios": 16,
             "n_policies": 0,
-            "multiprocessing": False,
+            "multiprocessing": True,
             "n_processes": 16,
         }
 

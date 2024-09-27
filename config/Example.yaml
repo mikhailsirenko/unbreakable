@@ -4,16 +4,16 @@ constants:
 
   # Each spatial unit has an array of outcomes that are calculated for it
   spatial_units:
+    - region_0
     - region_1
     - region_2
-    - region_3
 
   # Global economic parameters specific to the country
   economic_params:
     average_productivity: 0.25  # average of cgdpo / cn for the last 5 years from the Penn World Table https://www.rug.nl/ggdc/productivity/pwt/?lang=en
-    income_and_expenditure_growth: 0.02 # assumption source: ?
+    income_and_expenditure_growth: 0.02
     consumption_utility: 1.5 # assumption source: Hallegatte et al. (2017) choose a standard value of 1.5 to represent the elasticity of the marginal utility of consumption
-    discount_rate: 0.04 # assumption source: ?
+    discount_rate: 0.04
 
   # Recovery parameters
   recovery_params:
@@ -38,24 +38,28 @@ constants:
 
   # Estimation and randomization parameters
   income_params:
-    estimate: true
-    randomize: true
+    estimate: false
+    randomize: false
     distribution: uniform
-    inc_exp_ratio: 1.3 # assumption source?
+    inc_exp_ratio: 1.3
     delta: 0.1  # absolute deviation from the base income to expenditure ratio
   savings_params:
-    estimate: true 
-    randomize: true
+    estimate: false
+    randomize: false
     cap_with_max_savings_rate: false # whether to cap the savings rate with the maximum savings rate
     distribution: uniform
     delta: 0.01  # absolute deviation from the base savings rate
     max_savings_rate: 0.1  # maximum savings rate to prevent unrealistic values during randomization 
   rent_params:
-    estimate: true
-    randomize: true
+    estimate: false
+    randomize: false
     distribution: uniform
-    pct_of_income: 0.14 # assumption source?
+    pct_of_income: 0.3
     delta: 0.05  # absolute deviation from the base rent as a percentage of income
+  dwelling_params:
+    estimate: false
+  effective_capital_stock_params:
+    estimate: false
   dwelling_vulnerability_params:
     randomize: true
     distribution: uniform

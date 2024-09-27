@@ -73,6 +73,8 @@ def validate_config(config: Dict[str, Any]) -> None:
                 "pct_of_income",
                 "delta",
             },
+            "effective_capital_stock_params": {"estimate"},
+            "dwelling_params": {"estimate"},
             "dwelling_vulnerability_params": {
                 "randomize",
                 "distribution",
