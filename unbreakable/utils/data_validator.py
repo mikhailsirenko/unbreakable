@@ -28,7 +28,7 @@ def validate_rent(
     """
     if rent.isna().any():
         raise ValueError("Rent cannot be NaN")
-    if (rent <= 0).any():
+    if (rent < 0).any():
         raise ValueError("Rent must be positive")
     if (rent >= income).any():
         raise ValueError("Rent must be less than income")
