@@ -3,11 +3,33 @@ import numpy as np
 from typing import Optional
 
 
+def estimate_dwelling_value(households: pd.DataFrame, params: dict) -> pd.DataFrame:
+    """
+    Estimate dwelling value based on income and average productivity.
+
+    Args:
+        households (pd.DataFrame): DataFrame containing household data.
+        params (dict): Dictionary of parameters for estimation.
+
+    Returns:
+        pd.DataFrame: DataFrame with estimated dwelling value.
+
+    """
+    estimate = params.get("estimate", False)
+    if not estimate:
+        return households
+    households = households.copy()
+    households.loc[households["owns_house"] == True, "k_house"] = (
+        households["inc"] / params["economic_params"]["average_productivity"]
+    )
+    return households
+
+
 def estimate_effective_capital_stock(
     households: pd.DataFrame, params: dict
 ) -> pd.DataFrame:
     """
-    Estimate effective capital stock for homeowners.
+    Estimate effective capital stock.
 
     Args:
         households (pd.DataFrame): DataFrame containing household data.
@@ -19,12 +41,12 @@ def estimate_effective_capital_stock(
     Raises:
         ValueError: If 'inc' or 'owns_house' columns are not present in the DataFrame.
     """
-    if "inc" in households.columns and "owns_house" in households.columns:
-        households = households.copy()
-        households.loc[households["owns_house"] == True, "k_house"] = (
-            households["inc"] / params["economic_params"]["average_productivity"]
-        )
+    estimate = params.get("estimate", False)
 
+    if not estimate:
+        return households
+
+    if "inc" in households.columns and "owns_house" in households.columns:
         households.loc[households["owns_house"] == False, "k_house"] = 0
 
         # NOTE
